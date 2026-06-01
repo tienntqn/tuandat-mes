@@ -9,6 +9,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const UsersPage = lazy(() => import('@/features/users/UsersPage'))
 const MasterLayout = lazy(() => import('@/features/master/MasterLayout'))
+const MachineLayout = lazy(() => import('@/features/machine/MachineLayout'))
 const ForbiddenPage = lazy(() => import('./ForbiddenPage'))
 const NotFoundPage = lazy(() => import('./NotFoundPage'))
 
@@ -57,6 +58,14 @@ export default function AppLayout() {
                 }
               />
               <Route path="/master/*" element={<MasterLayout />} />
+              <Route
+                path="/machines/*"
+                element={
+                  <ProtectedRoute roles={['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC']}>
+                    <MachineLayout />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/403" element={<ForbiddenPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
