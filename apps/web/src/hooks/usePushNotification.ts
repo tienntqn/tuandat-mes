@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { api } from '@/lib/axios'
+import { apiClient } from '@/lib/axios'
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || ''
 
@@ -41,7 +41,7 @@ export function usePushNotification() {
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
       })
 
-      await api.post('/notifications/subscribe', sub.toJSON())
+      await apiClient.post('/notifications/subscribe', sub.toJSON())
       setIsSubscribed(true)
       return true
     } catch {
@@ -58,7 +58,7 @@ export function usePushNotification() {
       const sub = await reg.pushManager.getSubscription()
       if (sub) {
         await sub.unsubscribe()
-        await api.delete('/notifications/subscribe')
+        await apiClient.delete('/notifications/subscribe')
       }
       setIsSubscribed(false)
     } finally {
