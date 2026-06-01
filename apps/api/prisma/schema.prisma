@@ -1,6 +1,5 @@
 // Prisma Schema — Tuấn Đạt MES
-// Schema đầy đủ sẽ được tạo ở Giai đoạn 1 (PROMPT 1)
-// File này là placeholder để Prisma CLI nhận diện project
+// Giai đoạn 1: Database Schema hoàn chỉnh
 
 generator client {
   provider = "prisma-client-js"
@@ -11,7 +10,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ===== ENUMS =====
+// ============================================================
+// ENUMS
+// ============================================================
 
 enum FactoryStatus {
   ACTIVE
@@ -79,7 +80,9 @@ enum PermissionAction {
   APPROVE
 }
 
-// ===== MODELS (skeleton — sẽ hoàn thiện ở PROMPT 1) =====
+// ============================================================
+// MASTER DATA
+// ============================================================
 
 model Company {
   id        Int       @id @default(autoincrement())
@@ -108,13 +111,17 @@ model Factory {
   updatedAt DateTime      @updatedAt
   deletedAt DateTime?
 
-  company          Company          @relation(fields: [companyId], references: [id])
-  productionLines  ProductionLine[]
-  employees        Employee[]
-  machines         Machine[]
-  companyPlans     CompanyPlan[]
-  transfersFrom    MachineTransfer[] @relation("TransferFrom")
-  transfersTo      MachineTransfer[] @relation("TransferTo")
+  company         Company           @relation(fields: [companyId], references: [id])
+  productionLines ProductionLine[]
+  employees       Employee[]
+  machines        Machine[]
+  companyPlans    CompanyPlan[]
+  transfersFrom   MachineTransfer[] @relation("TransferFrom")
+  transfersTo     MachineTransfer[] @relation("TransferTo")
+
+  @@index([companyId])
+  @@index([status])
+  @@index([deletedAt])
 }
 
 model ProductionLine {
@@ -136,6 +143,9 @@ model ProductionLine {
   styleLines   StyleLine[]
 
   @@unique([factoryId, lineNumber])
+  @@index([factoryId])
+  @@index([status])
+  @@index([deletedAt])
 }
 
 model Employee {
@@ -154,7 +164,16 @@ model Employee {
   factory Factory?        @relation(fields: [factoryId], references: [id])
   line    ProductionLine? @relation(fields: [lineId], references: [id])
   user    User?
+
+  @@index([factoryId])
+  @@index([lineId])
+  @@index([position])
+  @@index([deletedAt])
 }
+
+// ============================================================
+// MÁY MÓC
+// ============================================================
 
 model Machine {
   id           Int           @id @default(autoincrement())
@@ -166,38 +185,48 @@ model Machine {
   status       MachineStatus @default(IDLE)
   brand        String?
   model        String?
-  purchaseDate DateTime?
+  purchaseDate DateTime?     @db.Date
   note         String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   deletedAt    DateTime?
 
-  factory      Factory          @relation(fields: [factoryId], references: [id])
-  line         ProductionLine?  @relation(fields: [lineId], references: [id])
+  factory      Factory            @relation(fields: [factoryId], references: [id])
+  line         ProductionLine?    @relation(fields: [lineId], references: [id])
   maintenances MachineMaintenance[]
   transfers    MachineTransfer[]
+
+  @@index([factoryId])
+  @@index([lineId])
+  @@index([status])
+  @@index([type])
+  @@index([deletedAt])
 }
 
 model MachineMaintenance {
   id              Int             @id @default(autoincrement())
   machineId       Int
-  maintenanceDate DateTime
+  maintenanceDate DateTime        @db.Date
   type            MaintenanceType
   description     String?
   performedBy     String?
   cost            Decimal?        @db.Decimal(15, 2)
-  nextDueDate     DateTime?
+  nextDueDate     DateTime?       @db.Date
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
   machine Machine @relation(fields: [machineId], references: [id])
+
+  @@index([machineId])
+  @@index([maintenanceDate])
+  @@index([nextDueDate])
 }
 
 model MachineTransfer {
   id                  Int            @id @default(autoincrement())
   machineId           Int
   transferOrderNo     String         @unique
-  transferDate        DateTime
+  transferDate        DateTime       @db.Date
   reason              String?
   fromFactoryId       Int
   toFactoryId         Int
@@ -213,7 +242,17 @@ model MachineTransfer {
   machine     Machine @relation(fields: [machineId], references: [id])
   fromFactory Factory @relation("TransferFrom", fields: [fromFactoryId], references: [id])
   toFactory   Factory @relation("TransferTo", fields: [toFactoryId], references: [id])
+
+  @@index([machineId])
+  @@index([fromFactoryId])
+  @@index([toFactoryId])
+  @@index([status])
+  @@index([transferDate])
 }
+
+// ============================================================
+// KHÁCH HÀNG & MÃ HÀNG
+// ============================================================
 
 model Customer {
   id          Int       @id @default(autoincrement())
@@ -226,6 +265,8 @@ model Customer {
   deletedAt   DateTime?
 
   styles Style[]
+
+  @@index([deletedAt])
 }
 
 model Style {
@@ -241,58 +282,91 @@ model Style {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  customer     Customer      @relation(fields: [customerId], references: [id])
+  customer       Customer        @relation(fields: [customerId], references: [id])
   purchaseOrders PurchaseOrder[]
-  companyPlans CompanyPlan[]
-  dailyOutputs DailyOutput[]
-  styleLines   StyleLine[]
+  companyPlans   CompanyPlan[]
+  dailyOutputs   DailyOutput[]
+  styleLines     StyleLine[]
+
+  @@index([customerId])
+  @@index([deletedAt])
 }
 
 model PurchaseOrder {
-  id            Int      @id @default(autoincrement())
-  poNumber      String   @unique
+  id            Int       @id @default(autoincrement())
+  poNumber      String    @unique
   styleId       Int
   totalQuantity Int
-  deliveryDate  DateTime
-  status        POStatus @default(OPEN)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  deliveryDate  DateTime  @db.Date
+  status        POStatus  @default(OPEN)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
   style        Style         @relation(fields: [styleId], references: [id])
   companyPlans CompanyPlan[]
+
+  @@index([styleId])
+  @@index([status])
+  @@index([deliveryDate])
+  @@index([deletedAt])
 }
 
+// ============================================================
+// KẾ HOẠCH SẢN XUẤT 2 CẤP
+// ============================================================
+
+// Cấp 1: Phòng kế hoạch CÔNG TY phân chỉ tiêu xuống XƯỞNG
+// Ràng buộc: tổng plannedQuantity theo poId ≤ PO.totalQuantity (kiểm tra ở application layer)
 model CompanyPlan {
-  id                  Int      @id @default(autoincrement())
-  styleId             Int
-  poId                Int
-  factoryId           Int
-  plannedQuantity     Int
-  startDate           DateTime
-  expectedFinishDate  DateTime
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 Int      @id @default(autoincrement())
+  styleId            Int
+  poId               Int
+  factoryId          Int
+  plannedQuantity    Int
+  startDate          DateTime @db.Date
+  expectedFinishDate DateTime @db.Date
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  style        Style          @relation(fields: [styleId], references: [id])
-  po           PurchaseOrder  @relation(fields: [poId], references: [id])
-  factory      Factory        @relation(fields: [factoryId], references: [id])
+  style        Style         @relation(fields: [styleId], references: [id])
+  po           PurchaseOrder @relation(fields: [poId], references: [id])
+  factory      Factory       @relation(fields: [factoryId], references: [id])
   factoryPlans FactoryPlan[]
+
+  @@index([styleId])
+  @@index([poId])
+  @@index([factoryId])
+  @@index([startDate])
+  @@index([expectedFinishDate])
 }
 
+// Cấp 2: Kế hoạch XƯỞNG phân chỉ tiêu xuống CHUYỀN
+// Ràng buộc: tổng plannedQuantity theo companyPlanId ≤ CompanyPlan.plannedQuantity (kiểm tra ở application layer)
+// Tự động tạo StyleLine khi tạo FactoryPlan
 model FactoryPlan {
   id                 Int      @id @default(autoincrement())
   companyPlanId      Int
   lineId             Int
   plannedQuantity    Int
-  expectedFinishDate DateTime
+  expectedFinishDate DateTime @db.Date
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   companyPlan CompanyPlan    @relation(fields: [companyPlanId], references: [id])
   line        ProductionLine @relation(fields: [lineId], references: [id])
+
+  @@index([companyPlanId])
+  @@index([lineId])
+  @@index([expectedFinishDate])
 }
 
+// ============================================================
+// SẢN LƯỢNG HÀNG NGÀY
+// ============================================================
+
+// UNIQUE (lineId, styleId, stage, outputDate) đảm bảo upsert "lấy lần cuối"
+// isLocked = true sau cutoff time (mặc định 19:00)
 model DailyOutput {
   id         Int             @id @default(autoincrement())
   lineId     Int
@@ -306,13 +380,19 @@ model DailyOutput {
   createdAt  DateTime        @default(now())
   updatedAt  DateTime        @updatedAt
 
-  line ProductionLine   @relation(fields: [lineId], references: [id])
-  style Style           @relation(fields: [styleId], references: [id])
-  logs DailyOutputLog[]
+  line  ProductionLine   @relation(fields: [lineId], references: [id])
+  style Style            @relation(fields: [styleId], references: [id])
+  logs  DailyOutputLog[]
 
   @@unique([lineId, styleId, stage, outputDate])
+  @@index([lineId])
+  @@index([styleId])
+  @@index([outputDate])
+  @@index([stage])
+  @@index([isLocked])
 }
 
+// Audit trail: lưu MỌI lần nhập, kể cả khi upsert ghi đè
 model DailyOutputLog {
   id            Int      @id @default(autoincrement())
   dailyOutputId Int
@@ -321,7 +401,14 @@ model DailyOutputLog {
   enteredAt     DateTime @default(now())
 
   dailyOutput DailyOutput @relation(fields: [dailyOutputId], references: [id])
+
+  @@index([dailyOutputId])
+  @@index([enteredAt])
 }
+
+// ============================================================
+// AUTH & RBAC
+// ============================================================
 
 model User {
   id           Int      @id @default(autoincrement())
@@ -334,11 +421,13 @@ model User {
 
   employee  Employee   @relation(fields: [employeeId], references: [id])
   userRoles UserRole[]
+
+  @@index([isActive])
 }
 
 model Role {
-  id          Int    @id @default(autoincrement())
-  name        String @unique
+  id          Int     @id @default(autoincrement())
+  name        String  @unique
   description String?
 
   userRoles       UserRole[]
@@ -353,18 +442,23 @@ model Permission {
   rolePermissions RolePermission[]
 
   @@unique([resource, action])
+  @@index([resource])
 }
 
+// Bảng nối User N-N Role
 model UserRole {
-  userId Int
-  roleId Int
+  userId    Int
+  roleId    Int
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id])
   role Role @relation(fields: [roleId], references: [id])
 
   @@id([userId, roleId])
+  @@index([roleId])
 }
 
+// Bảng nối Role N-N Permission
 model RolePermission {
   roleId       Int
   permissionId Int
@@ -373,8 +467,11 @@ model RolePermission {
   permission Permission @relation(fields: [permissionId], references: [id])
 
   @@id([roleId, permissionId])
+  @@index([permissionId])
 }
 
+// Bảng nối ProductionLine N-N Style
+// Được tạo tự động khi FactoryPlan được tạo
 model StyleLine {
   lineId  Int
   styleId Int
@@ -383,4 +480,5 @@ model StyleLine {
   style Style          @relation(fields: [styleId], references: [id])
 
   @@id([lineId, styleId])
+  @@index([styleId])
 }
