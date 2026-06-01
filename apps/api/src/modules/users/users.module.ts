@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common'
+import { UsersService } from './users.service'
+import { UsersController } from './users.controller'
 
-// Sẽ triển khai đầy đủ ở Giai đoạn 3 (Master Data)
-@Module({})
+@Module({
+  providers: [UsersService],
+  controllers: [UsersController],
+  exports: [UsersService],
+})
 export class UsersModule {}

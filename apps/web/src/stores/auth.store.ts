@@ -1,10 +1,10 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 
-export type UserRole =
-  | 'ADMIN'
-  | 'BOD'
+export type Position =
   | 'COMPANY_PLANNER'
+  | 'BOD'
+  | 'ADMIN'
   | 'FACTORY_DIRECTOR'
   | 'FACTORY_PLANNER'
   | 'LINE_LEADER'
@@ -16,10 +16,11 @@ export interface AuthUser {
   username: string
   employeeId: number
   fullName: string
-  position: UserRole
+  position: Position
   factoryId: number | null
   lineId: number | null
   roles: string[]
+  permissions: string[]
 }
 
 interface AuthState {
@@ -27,30 +28,72 @@ interface AuthState {
   refreshToken: string | null
   user: AuthUser | null
   isAuthenticated: boolean
+  // Actions
   setTokens: (accessToken: string, refreshToken: string) => void
   setUser: (user: AuthUser) => void
   logout: () => void
+  // Helpers
+  hasRole: (role: string) => boolean
+  hasPermission: (permission: string) => boolean
+  isAdmin: () => boolean
+  isCompanyLevel: () => boolean
+  isFactoryLevel: () => boolean
+  isLineLevel: () => boolean
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       accessToken: null,
       refreshToken: null,
       user: null,
       isAuthenticated: false,
+
       setTokens: (accessToken, refreshToken) =>
         set({ accessToken, refreshToken, isAuthenticated: true }),
+
       setUser: (user) => set({ user }),
+
       logout: () =>
-        set({ accessToken: null, refreshToken: null, user: null, isAuthenticated: false }),
+        set({
+          accessToken: null,
+          refreshToken: null,
+          user: null,
+          isAuthenticated: false,
+        }),
+
+      hasRole: (role) => get().user?.roles.includes(role) ?? false,
+
+      hasPermission: (permission) =>
+        get().user?.permissions.includes(permission) ??
+        get().user?.roles.includes('ADMIN') ??
+        false,
+
+      isAdmin: () => get().user?.roles.includes('ADMIN') ?? false,
+
+      isCompanyLevel: () => {
+        const p = get().user?.position
+        return p === 'ADMIN' || p === 'BOD' || p === 'COMPANY_PLANNER'
+      },
+
+      isFactoryLevel: () => {
+        const p = get().user?.position
+        return p === 'FACTORY_DIRECTOR' || p === 'FACTORY_PLANNER' || p === 'MECHANIC'
+      },
+
+      isLineLevel: () => {
+        const p = get().user?.position
+        return p === 'LINE_LEADER' || p === 'LINE_DEPUTY'
+      },
     }),
     {
       name: 'auth-storage',
-      // Chỉ persist token, không persist user (re-fetch khi mount)
+      storage: createJSONStorage(() => localStorage),
+      // Chỉ persist token — user được fetch lại từ /auth/me khi app mount
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
+        user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
     },
