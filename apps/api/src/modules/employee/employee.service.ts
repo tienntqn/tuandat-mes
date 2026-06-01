@@ -9,12 +9,12 @@ import { CreateEmployeeDto, UpdateEmployeeDto } from './dto/employee.dto'
 import type { RequestUser } from '../../common/types/request-user.type'
 import { EmployeePosition } from '@prisma/client'
 
-const FACTORY_POSITIONS = [
+const FACTORY_POSITIONS: EmployeePosition[] = [
   EmployeePosition.FACTORY_DIRECTOR,
   EmployeePosition.FACTORY_PLANNER,
   EmployeePosition.MECHANIC,
 ]
-const LINE_POSITIONS = [EmployeePosition.LINE_LEADER, EmployeePosition.LINE_DEPUTY]
+const LINE_POSITIONS: EmployeePosition[] = [EmployeePosition.LINE_LEADER, EmployeePosition.LINE_DEPUTY]
 
 @Injectable()
 export class EmployeeService {
