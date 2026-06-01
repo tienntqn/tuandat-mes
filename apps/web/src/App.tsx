@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
 import { Toaster } from '@/components/ui/toaster'
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
+import { InstallBanner } from '@/components/shared/InstallBanner'
 
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'))
@@ -21,8 +23,10 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <Suspense fallback={<LoadingScreen />}>
       <Toaster />
+      <InstallBanner />
       <Routes>
         <Route
           path="/login"
@@ -42,5 +46,6 @@ export default function App() {
         />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
   )
 }
