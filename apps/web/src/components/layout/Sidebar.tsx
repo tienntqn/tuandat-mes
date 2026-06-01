@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    label: 'Master Data',
+    label: 'Dữ liệu nền',
     path: '/master',
     icon: Building2,
     roles: ['ADMIN', 'COMPANY_PLANNER', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER'],
@@ -108,6 +108,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <NavLink
             key={item.path}
             to={item.path}
+            end={false}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors',

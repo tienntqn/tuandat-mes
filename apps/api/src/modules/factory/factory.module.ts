@@ -1,5 +1,10 @@
 import { Module } from '@nestjs/common'
+import { FactoryController } from './factory.controller'
+import { FactoryService } from './factory.service'
 
-// Sẽ triển khai đầy đủ ở Giai đoạn 3 (Master Data)
-@Module({})
+@Module({
+  controllers: [FactoryController],
+  providers: [FactoryService],
+  exports: [FactoryService],
+})
 export class FactoryModule {}

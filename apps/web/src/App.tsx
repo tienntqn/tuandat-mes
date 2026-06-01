@@ -2,6 +2,7 @@ import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
+import { Toaster } from '@/components/ui/toaster'
 
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'))
@@ -21,6 +22,7 @@ function AuthRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Suspense fallback={<LoadingScreen />}>
+      <Toaster />
       <Routes>
         <Route
           path="/login"

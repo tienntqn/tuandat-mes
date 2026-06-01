@@ -5,7 +5,13 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { PrismaModule } from './modules/prisma/prisma.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { UsersModule } from './modules/users/users.module'
+import { CompanyModule } from './modules/company/company.module'
 import { FactoryModule } from './modules/factory/factory.module'
+import { ProductionLineModule } from './modules/production-line/production-line.module'
+import { EmployeeModule } from './modules/employee/employee.module'
+import { CustomerModule } from './modules/customer/customer.module'
+import { StyleModule } from './modules/style/style.module'
+import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module'
 import { MachineModule } from './modules/machine/machine.module'
 import { PlanModule } from './modules/plan/plan.module'
 import { OutputModule } from './modules/output/output.module'
@@ -22,14 +28,19 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter'
     PrismaModule,
     AuthModule,
     UsersModule,
+    CompanyModule,
     FactoryModule,
+    ProductionLineModule,
+    EmployeeModule,
+    CustomerModule,
+    StyleModule,
+    PurchaseOrderModule,
     MachineModule,
     PlanModule,
     OutputModule,
     ReportModule,
   ],
   providers: [
-    // Áp dụng JwtAuthGuard toàn cục — @Public() để bypass
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

@@ -8,6 +8,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 // Lazy-load các trang
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const UsersPage = lazy(() => import('@/features/users/UsersPage'))
+const MasterLayout = lazy(() => import('@/features/master/MasterLayout'))
 const ForbiddenPage = lazy(() => import('./ForbiddenPage'))
 const NotFoundPage = lazy(() => import('./NotFoundPage'))
 
@@ -55,7 +56,7 @@ export default function AppLayout() {
                   </ProtectedRoute>
                 }
               />
-              {/* Các module sẽ bổ sung ở Giai đoạn 3–7 */}
+              <Route path="/master/*" element={<MasterLayout />} />
               <Route path="/403" element={<ForbiddenPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

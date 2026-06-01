@@ -1,0 +1,104 @@
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
+import { PrismaService } from '../prisma/prisma.service'
+import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from './dto/purchase-order.dto'
+
+@Injectable()
+export class PurchaseOrderService {
+  constructor(private prisma: PrismaService) {}
+
+  async findAll(search?: string, styleId?: number, status?: string, page = 1, pageSize = 20) {
+    const where: any = { deletedAt: null }
+    if (styleId) where.styleId = styleId
+    if (status) where.status = status
+    if (search) {
+      where.OR = [
+        { poNumber: { contains: search, mode: 'insensitive' } },
+        { style: { code: { contains: search, mode: 'insensitive' } } },
+        { style: { name: { contains: search, mode: 'insensitive' } } },
+      ]
+    }
+
+    const skip = (page - 1) * pageSize
+    const [data, total] = await Promise.all([
+      this.prisma.purchaseOrder.findMany({
+        where,
+        skip,
+        take: pageSize,
+        include: {
+          style: {
+            select: {
+              id: true,
+              code: true,
+              name: true,
+              customer: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.purchaseOrder.count({ where }),
+    ])
+
+    return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+  }
+
+  async findOne(id: number) {
+    const po = await this.prisma.purchaseOrder.findFirst({
+      where: { id, deletedAt: null },
+      include: {
+        style: {
+          include: { customer: { select: { id: true, code: true, name: true } } },
+        },
+      },
+    })
+    if (!po) throw new NotFoundException('PO không tồn tại')
+    return po
+  }
+
+  async create(dto: CreatePurchaseOrderDto) {
+    const existing = await this.prisma.purchaseOrder.findFirst({
+      where: { poNumber: dto.poNumber },
+    })
+    if (existing) throw new ConflictException('Số PO đã tồn tại')
+
+    const style = await this.prisma.style.findFirst({
+      where: { id: dto.styleId, deletedAt: null },
+    })
+    if (!style) throw new NotFoundException('Mã hàng không tồn tại')
+
+    return this.prisma.purchaseOrder.create({ data: dto })
+  }
+
+  async update(id: number, dto: UpdatePurchaseOrderDto) {
+    const po = await this.findOne(id)
+
+    if (dto.poNumber && dto.poNumber !== po.poNumber) {
+      const exists = await this.prisma.purchaseOrder.findFirst({
+        where: { poNumber: dto.poNumber },
+      })
+      if (exists) throw new ConflictException('Số PO đã tồn tại')
+    }
+
+    if (dto.styleId) {
+      const style = await this.prisma.style.findFirst({
+        where: { id: dto.styleId, deletedAt: null },
+      })
+      if (!style) throw new NotFoundException('Mã hàng không tồn tại')
+    }
+
+    return this.prisma.purchaseOrder.update({ where: { id }, data: dto })
+  }
+
+  async softDelete(id: number) {
+    await this.findOne(id)
+    await this.prisma.purchaseOrder.update({ where: { id }, data: { deletedAt: new Date() } })
+    return { message: 'Đã xóa PO' }
+  }
+
+  async restore(id: number) {
+    const po = await this.prisma.purchaseOrder.findFirst({ where: { id } })
+    if (!po) throw new NotFoundException('PO không tồn tại')
+    await this.prisma.purchaseOrder.update({ where: { id }, data: { deletedAt: null } })
+    return { message: 'Đã khôi phục PO' }
+  }
+}
