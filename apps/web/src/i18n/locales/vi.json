@@ -10,7 +10,10 @@
     "search": "Tìm kiếm",
     "confirm": "Xác nhận",
     "back": "Quay lại",
-    "noData": "Không có dữ liệu"
+    "noData": "Không có dữ liệu",
+    "export": "Xuất",
+    "print": "In",
+    "status": { "active": "Hoạt động", "inactive": "Ngừng" }
   },
   "auth": {
     "login": "Đăng nhập",
@@ -26,6 +29,51 @@
     "plan": "Kế hoạch",
     "output": "Sản lượng",
     "report": "Báo cáo",
-    "settings": "Cài đặt"
+    "settings": "Cài đặt",
+    "users": "Quản lý User"
+  },
+  "stage": {
+    "CUTTING": "Cắt",
+    "SEWING": "May",
+    "QC": "KCS",
+    "PACKING": "Đóng gói"
+  },
+  "output": {
+    "title": "Nhập sản lượng",
+    "style": "Mã hàng",
+    "stage": "Công đoạn",
+    "quantity": "Số lượng",
+    "submit": "Lưu sản lượng",
+    "locked": "Đã qua giờ khoá — không thể nhập",
+    "savedSuccess": "Đã lưu sản lượng thành công",
+    "offlineSaved": "Lưu offline — sẽ đồng bộ khi có mạng",
+    "history": "Lịch sử sản lượng"
+  },
+  "report": {
+    "title": "Báo cáo tiến độ",
+    "planned": "Kế hoạch",
+    "actual": "Thực tế",
+    "completion": "% Hoàn thành",
+    "deadline": "Deadline",
+    "estimated": "Dự báo HT",
+    "onTime": "Đúng hạn",
+    "late": "Chậm"
+  },
+  "dashboard": {
+    "title": "Dashboard Ban Giám đốc",
+    "todayOutput": "Sản lượng hôm nay",
+    "mtdOutput": "Sản lượng tháng này",
+    "overallPct": "Hoàn thành chung",
+    "lateStyles": "Mã hàng trễ",
+    "brokenMachines": "Máy đang hỏng"
+  },
+  "machine": {
+    "status": {
+      "RUNNING": "Đang chạy",
+      "IDLE": "Chờ",
+      "MAINTENANCE": "Bảo dưỡng",
+      "BROKEN": "Hỏng",
+      "STOPPED": "Dừng"
+    }
   }
 }

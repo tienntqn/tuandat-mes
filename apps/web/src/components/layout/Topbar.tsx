@@ -1,7 +1,8 @@
-import { Menu, Bell, LogOut, KeyRound, User } from 'lucide-react'
+import { Menu, LogOut, KeyRound, User } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth.store'
 import { useLogout } from '@/features/auth/auth.hooks'
 import { useState, useRef, useEffect } from 'react'
+import { NotificationCenter } from './NotificationCenter'
 
 interface TopbarProps {
   onMenuClick?: () => void
@@ -37,10 +38,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       <div className="flex-1" />
 
       {/* Notification bell */}
-      <button className="relative p-1.5 rounded-md text-muted-foreground hover:bg-accent">
-        <Bell className="h-5 w-5" />
-        {/* Badge — sẽ kết nối WebSocket ở Giai đoạn 7 */}
-      </button>
+      <NotificationCenter />
 
       {/* User dropdown */}
       <div className="relative" ref={menuRef}>

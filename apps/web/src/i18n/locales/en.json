@@ -10,7 +10,10 @@
     "search": "Search",
     "confirm": "Confirm",
     "back": "Back",
-    "noData": "No data"
+    "noData": "No data",
+    "export": "Export",
+    "print": "Print",
+    "status": { "active": "Active", "inactive": "Inactive" }
   },
   "auth": {
     "login": "Login",
@@ -26,6 +29,51 @@
     "plan": "Production Plan",
     "output": "Daily Output",
     "report": "Reports",
-    "settings": "Settings"
+    "settings": "Settings",
+    "users": "User Management"
+  },
+  "stage": {
+    "CUTTING": "Cutting",
+    "SEWING": "Sewing",
+    "QC": "QC",
+    "PACKING": "Packing"
+  },
+  "output": {
+    "title": "Production Input",
+    "style": "Style",
+    "stage": "Stage",
+    "quantity": "Quantity",
+    "submit": "Save Output",
+    "locked": "Past cutoff time — input locked",
+    "savedSuccess": "Output saved successfully",
+    "offlineSaved": "Saved offline — will sync when online",
+    "history": "Output History"
+  },
+  "report": {
+    "title": "Progress Report",
+    "planned": "Planned",
+    "actual": "Actual",
+    "completion": "% Complete",
+    "deadline": "Deadline",
+    "estimated": "Est. Finish",
+    "onTime": "On time",
+    "late": "Late"
+  },
+  "dashboard": {
+    "title": "Management Dashboard",
+    "todayOutput": "Today's Output",
+    "mtdOutput": "MTD Output",
+    "overallPct": "Overall Completion",
+    "lateStyles": "Late Styles",
+    "brokenMachines": "Broken Machines"
+  },
+  "machine": {
+    "status": {
+      "RUNNING": "Running",
+      "IDLE": "Idle",
+      "MAINTENANCE": "Maintenance",
+      "BROKEN": "Broken",
+      "STOPPED": "Stopped"
+    }
   }
 }

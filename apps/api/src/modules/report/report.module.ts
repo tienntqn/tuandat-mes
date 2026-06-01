@@ -1,5 +1,12 @@
 import { Module } from '@nestjs/common'
+import { PrismaModule } from '../prisma/prisma.module'
+import { ReportService } from './report.service'
+import { ReportController } from './report.controller'
 
-// Sẽ triển khai đầy đủ ở Giai đoạn 7 (Báo cáo)
-@Module({})
+@Module({
+  imports: [PrismaModule],
+  controllers: [ReportController],
+  providers: [ReportService],
+  exports: [ReportService],
+})
 export class ReportModule {}
