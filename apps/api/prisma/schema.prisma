@@ -161,9 +161,11 @@ model Employee {
   updatedAt DateTime         @updatedAt
   deletedAt DateTime?
 
-  factory Factory?        @relation(fields: [factoryId], references: [id])
-  line    ProductionLine? @relation(fields: [lineId], references: [id])
-  user    User?
+  factory           Factory?          @relation(fields: [factoryId], references: [id])
+  line              ProductionLine?   @relation(fields: [lineId], references: [id])
+  user              User?
+  transfersSent     MachineTransfer[] @relation("TransferSender")
+  transfersReceived MachineTransfer[] @relation("TransferReceiver")
 
   @@index([factoryId])
   @@index([lineId])
@@ -241,7 +243,9 @@ model MachineTransfer {
 
   machine     Machine @relation(fields: [machineId], references: [id])
   fromFactory Factory @relation("TransferFrom", fields: [fromFactoryId], references: [id])
-  toFactory   Factory @relation("TransferTo", fields: [toFactoryId], references: [id])
+  toFactory   Factory  @relation("TransferTo", fields: [toFactoryId], references: [id])
+  sender      Employee @relation("TransferSender", fields: [senderId], references: [id])
+  receiver    Employee @relation("TransferReceiver", fields: [receiverId], references: [id])
 
   @@index([machineId])
   @@index([fromFactoryId])

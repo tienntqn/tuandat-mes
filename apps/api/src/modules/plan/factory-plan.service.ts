@@ -148,7 +148,7 @@ export class FactoryPlanService {
     }
 
     const results = await this.prisma.$transaction(async (tx) => {
-      const created = []
+      const created: Awaited<ReturnType<typeof tx.factoryPlan.create>>[] = []
       for (const plan of dto.plans) {
         const companyPlan = await tx.companyPlan.findUnique({ where: { id: plan.companyPlanId } })
         if (!companyPlan) throw new NotFoundException(`Không tìm thấy kế hoạch công ty id=${plan.companyPlanId}`)
