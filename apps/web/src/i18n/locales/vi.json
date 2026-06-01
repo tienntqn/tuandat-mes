@@ -1,0 +1,31 @@
+{
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Đã có lỗi xảy ra",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "delete": "Xóa",
+    "edit": "Chỉnh sửa",
+    "create": "Tạo mới",
+    "search": "Tìm kiếm",
+    "confirm": "Xác nhận",
+    "back": "Quay lại",
+    "noData": "Không có dữ liệu"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "username": "Tên đăng nhập",
+    "password": "Mật khẩu",
+    "loginError": "Tên đăng nhập hoặc mật khẩu không đúng"
+  },
+  "nav": {
+    "dashboard": "Tổng quan",
+    "factory": "Xưởng sản xuất",
+    "machine": "Máy móc",
+    "plan": "Kế hoạch",
+    "output": "Sản lượng",
+    "report": "Báo cáo",
+    "settings": "Cài đặt"
+  }
+}

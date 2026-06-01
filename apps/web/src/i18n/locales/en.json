@@ -1,0 +1,31 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "confirm": "Confirm",
+    "back": "Back",
+    "noData": "No data"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "username": "Username",
+    "password": "Password",
+    "loginError": "Invalid username or password"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "factory": "Factory",
+    "machine": "Machines",
+    "plan": "Production Plan",
+    "output": "Daily Output",
+    "report": "Reports",
+    "settings": "Settings"
+  }
+}

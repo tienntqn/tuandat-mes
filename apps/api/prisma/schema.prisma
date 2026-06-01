@@ -1,0 +1,386 @@
+// Prisma Schema — Tuấn Đạt MES
+// Schema đầy đủ sẽ được tạo ở Giai đoạn 1 (PROMPT 1)
+// File này là placeholder để Prisma CLI nhận diện project
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== ENUMS =====
+
+enum FactoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum EmployeePosition {
+  COMPANY_PLANNER
+  BOD
+  ADMIN
+  FACTORY_DIRECTOR
+  FACTORY_PLANNER
+  LINE_LEADER
+  LINE_DEPUTY
+  MECHANIC
+}
+
+enum MachineType {
+  SEWING
+  PROGRAMMABLE
+  SEAM_SEALING
+  CUTTING
+  OTHER
+}
+
+enum MachineStatus {
+  RUNNING
+  IDLE
+  MAINTENANCE
+  BROKEN
+  STOPPED
+}
+
+enum MaintenanceType {
+  PERIODIC
+  REPAIR
+}
+
+enum TransferStatus {
+  PENDING
+  SENDER_CONFIRMED
+  COMPLETED
+  REJECTED
+}
+
+enum POStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ProductionStage {
+  CUTTING
+  SEWING
+  QC
+  PACKING
+}
+
+enum PermissionAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  APPROVE
+}
+
+// ===== MODELS (skeleton — sẽ hoàn thiện ở PROMPT 1) =====
+
+model Company {
+  id        Int       @id @default(autoincrement())
+  name      String
+  taxCode   String?   @unique
+  phone     String?
+  email     String?
+  address   String?
+  logo      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  factories Factory[]
+}
+
+model Factory {
+  id        Int           @id @default(autoincrement())
+  companyId Int
+  code      String        @unique
+  name      String
+  address   String?
+  phone     String?
+  status    FactoryStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  deletedAt DateTime?
+
+  company          Company          @relation(fields: [companyId], references: [id])
+  productionLines  ProductionLine[]
+  employees        Employee[]
+  machines         Machine[]
+  companyPlans     CompanyPlan[]
+  transfersFrom    MachineTransfer[] @relation("TransferFrom")
+  transfersTo      MachineTransfer[] @relation("TransferTo")
+}
+
+model ProductionLine {
+  id         Int           @id @default(autoincrement())
+  factoryId  Int
+  lineNumber Int
+  name       String
+  capacity   Int           @default(0)
+  status     FactoryStatus @default(ACTIVE)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  deletedAt  DateTime?
+
+  factory      Factory       @relation(fields: [factoryId], references: [id])
+  employees    Employee[]
+  machines     Machine[]
+  factoryPlans FactoryPlan[]
+  dailyOutputs DailyOutput[]
+  styleLines   StyleLine[]
+
+  @@unique([factoryId, lineNumber])
+}
+
+model Employee {
+  id        Int              @id @default(autoincrement())
+  code      String           @unique
+  fullName  String
+  phone     String?
+  email     String?
+  position  EmployeePosition
+  factoryId Int?
+  lineId    Int?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+
+  factory Factory?        @relation(fields: [factoryId], references: [id])
+  line    ProductionLine? @relation(fields: [lineId], references: [id])
+  user    User?
+}
+
+model Machine {
+  id           Int           @id @default(autoincrement())
+  code         String        @unique
+  name         String
+  type         MachineType
+  factoryId    Int
+  lineId       Int?
+  status       MachineStatus @default(IDLE)
+  brand        String?
+  model        String?
+  purchaseDate DateTime?
+  note         String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+
+  factory      Factory          @relation(fields: [factoryId], references: [id])
+  line         ProductionLine?  @relation(fields: [lineId], references: [id])
+  maintenances MachineMaintenance[]
+  transfers    MachineTransfer[]
+}
+
+model MachineMaintenance {
+  id              Int             @id @default(autoincrement())
+  machineId       Int
+  maintenanceDate DateTime
+  type            MaintenanceType
+  description     String?
+  performedBy     String?
+  cost            Decimal?        @db.Decimal(15, 2)
+  nextDueDate     DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  machine Machine @relation(fields: [machineId], references: [id])
+}
+
+model MachineTransfer {
+  id                  Int            @id @default(autoincrement())
+  machineId           Int
+  transferOrderNo     String         @unique
+  transferDate        DateTime
+  reason              String?
+  fromFactoryId       Int
+  toFactoryId         Int
+  senderId            Int
+  senderConfirmedAt   DateTime?
+  receiverId          Int
+  receiverConfirmedAt DateTime?
+  status              TransferStatus @default(PENDING)
+  rejectReason        String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  machine     Machine @relation(fields: [machineId], references: [id])
+  fromFactory Factory @relation("TransferFrom", fields: [fromFactoryId], references: [id])
+  toFactory   Factory @relation("TransferTo", fields: [toFactoryId], references: [id])
+}
+
+model Customer {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  country     String?
+  contactInfo String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  styles Style[]
+}
+
+model Style {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  customerId  Int
+  season      String?
+  image       String?
+  description String?
+  sam         Decimal?  @db.Decimal(10, 4)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  purchaseOrders PurchaseOrder[]
+  companyPlans CompanyPlan[]
+  dailyOutputs DailyOutput[]
+  styleLines   StyleLine[]
+}
+
+model PurchaseOrder {
+  id            Int      @id @default(autoincrement())
+  poNumber      String   @unique
+  styleId       Int
+  totalQuantity Int
+  deliveryDate  DateTime
+  status        POStatus @default(OPEN)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  style        Style         @relation(fields: [styleId], references: [id])
+  companyPlans CompanyPlan[]
+}
+
+model CompanyPlan {
+  id                  Int      @id @default(autoincrement())
+  styleId             Int
+  poId                Int
+  factoryId           Int
+  plannedQuantity     Int
+  startDate           DateTime
+  expectedFinishDate  DateTime
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  style        Style          @relation(fields: [styleId], references: [id])
+  po           PurchaseOrder  @relation(fields: [poId], references: [id])
+  factory      Factory        @relation(fields: [factoryId], references: [id])
+  factoryPlans FactoryPlan[]
+}
+
+model FactoryPlan {
+  id                 Int      @id @default(autoincrement())
+  companyPlanId      Int
+  lineId             Int
+  plannedQuantity    Int
+  expectedFinishDate DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  companyPlan CompanyPlan    @relation(fields: [companyPlanId], references: [id])
+  line        ProductionLine @relation(fields: [lineId], references: [id])
+}
+
+model DailyOutput {
+  id         Int             @id @default(autoincrement())
+  lineId     Int
+  styleId    Int
+  stage      ProductionStage
+  outputDate DateTime        @db.Date
+  quantity   Int
+  enteredBy  Int
+  enteredAt  DateTime        @default(now())
+  isLocked   Boolean         @default(false)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  line ProductionLine   @relation(fields: [lineId], references: [id])
+  style Style           @relation(fields: [styleId], references: [id])
+  logs DailyOutputLog[]
+
+  @@unique([lineId, styleId, stage, outputDate])
+}
+
+model DailyOutputLog {
+  id            Int      @id @default(autoincrement())
+  dailyOutputId Int
+  quantity      Int
+  enteredBy     Int
+  enteredAt     DateTime @default(now())
+
+  dailyOutput DailyOutput @relation(fields: [dailyOutputId], references: [id])
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int      @unique
+  username     String   @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee  Employee   @relation(fields: [employeeId], references: [id])
+  userRoles UserRole[]
+}
+
+model Role {
+  id          Int    @id @default(autoincrement())
+  name        String @unique
+  description String?
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id       Int              @id @default(autoincrement())
+  resource String
+  action   PermissionAction
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+}
+
+model UserRole {
+  userId Int
+  roleId Int
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@id([userId, roleId])
+}
+
+model RolePermission {
+  roleId       Int
+  permissionId Int
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+}
+
+model StyleLine {
+  lineId  Int
+  styleId Int
+
+  line  ProductionLine @relation(fields: [lineId], references: [id])
+  style Style          @relation(fields: [styleId], references: [id])
+
+  @@id([lineId, styleId])
+}
