@@ -35,16 +35,28 @@ export function LineFormDialog({ open, line, defaultFactoryId, factories: factor
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Reset form khi MỞ dialog hoặc đổi chuyền đang sửa.
+  // KHÔNG để `factories` trong deps: mảng này tạo mới mỗi render (qua .filter) nên
+  // sẽ khiến effect chạy lại liên tục, reset `name` về '' và làm mất ký tự đang gõ.
   useEffect(() => {
     if (open) {
       setForm(
         line
           ? { factoryId: line.factoryId, name: line.name, capacity: line.capacity, status: line.status }
-          : { factoryId: defaultFactoryId ?? factories[0]?.id ?? 0, name: '', capacity: 0, status: 'ACTIVE' },
+          : { factoryId: defaultFactoryId ?? 0, name: '', capacity: 0, status: 'ACTIVE' },
       )
       setErrors({})
     }
-  }, [open, line, defaultFactoryId, factories])
+  }, [open, line, defaultFactoryId])
+
+  // Tự chọn xưởng đầu tiên khi danh sách xưởng tải xong (chỉ khi tạo mới & chưa chọn).
+  // Dùng functional update + trả về cùng reference khi đã có factoryId để không reset
+  // các field khác và không gây vòng lặp render.
+  useEffect(() => {
+    if (open && !line && factories.length > 0) {
+      setForm((f) => (f.factoryId ? f : { ...f, factoryId: factories[0].id }))
+    }
+  }, [open, line, factories])
 
   const validate = () => {
     const e: Record<string, string> = {}

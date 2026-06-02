@@ -16,14 +16,23 @@ export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: P
   const [form, setForm] = useState<CreateStyleDto>({ name: '', customerId: 0, season: '', image: '', description: '', sam: undefined })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Reset form khi mở dialog/đổi style. KHÔNG để `customers` trong deps để tránh
+  // reset form (mất ký tự đang gõ) khi danh sách khách hàng tải xong giữa lúc nhập.
   useEffect(() => {
     if (open) {
       setForm(
         style
           ? { name: style.name, customerId: style.customerId, season: style.season ?? '', image: style.image ?? '', description: style.description ?? '', sam: style.sam ? +style.sam : undefined }
-          : { name: '', customerId: customers[0]?.id ?? 0, season: '', image: '', description: '', sam: undefined },
+          : { name: '', customerId: 0, season: '', image: '', description: '', sam: undefined },
       )
       setErrors({})
+    }
+  }, [open, style])
+
+  // Tự chọn khách hàng đầu tiên khi tải xong (chỉ khi tạo mới & chưa chọn).
+  useEffect(() => {
+    if (open && !style && customers.length > 0) {
+      setForm((f) => (f.customerId ? f : { ...f, customerId: customers[0].id }))
     }
   }, [open, style, customers])
 

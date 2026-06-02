@@ -17,14 +17,23 @@ export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) 
   const [form, setForm] = useState<CreatePODto>({ poNumber: '', styleId: 0, totalQuantity: 0, deliveryDate: '', status: 'OPEN' })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  // Reset form khi mở dialog/đổi PO. KHÔNG để `styles` trong deps để tránh reset form
+  // (mất ký tự đang gõ) khi danh sách mã hàng tải xong giữa lúc nhập.
   useEffect(() => {
     if (open) {
       setForm(
         po
           ? { poNumber: po.poNumber, styleId: po.styleId, totalQuantity: po.totalQuantity, deliveryDate: po.deliveryDate.split('T')[0], status: po.status }
-          : { poNumber: '', styleId: styles[0]?.id ?? 0, totalQuantity: 0, deliveryDate: '', status: 'OPEN' },
+          : { poNumber: '', styleId: 0, totalQuantity: 0, deliveryDate: '', status: 'OPEN' },
       )
       setErrors({})
+    }
+  }, [open, po])
+
+  // Tự chọn mã hàng đầu tiên khi tải xong (chỉ khi tạo mới & chưa chọn).
+  useEffect(() => {
+    if (open && !po && styles.length > 0) {
+      setForm((f) => (f.styleId ? f : { ...f, styleId: styles[0].id }))
     }
   }, [open, po, styles])
 
