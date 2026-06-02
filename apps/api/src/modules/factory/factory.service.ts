@@ -17,7 +17,7 @@ export class FactoryService {
     const where: any = { deletedAt: null }
 
     // Lọc theo data scope
-    if (user.dataScope.type === 'FACTORY') {
+    if (user.dataScope.type === 'FACTORY' && user.dataScope.factoryId) {
       where.id = user.dataScope.factoryId
     }
 

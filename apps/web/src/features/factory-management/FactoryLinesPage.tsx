@@ -1,5 +1,4 @@
 import { useState, useRef } from 'react'
-import * as XLSX from 'xlsx'
 import { useLines, useCreateLine, useUpdateLine, useDeleteLine, useRestoreLine } from '@/features/production-line/line.hooks'
 import { useFactories } from '@/features/factory/factory.hooks'
 import { LineFormDialog } from '@/features/production-line/LineFormDialog'
@@ -55,7 +54,8 @@ export default function FactoryLinesPage() {
     }
   }
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx')
     const rows = lines.map((l) => ({
       'Số chuyền': l.lineNumber,
       'Tên chuyền': l.name,
@@ -70,7 +70,8 @@ export default function FactoryLinesPage() {
     XLSX.writeFile(wb, 'chuyen-may.xlsx')
   }
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    const XLSX = await import('xlsx')
     const rows = [
       { 'Xưởng (Code)': 'X001', 'Tên chuyền': 'Chuyền May 1', 'Năng lực (SP/ngày)': 500, 'Trạng thái': 'Hoạt động' },
     ]
@@ -87,6 +88,7 @@ export default function FactoryLinesPage() {
 
     setImporting(true)
     try {
+      const XLSX = await import('xlsx')
       const buffer = await file.arrayBuffer()
       const wb = XLSX.read(buffer, { type: 'array' })
       const ws = wb.Sheets[wb.SheetNames[0]]

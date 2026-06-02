@@ -20,7 +20,7 @@ export class MachineService {
     const where: any = { deletedAt: null }
 
     // Data scope: MECHANIC/FACTORY_DIRECTOR chỉ thấy máy trong xưởng mình
-    if (user.dataScope.type === 'FACTORY') {
+    if (user.dataScope.type === 'FACTORY' && user.dataScope.factoryId) {
       where.factoryId = user.dataScope.factoryId
     } else if (user.dataScope.type === 'LINE') {
       // LINE scope không có quyền quản lý máy, trả về rỗng

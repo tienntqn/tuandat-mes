@@ -17,9 +17,9 @@ export class ProductionLineService {
     const where: any = { deletedAt: null }
 
     // Lọc data scope: LINE scope chỉ thấy chuyền mình
-    if (user.dataScope.type === 'LINE') {
+    if (user.dataScope.type === 'LINE' && user.dataScope.lineId) {
       where.id = user.dataScope.lineId
-    } else if (user.dataScope.type === 'FACTORY') {
+    } else if (user.dataScope.type === 'FACTORY' && user.dataScope.factoryId) {
       where.factoryId = user.dataScope.factoryId
     } else if (factoryId) {
       where.factoryId = factoryId

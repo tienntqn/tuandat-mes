@@ -30,9 +30,9 @@ export class EmployeeService {
   ) {
     const where: any = { deletedAt: null }
 
-    if (user.dataScope.type === 'FACTORY') {
+    if (user.dataScope.type === 'FACTORY' && user.dataScope.factoryId) {
       where.factoryId = user.dataScope.factoryId
-    } else if (user.dataScope.type === 'LINE') {
+    } else if (user.dataScope.type === 'LINE' && user.dataScope.lineId) {
       where.lineId = user.dataScope.lineId
     } else {
       if (factoryId) where.factoryId = factoryId
