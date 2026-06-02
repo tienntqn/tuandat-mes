@@ -14,7 +14,10 @@ export function useLogin() {
     onSuccess: (data) => {
       setTokens(data.accessToken, data.refreshToken)
       setUser(data.user)
-      navigate('/', { replace: true })
+      // Tổ trưởng / tổ phó vào thẳng trang nhập sản lượng
+      const p = data.user.position
+      const isLineLevel = p === 'LINE_LEADER' || p === 'LINE_DEPUTY'
+      navigate(isLineLevel ? '/output' : '/', { replace: true })
     },
   })
 }
