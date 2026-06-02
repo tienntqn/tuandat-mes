@@ -15,13 +15,12 @@ interface Props {
 }
 
 export function LineFormDialog({ open, line, defaultFactoryId, factories: factoriesProp, onClose, onSubmit, isPending }: Props) {
-  // Fallback: tự fetch nếu prop rỗng (ví dụ parent chưa load kịp)
-  const { data: fetchedData, isLoading: factoriesLoading } = useFactories(
-    { status: 'ACTIVE', pageSize: 200 },
-  )
+  // Fetch toàn bộ, không filter status ở server (tránh bug Prisma enum filter)
+  const { data: fetchedData, isLoading: factoriesLoading } = useFactories({ pageSize: 200 })
+  const fetchedFactories = (fetchedData?.data ?? []).filter((f) => f.status === 'ACTIVE' && !f.deletedAt)
   const factories = (factoriesProp && factoriesProp.length > 0)
     ? factoriesProp
-    : (fetchedData?.data ?? [])
+    : fetchedFactories
 
   const [form, setForm] = useState<CreateLineDto>({
     factoryId: defaultFactoryId ?? 0,

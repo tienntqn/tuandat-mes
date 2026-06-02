@@ -20,7 +20,7 @@ export default function LinesPage() {
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR')
 
-  const { data: factoriesData } = useFactories({ status: 'ACTIVE', pageSize: 200 })
+  const { data: factoriesData } = useFactories({ pageSize: 200 })
   const factories = factoriesData?.data ?? []
 
   const params = { factoryId: filterFactoryId, search: search || undefined, page, pageSize: 20 }

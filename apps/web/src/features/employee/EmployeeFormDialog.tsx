@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function EmployeeFormDialog({ open, employee, onClose, onSubmit, isPending }: Props) {
-  const { data: factoriesData } = useFactories({ status: 'ACTIVE', pageSize: 200 })
+  const { data: factoriesData } = useFactories({ pageSize: 200 })
   const factories = factoriesData?.data ?? []
 
   const [form, setForm] = useState<CreateEmployeeDto>({
