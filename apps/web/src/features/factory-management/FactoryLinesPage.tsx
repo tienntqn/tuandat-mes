@@ -1,26 +1,44 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import * as XLSX from 'xlsx'
+import { useLines, useCreateLine, useUpdateLine, useDeleteLine, useRestoreLine } from '@/features/production-line/line.hooks'
 import { useFactories } from '@/features/factory/factory.hooks'
-import { useLinesByFactory, useCreateLine, useUpdateLine, useDeleteLine, useRestoreLine } from '@/features/production-line/line.hooks'
 import { LineFormDialog } from '@/features/production-line/LineFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import type { ProductionLine, CreateLineDto } from '@/features/production-line/line.api'
-import type { Factory } from '@/features/factory/factory.api'
 import { useAuthStore } from '@/stores/auth.store'
+import { toast } from '@/lib/toast'
 
-interface FactoryPanelProps {
-  factory: Factory
-  canWrite: boolean
-}
+export default function FactoryLinesPage() {
+  const [search, setSearch] = useState('')
+  const [factoryFilter, setFactoryFilter] = useState<number | ''>('')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
 
-function FactoryPanel({ factory, canWrite }: FactoryPanelProps) {
-  const [collapsed, setCollapsed] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<ProductionLine | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ProductionLine | null>(null)
+  const [importing, setImporting] = useState(false)
 
-  const { data: lines = [], isLoading, refetch } = useLinesByFactory(factory.id)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const { isAdmin, hasRole } = useAuthStore()
+  const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('ADMIN')
+
+  const { data: factoriesData } = useFactories({ status: 'ACTIVE', pageSize: 200 })
+  const factories = factoriesData?.data ?? []
+
+  const { data, isLoading, refetch } = useLines({
+    search: search || undefined,
+    factoryId: factoryFilter || undefined,
+    page,
+    pageSize,
+  })
+  const lines = data?.data ?? []
+  const total = data?.total ?? 0
+  const totalPages = data?.totalPages ?? 1
+
   const createLine = useCreateLine()
   const updateLine = useUpdateLine()
   const deleteLine = useDeleteLine()
@@ -37,136 +55,236 @@ function FactoryPanel({ factory, canWrite }: FactoryPanelProps) {
     }
   }
 
-  const activeLines = lines.filter((l) => !l.deletedAt)
-  const inactiveLines = lines.filter((l) => l.deletedAt)
+  const handleExportExcel = () => {
+    const rows = lines.map((l) => ({
+      'Số chuyền': l.lineNumber,
+      'Tên chuyền': l.name,
+      'Xưởng (Code)': l.factory?.code ?? '',
+      'Tên xưởng': l.factory?.name ?? '',
+      'Năng lực (SP/ngày)': l.capacity,
+      'Trạng thái': l.status === 'ACTIVE' ? 'Hoạt động' : 'Ngừng hoạt động',
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Chuyền may')
+    XLSX.writeFile(wb, 'chuyen-may.xlsx')
+  }
+
+  const handleDownloadTemplate = () => {
+    const rows = [
+      { 'Xưởng (Code)': 'X001', 'Tên chuyền': 'Chuyền May 1', 'Năng lực (SP/ngày)': 500, 'Trạng thái': 'Hoạt động' },
+    ]
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Chuyền may')
+    XLSX.writeFile(wb, 'template-chuyen-may.xlsx')
+  }
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+
+    setImporting(true)
+    try {
+      const buffer = await file.arrayBuffer()
+      const wb = XLSX.read(buffer, { type: 'array' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json<Record<string, string | number>>(ws)
+
+      if (rows.length === 0) { toast.error('File không có dữ liệu'); return }
+
+      // Map factory code → id
+      const factoryMap = new Map(factories.map((f) => [f.code.trim().toLowerCase(), f.id]))
+
+      let successCount = 0
+      let errorCount = 0
+
+      for (const row of rows) {
+        const factoryCode = String(row['Xưởng (Code)'] ?? '').trim().toLowerCase()
+        const name = String(row['Tên chuyền'] ?? '').trim()
+        const capacity = Number(row['Năng lực (SP/ngày)'] ?? 0)
+        const statusRaw = String(row['Trạng thái'] ?? '').trim()
+        const status = statusRaw === 'Ngừng hoạt động' ? 'INACTIVE' : 'ACTIVE'
+
+        const factoryId = factoryMap.get(factoryCode)
+        if (!factoryId || !name) { errorCount++; continue }
+
+        try {
+          await createLine.mutateAsync({ factoryId, name, capacity, status })
+          successCount++
+        } catch {
+          errorCount++
+        }
+      }
+
+      toast.success(`Đã nhập ${successCount} chuyền${errorCount > 0 ? `, ${errorCount} lỗi` : ''}`)
+      refetch()
+    } catch {
+      toast.error('Không thể đọc file Excel')
+    } finally {
+      setImporting(false)
+    }
+  }
 
   return (
-    <div className="card mb-3">
-      {/* Factory header — click để mở/đóng */}
-      <div
-        className="card-header d-flex align-items-center justify-content-between py-3"
-        style={{ cursor: 'pointer', userSelect: 'none' }}
-        onClick={() => setCollapsed((v) => !v)}
-      >
-        <div className="d-flex align-items-center gap-3">
-          <i className={`fe fe-chevron-${collapsed ? 'right' : 'down'} text-muted`}></i>
-          <div>
-            <div className="d-flex align-items-center gap-2">
-              <code className="text-primary fw-bold">{factory.code}</code>
-              <span className="fw-semibold">{factory.name}</span>
-              <StatusBadge status={factory.status} />
-            </div>
-            {factory.address && (
-              <small className="text-muted d-block">{factory.address}</small>
-            )}
-          </div>
-        </div>
-        <div className="d-flex align-items-center gap-2" onClick={(e) => e.stopPropagation()}>
-          <span className="badge bg-secondary-transparent text-secondary">
-            {activeLines.length} chuyền
-          </span>
+    <PageWrapper
+      title="Quản lý Chuyền may"
+      breadcrumbs={[{ label: 'Quản lý nhà máy' }, { label: 'Chuyền may' }]}
+      actions={
+        <div className="d-flex gap-2">
+          {canWrite && (
+            <>
+              <button
+                className="btn btn-outline-secondary btn-sm"
+                onClick={handleDownloadTemplate}
+                title="Tải file mẫu Excel"
+              >
+                <i className="fe fe-download me-1"></i> Mẫu Excel
+              </button>
+              <button
+                className="btn btn-outline-success btn-sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                title="Import từ Excel"
+              >
+                {importing
+                  ? <><span className="spinner-border spinner-border-sm me-1"></span>Đang nhập...</>
+                  : <><i className="fe fe-upload me-1"></i> Import Excel</>}
+              </button>
+              <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="d-none" onChange={handleImportExcel} />
+            </>
+          )}
+          <button
+            className="btn btn-outline-info btn-sm"
+            onClick={handleExportExcel}
+            title="Xuất Excel"
+          >
+            <i className="fe fe-file-text me-1"></i> Xuất Excel
+          </button>
           {canWrite && (
             <button
-              className="btn btn-sm btn-primary text-white"
+              className="btn btn-primary btn-sm text-white"
               onClick={() => { setEditTarget(null); setFormOpen(true) }}
-              title="Thêm chuyền vào xưởng này"
             >
               <i className="fe fe-plus me-1"></i> Thêm chuyền
             </button>
           )}
-          <button
-            className="btn btn-sm btn-outline-secondary"
-            onClick={() => refetch()}
-            title="Làm mới"
+        </div>
+      }
+    >
+      {/* Bộ lọc */}
+      <div className="row mb-3 g-2">
+        <div className="col-auto">
+          <div className="input-group input-group-sm">
+            <input
+              className="form-control"
+              placeholder="Tìm tên chuyền..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            />
+            <span className="input-group-text"><i className="fe fe-search"></i></span>
+          </div>
+        </div>
+        <div className="col-auto">
+          <select
+            className="form-select form-select-sm"
+            value={factoryFilter}
+            onChange={(e) => { setFactoryFilter(e.target.value ? Number(e.target.value) : ''); setPage(1) }}
           >
+            <option value="">Tất cả xưởng</option>
+            {factories.map((f) => (
+              <option key={f.id} value={f.id}>{f.code} — {f.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="col-auto d-flex align-items-center">
+          <small className="text-muted">{total} chuyền</small>
+        </div>
+        <div className="col-auto ms-auto">
+          <button className="btn btn-outline-secondary btn-sm btn-icon" onClick={() => refetch()} title="Làm mới">
             <i className="fe fe-rotate-ccw"></i>
           </button>
         </div>
       </div>
 
-      {/* Danh sách chuyền */}
-      {!collapsed && (
+      {/* Bảng */}
+      <div className="card">
         <div className="card-body p-0">
           {isLoading ? (
-            <div className="text-center text-muted py-3">
-              <span className="spinner-border spinner-border-sm me-2"></span>Đang tải...
+            <div className="text-center text-muted py-5">
+              <span className="spinner-border me-2"></span>Đang tải...
             </div>
           ) : lines.length === 0 ? (
-            <div className="text-center text-muted py-4">
-              <i className="fe fe-inbox d-block mb-2" style={{ fontSize: 24 }}></i>
-              Chưa có chuyền nào trong xưởng này
+            <div className="text-center text-muted py-5">
+              <i className="fe fe-inbox d-block mb-2" style={{ fontSize: 40, opacity: 0.3 }}></i>
+              <p>Không tìm thấy chuyền nào</p>
             </div>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover table-vcenter mb-0">
                 <thead className="thead-light">
                   <tr>
-                    <th style={{ width: 120 }}>Số chuyền</th>
+                    <th style={{ width: 100 }}>Số chuyền</th>
                     <th>Tên chuyền</th>
+                    <th>Xưởng may</th>
                     <th style={{ width: 140 }}>Năng lực/ngày</th>
                     <th style={{ width: 140 }}>Trạng thái</th>
                     {canWrite && <th className="text-end" style={{ width: 120 }}>Thao tác</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {activeLines.map((line) => (
-                    <tr key={line.id}>
-                      <td className="fw-medium">
-                        <span className="badge bg-primary-transparent text-primary">
-                          Chuyền {line.lineNumber}
-                        </span>
-                      </td>
-                      <td>{line.name}</td>
-                      <td className="text-muted">
-                        {line.capacity > 0 ? `${line.capacity.toLocaleString('vi-VN')} SP` : '—'}
-                      </td>
-                      <td><StatusBadge status={line.status} /></td>
-                      {canWrite && (
-                        <td className="text-end">
-                          <div className="d-flex justify-content-end gap-1">
-                            <button
-                              onClick={() => { setEditTarget(line); setFormOpen(true) }}
-                              title="Chỉnh sửa"
-                              className="btn btn-sm btn-outline-secondary"
-                            >
-                              <i className="fe fe-edit-2"></i>
-                            </button>
-                            <button
-                              onClick={() => setDeleteTarget(line)}
-                              title="Xóa"
-                              className="btn btn-sm btn-outline-danger"
-                            >
-                              <i className="fe fe-trash-2"></i>
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-
-                  {/* Chuyền đã xóa (mờ) */}
-                  {inactiveLines.map((line) => (
-                    <tr key={line.id} className="opacity-50">
-                      <td className="fw-medium">
-                        <span className="badge bg-secondary-transparent text-secondary">
+                  {lines.map((line) => (
+                    <tr key={line.id} className={line.deletedAt ? 'opacity-50' : ''}>
+                      <td>
+                        <span className={`badge ${line.deletedAt ? 'bg-secondary-transparent text-secondary' : 'bg-primary-transparent text-primary'}`}>
                           Chuyền {line.lineNumber}
                         </span>
                       </td>
                       <td>
-                        <span className="text-decoration-line-through">{line.name}</span>
-                        <span className="badge bg-danger-transparent text-danger ms-2">Đã xóa</span>
+                        {line.deletedAt
+                          ? <><span className="text-decoration-line-through">{line.name}</span> <span className="badge bg-danger-transparent text-danger ms-1">Đã xóa</span></>
+                          : line.name}
                       </td>
-                      <td>—</td>
-                      <td>—</td>
+                      <td>
+                        {line.factory
+                          ? <><code className="text-primary me-1">{line.factory.code}</code>{line.factory.name}</>
+                          : <span className="text-muted">—</span>}
+                      </td>
+                      <td className="text-muted">
+                        {line.capacity > 0 ? `${line.capacity.toLocaleString('vi-VN')} SP` : '—'}
+                      </td>
+                      <td>
+                        {line.deletedAt ? '—' : <StatusBadge status={line.status} />}
+                      </td>
                       {canWrite && (
                         <td className="text-end">
-                          <button
-                            onClick={() => restoreLine.mutate(line.id)}
-                            title="Khôi phục"
-                            className="btn btn-sm btn-outline-secondary"
-                          >
-                            <i className="fe fe-rotate-ccw"></i>
-                          </button>
+                          {line.deletedAt ? (
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => restoreLine.mutate(line.id)}
+                              title="Khôi phục"
+                            >
+                              <i className="fe fe-rotate-ccw"></i>
+                            </button>
+                          ) : (
+                            <div className="d-flex justify-content-end gap-1">
+                              <button
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => { setEditTarget(line); setFormOpen(true) }}
+                                title="Chỉnh sửa"
+                              >
+                                <i className="fe fe-edit-2"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => setDeleteTarget(line)}
+                                title="Xóa"
+                              >
+                                <i className="fe fe-trash-2"></i>
+                              </button>
+                            </div>
+                          )}
                         </td>
                       )}
                     </tr>
@@ -176,12 +294,26 @@ function FactoryPanel({ factory, canWrite }: FactoryPanelProps) {
             </div>
           )}
         </div>
-      )}
+
+        {/* Phân trang */}
+        {totalPages > 1 && (
+          <div className="card-footer d-flex align-items-center justify-content-between">
+            <small className="text-muted">Trang {page}/{totalPages} — {total} chuyền</small>
+            <div className="d-flex gap-1">
+              <button className="btn btn-sm btn-outline-secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <i className="fe fe-chevron-left"></i>
+              </button>
+              <button className="btn btn-sm btn-outline-secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                <i className="fe fe-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       <LineFormDialog
         open={formOpen}
         line={editTarget}
-        defaultFactoryId={factory.id}
         onClose={() => { setFormOpen(false); setEditTarget(null) }}
         onSubmit={handleSubmit}
         isPending={createLine.isPending || updateLine.isPending}
@@ -200,80 +332,6 @@ function FactoryPanel({ factory, canWrite }: FactoryPanelProps) {
         }
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
-  )
-}
-
-export default function FactoryLinesPage() {
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('ACTIVE')
-
-  const { isAdmin, hasRole } = useAuthStore()
-  const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR')
-
-  const { data: factoriesData, isLoading, refetch } = useFactories({
-    search: search || undefined,
-    status: statusFilter || undefined,
-    pageSize: 200,
-  })
-  const factories = factoriesData?.data ?? []
-
-  return (
-    <PageWrapper
-      title="Quản lý Chuyền may"
-      breadcrumbs={[{ label: 'Quản lý nhà máy' }, { label: 'Chuyền may' }]}
-      actions={
-        <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
-          <span><i className="fe fe-rotate-ccw"></i></span>
-        </button>
-      }
-    >
-      {/* Bộ lọc */}
-      <div className="row mb-3">
-        <div className="col-auto">
-          <div className="input-group">
-            <input
-              className="form-control"
-              placeholder="Tìm xưởng..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <span className="input-group-text"><i className="fe fe-search"></i></span>
-          </div>
-        </div>
-        <div className="col-auto">
-          <select
-            className="form-select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="ACTIVE">Xưởng đang hoạt động</option>
-            <option value="INACTIVE">Xưởng ngừng hoạt động</option>
-            <option value="">Tất cả xưởng</option>
-          </select>
-        </div>
-        <div className="col-auto d-flex align-items-center">
-          <small className="text-muted">{factories.length} xưởng</small>
-        </div>
-      </div>
-
-      {/* Danh sách xưởng + chuyền */}
-      {isLoading ? (
-        <div className="text-center text-muted py-5">
-          <span className="spinner-border me-2"></span>Đang tải...
-        </div>
-      ) : factories.length === 0 ? (
-        <div className="card">
-          <div className="card-body text-center text-muted py-5">
-            <i className="fe fe-layers d-block mb-2" style={{ fontSize: 40, opacity: 0.3 }}></i>
-            <p>Không tìm thấy xưởng nào</p>
-          </div>
-        </div>
-      ) : (
-        factories.map((factory) => (
-          <FactoryPanel key={factory.id} factory={factory} canWrite={canWrite} />
-        ))
-      )}
     </PageWrapper>
   )
 }

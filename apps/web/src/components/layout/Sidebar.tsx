@@ -111,9 +111,6 @@ function SubMenuNav({ item, onClose }: { item: NavItem; onClose: () => void }) {
         ></i>
       </a>
       <ul className="slide-menu" style={{ display: open ? 'block' : 'none' }}>
-        <li className="side-menu__label1">
-          <a href="javascript:void(0);">{item.label}</a>
-        </li>
         {item.children?.map((child) => (
           <li key={child.path}>
             <NavLink
