@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
@@ -17,12 +17,6 @@ const ForbiddenPage = lazy(() => import('./ForbiddenPage'))
 const NotFoundPage = lazy(() => import('./NotFoundPage'))
 
 export default function AppLayout() {
-  // Kích hoạt lại Zanex sidebar JS sau mỗi lần React mount
-  useEffect(() => {
-    const w = window as Window & { SideMenu?: () => void }
-    if (typeof w.SideMenu === 'function') w.SideMenu()
-  }, [])
-
   return (
     <div className="page">
       <div className="page-main">

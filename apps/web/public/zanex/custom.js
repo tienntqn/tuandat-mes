@@ -18,6 +18,26 @@
 		$(this).toggleClass('active').siblings().removeClass('active');
 	});
 
+	// ______________ SIDEBAR TOGGLE (desktop: thu nhỏ/mở rộng, mobile: hiện/ẩn)
+	$(document).on("click", '[data-bs-toggle="sidebar"]', function(e) {
+		e.preventDefault();
+		if ($(window).width() >= 992) {
+			// Desktop: toggle thu nhỏ sidebar
+			$('body').toggleClass('sidenav-toggled');
+			localStorage.setItem('sidenav-toggled', $('body').hasClass('sidenav-toggled') ? 'true' : 'false');
+		} else {
+			// Mobile: hiện/ẩn sidebar overlay
+			$('body').toggleClass('sidenav-toggled');
+		}
+	});
+
+	// Khôi phục trạng thái sidebar từ localStorage (desktop)
+	if ($(window).width() >= 992) {
+		if (localStorage.getItem('sidenav-toggled') === 'true') {
+			$('body').addClass('sidenav-toggled');
+		}
+	}
+
 	// ______________Full screen
 	$(document).on("click", ".fullscreen-button", function toggleFullScreen() {
 	  $('.fullscreen-button').addClass('fullscreen-button');

@@ -37,10 +37,43 @@ export function Topbar() {
             </span>
           </a>
 
+          {/* Search bar (desktop only) */}
+          <div className="main-header-center ms-3 d-none d-lg-block">
+            <input className="form-control" placeholder="Tìm kiếm..." type="search" />
+            <button className="btn"><i className="fa fa-search" aria-hidden="true"></i></button>
+          </div>
+
           <div className="d-flex order-lg-2 ms-auto header-right-icons">
+            {/* Mobile navbar toggler */}
+            <button
+              className="navbar-toggler navresponsive-toggler d-lg-none ms-auto"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#navbarSupportedContent-4"
+              aria-controls="navbarSupportedContent-4"
+              aria-expanded="false"
+              aria-label="Toggle navigation"
+            >
+              <span className="navbar-toggler-icon fe fe-more-vertical text-dark"></span>
+            </button>
             <div className="navbar navbar-collapse responsive-navbar p-0">
               <div className="collapse navbar-collapse" id="navbarSupportedContent-4">
                 <div className="d-flex order-lg-2">
+
+                  {/* Mobile search dropdown */}
+                  <div className="dropdown d-block d-lg-none">
+                    <a href="javascript:void(0);" className="nav-link icon" data-bs-toggle="dropdown">
+                      <i className="fe fe-search"></i>
+                    </a>
+                    <div className="dropdown-menu header-search dropdown-menu-start">
+                      <div className="input-group w-100 p-2">
+                        <input type="text" className="form-control" placeholder="Tìm kiếm..." />
+                        <div className="input-group-text btn btn-primary">
+                          <i className="fa fa-search" aria-hidden="true"></i>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Dark/Light mode toggle */}
                   <div className="dropdown d-md-flex">
