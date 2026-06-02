@@ -2,18 +2,27 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { ProductionLine, CreateLineDto } from './line.api'
 import type { Factory } from '@/features/factory/factory.api'
+import { useFactories } from '@/features/factory/factory.hooks'
 
 interface Props {
   open: boolean
   line?: ProductionLine | null
   defaultFactoryId?: number
-  factories: Factory[]
+  factories?: Factory[]  // optional: từ parent (cache sẵn, dùng ngay)
   onClose: () => void
   onSubmit: (dto: CreateLineDto) => void
   isPending?: boolean
 }
 
-export function LineFormDialog({ open, line, defaultFactoryId, factories, onClose, onSubmit, isPending }: Props) {
+export function LineFormDialog({ open, line, defaultFactoryId, factories: factoriesProp, onClose, onSubmit, isPending }: Props) {
+  // Fallback: tự fetch nếu prop rỗng (ví dụ parent chưa load kịp)
+  const { data: fetchedData, isLoading: factoriesLoading } = useFactories(
+    { status: 'ACTIVE', pageSize: 200 },
+  )
+  const factories = (factoriesProp && factoriesProp.length > 0)
+    ? factoriesProp
+    : (fetchedData?.data ?? [])
+
   const [form, setForm] = useState<CreateLineDto>({
     factoryId: defaultFactoryId ?? 0,
     name: '',
@@ -67,12 +76,20 @@ export function LineFormDialog({ open, line, defaultFactoryId, factories, onClos
               className="w-full rounded-lg border px-3 py-2 text-sm bg-background"
               value={form.factoryId}
               onChange={(e) => setForm({ ...form, factoryId: +e.target.value })}
-              disabled={!!line}
+              disabled={!!line || factoriesLoading}
             >
-              <option value={0}>-- Chọn xưởng --</option>
-              {factories.map((f) => (
-                <option key={f.id} value={f.id}>{f.code} — {f.name}</option>
-              ))}
+              {factoriesLoading ? (
+                <option value={0}>Đang tải xưởng...</option>
+              ) : factories.length === 0 ? (
+                <option value={0}>Không có xưởng nào</option>
+              ) : (
+                <>
+                  <option value={0}>-- Chọn xưởng --</option>
+                  {factories.map((f) => (
+                    <option key={f.id} value={f.id}>{f.code} — {f.name}</option>
+                  ))}
+                </>
+              )}
             </select>
           </FormField>
           <FormField label="Tên chuyền *" error={errors.name}>
