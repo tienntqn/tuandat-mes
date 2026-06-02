@@ -1,21 +1,19 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { ProductionLine, CreateLineDto } from './line.api'
-import { useFactories } from '@/features/factory/factory.hooks'
+import type { Factory } from '@/features/factory/factory.api'
 
 interface Props {
   open: boolean
   line?: ProductionLine | null
   defaultFactoryId?: number
+  factories: Factory[]
   onClose: () => void
   onSubmit: (dto: CreateLineDto) => void
   isPending?: boolean
 }
 
-export function LineFormDialog({ open, line, defaultFactoryId, onClose, onSubmit, isPending }: Props) {
-  const { data: factoriesData } = useFactories({ status: 'ACTIVE', pageSize: 200 })
-  const factories = factoriesData?.data ?? []
-
+export function LineFormDialog({ open, line, defaultFactoryId, factories, onClose, onSubmit, isPending }: Props) {
   const [form, setForm] = useState<CreateLineDto>({
     factoryId: defaultFactoryId ?? 0,
     name: '',

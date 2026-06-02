@@ -150,6 +150,7 @@ export default function LinesPage() {
       <LineFormDialog
         open={formOpen}
         line={editTarget}
+        factories={factories}
         onClose={() => { setFormOpen(false); setEditTarget(null) }}
         onSubmit={handleSubmit}
         isPending={createLine.isPending || updateLine.isPending}
