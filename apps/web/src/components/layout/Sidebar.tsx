@@ -1,6 +1,11 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
+
+interface NavSubItem {
+  label: string
+  path: string
+}
 
 interface NavItem {
   label: string
@@ -8,6 +13,7 @@ interface NavItem {
   icon: string
   roles?: string[]
   exact?: boolean
+  children?: NavSubItem[]
 }
 
 interface NavSection {
@@ -25,6 +31,16 @@ const NAV_SECTIONS: NavSection[] = [
   {
     category: 'QUẢN LÝ',
     items: [
+      {
+        label: 'Quản lý nhà máy',
+        path: '/factory-management',
+        icon: 'fe fe-layers',
+        roles: ['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'COMPANY_PLANNER'],
+        children: [
+          { label: 'Quản lý xưởng may', path: '/factory-management/factories' },
+          { label: 'Quản lý chuyền may', path: '/factory-management/lines' },
+        ],
+      },
       {
         label: 'Dữ liệu nền',
         path: '/master',
@@ -71,15 +87,62 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ]
 
+function SubMenuNav({ item, onClose }: { item: NavItem; onClose: () => void }) {
+  const location = useLocation()
+  const isChildActive = item.children?.some((c) => location.pathname.startsWith(c.path)) ?? false
+  const [open, setOpen] = useState(isChildActive)
+
+  // Tự mở khi một child đang active
+  useEffect(() => {
+    if (isChildActive) setOpen(true)
+  }, [isChildActive])
+
+  return (
+    <li className={`slide has-sub${open || isChildActive ? ' is-expanded' : ''}`}>
+      <a
+        className={`side-menu__item${isChildActive ? ' active' : ''}`}
+        href="javascript:void(0);"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <i className={`side-menu__icon ${item.icon}`}></i>
+        <span className="side-menu__label">{item.label}</span>
+        <i className={`angle fe fe-chevron-right${open ? ' rotate-90' : ''}`}
+          style={{ transition: 'transform 0.2s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
+        ></i>
+      </a>
+      <ul className="slide-menu" style={{ display: open ? 'block' : 'none' }}>
+        <li className="side-menu__label1">
+          <a href="javascript:void(0);">{item.label}</a>
+        </li>
+        {item.children?.map((child) => (
+          <li key={child.path}>
+            <NavLink
+              to={child.path}
+              className={({ isActive }) => `slide-item${isActive ? ' active' : ''}`}
+              onClick={onClose}
+            >
+              {child.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </li>
+  )
+}
+
 export function Sidebar() {
   const { hasRole, isAdmin } = useAuthStore()
   const location = useLocation()
 
   // Đóng sidebar trên mobile sau khi navigate
-  useEffect(() => {
+  const closeMobileSidebar = () => {
     if (window.innerWidth < 992) {
       document.body.classList.remove('sidenav-toggled')
     }
+  }
+
+  useEffect(() => {
+    closeMobileSidebar()
   }, [location.pathname])
 
   const isItemVisible = (item: NavItem) => {
@@ -93,7 +156,6 @@ export function Sidebar() {
       ? location.pathname === item.path || location.pathname === '/'
       : location.pathname.startsWith(item.path)
 
-  // Render tất cả items thành danh sách phẳng với sub-category headers
   const renderItems = () => {
     const elements: React.ReactNode[] = []
 
@@ -104,24 +166,30 @@ export function Sidebar() {
       elements.push(
         <li key={`cat-${section.category}`} className="sub-category">
           <h3>{section.category}</h3>
-        </li>
+        </li>,
       )
 
       visibleItems.forEach((item) => {
+        if (item.children) {
+          elements.push(
+            <SubMenuNav key={item.path} item={item} onClose={closeMobileSidebar} />,
+          )
+          return
+        }
+
         const active = isItemActive(item)
         elements.push(
           <li key={item.path} className={`slide${active ? ' active is-expanded' : ''}`}>
             <NavLink
               to={item.path}
               end={item.exact}
-              className={({ isActive }) =>
-                `side-menu__item${isActive || active ? ' active' : ''}`
-              }
+              className={({ isActive }) => `side-menu__item${isActive || active ? ' active' : ''}`}
+              onClick={closeMobileSidebar}
             >
               <i className={`side-menu__icon ${item.icon}`}></i>
               <span className="side-menu__label">{item.label}</span>
             </NavLink>
-          </li>
+          </li>,
         )
       })
     })
@@ -137,28 +205,16 @@ export function Sidebar() {
         {/* Logo */}
         <div className="side-header">
           <a className="header-brand1" href="/">
-            <span
-              className="header-brand-img desktop-logo"
-              style={{ fontWeight: 700, color: '#6259ca', fontSize: '1.05rem', whiteSpace: 'nowrap' }}
-            >
+            <span className="header-brand-img desktop-logo" style={{ fontWeight: 700, color: '#6259ca', fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
               Tuấn Đạt MES
             </span>
-            <span
-              className="header-brand-img toggle-logo"
-              style={{ fontWeight: 700, color: '#6259ca', fontSize: '0.85rem' }}
-            >
+            <span className="header-brand-img toggle-logo" style={{ fontWeight: 700, color: '#6259ca', fontSize: '0.85rem' }}>
               TĐ
             </span>
-            <span
-              className="header-brand-img light-logo"
-              style={{ fontWeight: 700, color: '#6259ca', fontSize: '1.05rem', whiteSpace: 'nowrap' }}
-            >
+            <span className="header-brand-img light-logo" style={{ fontWeight: 700, color: '#6259ca', fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
               Tuấn Đạt MES
             </span>
-            <span
-              className="header-brand-img light-logo1"
-              style={{ fontWeight: 700, color: '#6259ca', fontSize: '1.05rem', whiteSpace: 'nowrap' }}
-            >
+            <span className="header-brand-img light-logo1" style={{ fontWeight: 700, color: '#6259ca', fontSize: '1.05rem', whiteSpace: 'nowrap' }}>
               Tuấn Đạt MES
             </span>
           </a>
