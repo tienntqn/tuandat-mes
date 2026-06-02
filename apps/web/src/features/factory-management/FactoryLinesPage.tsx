@@ -25,8 +25,10 @@ export default function FactoryLinesPage() {
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('ADMIN')
 
-  const { data: factoriesData } = useFactories({ pageSize: 200 })
-  const factories = factoriesData?.data ?? []
+  const { data: factoriesData, isError: factoriesError } = useFactories({ pageSize: 200 })
+  const allFactories = factoriesData?.data ?? []
+  // Cho dialog thêm/sửa: chỉ dùng xưởng ACTIVE
+  const factories = allFactories.filter((f) => f.status === 'ACTIVE' && !f.deletedAt)
 
   const { data, isLoading, refetch } = useLines({
     search: search || undefined,
@@ -190,12 +192,13 @@ export default function FactoryLinesPage() {
         </div>
         <div className="col-auto">
           <select
-            className="form-select form-select-sm"
+            className={`form-select form-select-sm${factoriesError ? ' border-danger' : ''}`}
             value={factoryFilter}
             onChange={(e) => { setFactoryFilter(e.target.value ? Number(e.target.value) : ''); setPage(1) }}
+            title={factoriesError ? 'Không tải được danh sách xưởng' : undefined}
           >
-            <option value="">Tất cả xưởng</option>
-            {factories.map((f) => (
+            <option value="">{factoriesError ? '⚠ Lỗi tải xưởng' : 'Tất cả xưởng'}</option>
+            {allFactories.map((f) => (
               <option key={f.id} value={f.id}>{f.code} — {f.name}</option>
             ))}
           </select>

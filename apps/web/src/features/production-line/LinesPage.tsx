@@ -21,7 +21,8 @@ export default function LinesPage() {
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR')
 
   const { data: factoriesData } = useFactories({ pageSize: 200 })
-  const factories = factoriesData?.data ?? []
+  const allFactories = factoriesData?.data ?? []
+  const factories = allFactories.filter((f) => f.status === 'ACTIVE' && !f.deletedAt)
 
   const params = { factoryId: filterFactoryId, search: search || undefined, page, pageSize: 20 }
   const { data, isLoading, refetch } = useLines(params)
@@ -78,7 +79,7 @@ export default function LinesPage() {
             onChange={(e) => { setFilterFactoryId(e.target.value ? +e.target.value : undefined); setPage(1) }}
           >
             <option value="">Tất cả xưởng</option>
-            {factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            {allFactories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
         </div>
         <div className="col-auto d-flex align-items-center">
