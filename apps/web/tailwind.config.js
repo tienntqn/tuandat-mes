@@ -2,6 +2,10 @@
 export default {
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
+  // Tắt Preflight vì đã dùng Bootstrap (Zanex template) làm CSS base
+  corePlugins: {
+    preflight: false,
+  },
   theme: {
     container: {
       center: true,
