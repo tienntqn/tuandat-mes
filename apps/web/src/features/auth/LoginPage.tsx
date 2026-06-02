@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Eye, EyeOff, Factory } from 'lucide-react'
 import { useLogin } from './auth.hooks'
 
 const schema = z.object({
@@ -18,115 +17,117 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
   const onSubmit = (data: FormValues) => login.mutate(data)
 
+  const apiError = login.isError
+    ? ((login.error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+      'Tên đăng nhập hoặc mật khẩu không đúng')
+    : null
+
   return (
-    <div className="flex min-h-screen">
-      {/* Left panel — branding (ẩn trên mobile) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-700 to-blue-900 flex-col justify-between p-12 text-white">
-        <div className="flex items-center gap-3">
-          <Factory className="h-8 w-8" />
-          <span className="text-xl font-bold">Tuấn Đạt MES</span>
-        </div>
-        <div>
-          <h1 className="text-4xl font-bold leading-tight">
-            Hệ thống Quản lý
-            <br />
-            Sản xuất May mặc
-          </h1>
-          <p className="mt-4 text-blue-200 text-lg">
-            Theo dõi sản lượng, kế hoạch và máy móc theo thời gian thực.
-          </p>
-        </div>
-        <p className="text-blue-300 text-sm">© 2026 Công ty CP Tuấn Đạt</p>
+    <div className="login-img">
+      {/* GLOBAL LOADER */}
+      <div id="global-loader" style={{ display: 'none' }}>
+        <img src="/assets/images/loader.svg" className="loader-img" alt="Loader" />
       </div>
 
-      {/* Right panel — form */}
-      <div className="flex flex-1 items-center justify-center bg-background p-6">
-        <div className="w-full max-w-sm">
-          {/* Logo mobile */}
-          <div className="mb-8 flex items-center gap-2 lg:hidden">
-            <Factory className="h-7 w-7 text-primary" />
-            <span className="text-lg font-bold text-primary">Tuấn Đạt MES</span>
+      <div className="page">
+        <div>
+          {/* Logo */}
+          <div className="col col-login mx-auto">
+            <div className="text-center">
+              <div style={{ display: 'inline-block', padding: '12px 24px', background: 'rgba(92,103,242,0.15)', borderRadius: '12px', marginTop: '32px' }}>
+                <i className="fe fe-settings" style={{ fontSize: '2rem', color: '#5c67f2' }}></i>
+                <div style={{ fontWeight: 700, fontSize: '1.2rem', color: '#5c67f2', marginTop: '4px' }}>Tuấn Đạt MES</div>
+              </div>
+            </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-foreground">Đăng nhập</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Nhập thông tin tài khoản để tiếp tục
-          </p>
+          {/* Login card */}
+          <div className="container-login100">
+            <div className="wrap-login100 p-0">
+              <div className="card-body">
+                <form className="login100-form validate-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+                  <span className="login100-form-title">Đăng nhập</span>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5" noValidate>
-            {/* Username */}
-            <div className="space-y-1.5">
-              <label htmlFor="username" className="block text-sm font-medium">
-                Tên đăng nhập
-              </label>
-              <input
-                id="username"
-                {...register('username')}
-                autoComplete="username"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
-                placeholder="Nhập tên đăng nhập"
-              />
-              {errors.username && (
-                <p className="text-xs text-destructive">{errors.username.message}</p>
-              )}
-            </div>
+                  {/* Username */}
+                  <div className={`wrap-input100 validate-input ${errors.username ? 'has-error' : ''}`}>
+                    <input
+                      className="input100"
+                      type="text"
+                      placeholder="Tên đăng nhập"
+                      autoComplete="username"
+                      {...register('username')}
+                    />
+                    <span className="focus-input100"></span>
+                    <span className="symbol-input100">
+                      <i className="zmdi zmdi-account" aria-hidden="true"></i>
+                    </span>
+                    {errors.username && (
+                      <small className="text-danger d-block mt-1 ms-1">{errors.username.message}</small>
+                    )}
+                  </div>
 
-            {/* Password */}
-            <div className="space-y-1.5">
-              <label htmlFor="password" className="block text-sm font-medium">
-                Mật khẩu
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  {...register('password')}
-                  type={showPw ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2.5 pr-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
-                  placeholder="Nhập mật khẩu"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(!showPw)}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
-                  tabIndex={-1}
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
+                  {/* Password */}
+                  <div className={`wrap-input100 validate-input ${errors.password ? 'has-error' : ''}`}>
+                    <input
+                      className="input100"
+                      type={showPw ? 'text' : 'password'}
+                      placeholder="Mật khẩu"
+                      autoComplete="current-password"
+                      {...register('password')}
+                    />
+                    <span className="focus-input100"></span>
+                    <span
+                      className="symbol-input100"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => setShowPw(!showPw)}
+                    >
+                      <i className={`zmdi ${showPw ? 'zmdi-eye' : 'zmdi-eye-off'}`} aria-hidden="true"></i>
+                    </span>
+                    {errors.password && (
+                      <small className="text-danger d-block mt-1 ms-1">{errors.password.message}</small>
+                    )}
+                  </div>
+
+                  {/* API Error */}
+                  {apiError && (
+                    <div className="alert alert-danger py-2 px-3 mb-2" role="alert">
+                      <i className="fe fe-alert-circle me-1"></i> {apiError}
+                    </div>
+                  )}
+
+                  {/* Submit */}
+                  <div className="container-login100-form-btn">
+                    <button
+                      type="submit"
+                      className="login100-form-btn btn-primary"
+                      disabled={login.isPending}
+                    >
+                      {login.isPending ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Đang đăng nhập...
+                        </>
+                      ) : (
+                        'Đăng nhập'
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="text-center pt-3">
+                    <p className="text-muted mb-0" style={{ fontSize: '0.8rem' }}>
+                      © 2026 Công ty CP Tuấn Đạt
+                    </p>
+                  </div>
+                </form>
               </div>
-              {errors.password && (
-                <p className="text-xs text-destructive">{errors.password.message}</p>
-              )}
             </div>
+          </div>
 
-            {/* API error */}
-            {login.isError && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
-                {(login.error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-                  'Tên đăng nhập hoặc mật khẩu không đúng'}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isSubmitting || login.isPending}
-              className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {login.isPending ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Đang đăng nhập...
-                </span>
-              ) : (
-                'Đăng nhập'
-              )}
-            </button>
-          </form>
         </div>
       </div>
     </div>

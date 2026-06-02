@@ -1,85 +1,67 @@
-import { NavLink } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  Building2,
-  Wrench,
-  CalendarDays,
-  ClipboardList,
-  BarChart3,
-  Users,
-  Settings,
-  Factory,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useEffect } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 
 interface NavItem {
   label: string
   path: string
-  icon: React.ElementType
+  icon: string   // Zanex dùng fe fe-* icon classes
   roles?: string[]
-  positions?: string[]
 }
 
 const NAV_ITEMS: NavItem[] = [
   {
     label: 'Tổng quan',
     path: '/dashboard',
-    icon: LayoutDashboard,
+    icon: 'fe fe-home',
   },
   {
     label: 'Dữ liệu nền',
     path: '/master',
-    icon: Building2,
+    icon: 'fe fe-database',
     roles: ['ADMIN', 'COMPANY_PLANNER', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER'],
   },
   {
     label: 'Máy móc',
     path: '/machines',
-    icon: Wrench,
+    icon: 'fe fe-tool',
     roles: ['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC'],
   },
   {
     label: 'Kế hoạch',
     path: '/plans',
-    icon: CalendarDays,
+    icon: 'fe fe-calendar',
     roles: ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY'],
   },
   {
     label: 'Sản lượng',
     path: '/output',
-    icon: ClipboardList,
+    icon: 'fe fe-clipboard',
     roles: ['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY'],
   },
   {
     label: 'Báo cáo',
     path: '/reports',
-    icon: BarChart3,
+    icon: 'fe fe-bar-chart-2',
     roles: ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER'],
   },
   {
     label: 'Quản lý User',
     path: '/users',
-    icon: Users,
+    icon: 'fe fe-users',
     roles: ['ADMIN'],
   },
   {
     label: 'Cài đặt',
     path: '/settings',
-    icon: Settings,
+    icon: 'fe fe-settings',
     roles: ['ADMIN'],
   },
 ]
 
-interface SidebarProps {
-  collapsed: boolean
-  onToggle: () => void
-}
-
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
-  const { user, hasRole, isAdmin } = useAuthStore()
+export function Sidebar() {
+  const { hasRole, isAdmin } = useAuthStore()
+  const location = useLocation()
 
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (!item.roles) return true
@@ -87,61 +69,52 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     return item.roles.some((r) => hasRole(r))
   })
 
+  // Đóng sidebar overlay trên mobile sau khi navigate
+  useEffect(() => {
+    const overlay = document.querySelector('.app-sidebar__overlay') as HTMLElement | null
+    if (overlay) overlay.click()
+  }, [location.pathname])
+
   return (
-    <aside
-      className={cn(
-        'flex flex-col border-r bg-card transition-all duration-200',
-        collapsed ? 'w-16' : 'w-60',
-      )}
-    >
-      {/* Logo */}
-      <div className="flex h-14 items-center border-b px-3 gap-2">
-        <Factory className="h-6 w-6 shrink-0 text-primary" />
-        {!collapsed && (
-          <span className="font-bold text-primary truncate">Tuấn Đạt MES</span>
-        )}
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
-        {visibleItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={false}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-                collapsed && 'justify-center',
-              )
-            }
-            title={collapsed ? item.label : undefined}
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-          </NavLink>
-        ))}
-      </nav>
-
-      {/* User info */}
-      {!collapsed && user && (
-        <div className="border-t p-3">
-          <p className="text-xs font-medium truncate">{user.fullName}</p>
-          <p className="text-xs text-muted-foreground truncate">{user.position}</p>
+    <div className="sticky">
+      <div className="app-sidebar__overlay" data-bs-toggle="sidebar"></div>
+      <aside className="app-sidebar">
+        {/* Logo */}
+        <div className="side-header">
+          <a className="header-brand1" href="/">
+            <span className="header-brand-img desktop-logo" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', padding: '0 8px' }}>
+              Tuấn Đạt MES
+            </span>
+            <span className="header-brand-img toggle-logo" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fff' }}>
+              TĐ
+            </span>
+          </a>
         </div>
-      )}
 
-      {/* Collapse toggle */}
-      <button
-        onClick={onToggle}
-        className="flex h-10 items-center justify-center border-t text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-        title={collapsed ? 'Mở rộng' : 'Thu nhỏ'}
-      >
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-      </button>
-    </aside>
+        {/* Navigation */}
+        <div className="main-sidemenu">
+          <ul className="side-menu">
+            <li className="sub-category">
+              <h3>Menu</h3>
+            </li>
+            {visibleItems.map((item) => {
+              const isActive = location.pathname === item.path ||
+                (item.path !== '/dashboard' && location.pathname.startsWith(item.path))
+              return (
+                <li key={item.path} className={`slide ${isActive ? 'active is-expanded' : ''}`}>
+                  <NavLink
+                    to={item.path}
+                    className={`side-menu__item ${isActive ? 'active' : ''}`}
+                  >
+                    <i className={`side-menu__icon ${item.icon}`}></i>
+                    <span className="side-menu__label">{item.label}</span>
+                  </NavLink>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      </aside>
+    </div>
   )
 }

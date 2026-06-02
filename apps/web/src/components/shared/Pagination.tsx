@@ -13,29 +13,27 @@ export function Pagination({ page, totalPages, total, pageSize, onPageChange }: 
   const to = Math.min(page * pageSize, total)
 
   return (
-    <div className="flex items-center justify-between text-sm text-muted-foreground">
-      <span>
+    <div className="d-flex align-items-center justify-content-between">
+      <small className="text-muted">
         {from}–{to} / {total} bản ghi
-      </span>
-      <div className="flex items-center gap-2">
-        <button
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-          className="rounded border px-3 py-1 disabled:opacity-40 hover:bg-accent hover:text-accent-foreground"
-        >
-          Trước
-        </button>
-        <span>
-          Trang {page} / {totalPages}
-        </span>
-        <button
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-          className="rounded border px-3 py-1 disabled:opacity-40 hover:bg-accent hover:text-accent-foreground"
-        >
-          Sau
-        </button>
-      </div>
+      </small>
+      <nav>
+        <ul className="pagination pagination-sm mb-0">
+          <li className={`page-item ${page <= 1 ? 'disabled' : ''}`}>
+            <button className="page-link" onClick={() => onPageChange(page - 1)}>
+              <i className="fe fe-chevron-left"></i>
+            </button>
+          </li>
+          <li className="page-item disabled">
+            <span className="page-link">{page} / {totalPages}</span>
+          </li>
+          <li className={`page-item ${page >= totalPages ? 'disabled' : ''}`}>
+            <button className="page-link" onClick={() => onPageChange(page + 1)}>
+              <i className="fe fe-chevron-right"></i>
+            </button>
+          </li>
+        </ul>
+      </nav>
     </div>
   )
 }

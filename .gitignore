@@ -50,3 +50,7 @@ postgres_data/
 
 # TypeScript
 *.tsbuildinfo
+
+# Zanex template source (assets da copy vao public/)
+HTML/
+apps/web/public/assets/

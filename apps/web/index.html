@@ -1,20 +1,48 @@
 <!doctype html>
-<html lang="vi">
+<html lang="vi" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#1e40af" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="theme-color" content="#5c67f2" />
     <meta name="description" content="Hệ thống quản lý sản xuất Công ty CP Tuấn Đạt" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="TĐ MES" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/x-icon" href="/assets/images/brand/favicon.ico" />
+    <link rel="apple-touch-icon" href="/assets/images/brand/logo.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>Tuấn Đạt MES</title>
+
+    <!-- BOOTSTRAP CSS -->
+    <link href="/assets/plugins/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- ZANEX STYLE -->
+    <link href="/assets/css/style.css" rel="stylesheet" />
+    <link href="/assets/css/dark-style.css" rel="stylesheet" />
+    <link href="/assets/css/skin-modes.css" rel="stylesheet" />
+    <link href="/assets/css/transparent-style.css" rel="stylesheet" />
+
+    <!-- ICONS -->
+    <link href="/assets/css/icons.css" rel="stylesheet" />
+
+    <!-- COLOR SKIN -->
+    <link id="theme" rel="stylesheet" type="text/css" media="all" href="/assets/colors/color1.css" />
   </head>
-  <body>
+  <body class="app sidebar-mini ltr light-mode">
     <div id="root"></div>
+
+    <!-- JQUERY -->
+    <script src="/assets/plugins/jquery/jquery.min.js"></script>
+
+    <!-- BOOTSTRAP JS -->
+    <script src="/assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+    <!-- ZANEX CUSTOM JS -->
+    <script src="/assets/js/custom.js"></script>
+    <script src="/assets/js/color-change.js"></script>
+
+    <!-- REACT APP -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
