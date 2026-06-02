@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Plus, RefreshCw, Pencil, Trash2, RotateCcw, Search } from 'lucide-react'
 import { useStyles, useCreateStyle, useUpdateStyle, useDeleteStyle, useRestoreStyle } from './style.hooks'
 import { StyleFormDialog } from './StyleFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
+import { PageWrapper } from '@/components/layout/PageWrapper'
 import { useCustomersActive } from '@/features/customer/customer.hooks'
 import type { Style, CreateStyleDto } from './style.api'
 import { useAuthStore } from '@/stores/auth.store'
@@ -35,82 +35,110 @@ export default function StylesPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Danh sách Mã hàng</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{data?.total ?? 0} mã hàng</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => refetch()} className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-accent"><RefreshCw className="h-4 w-4" /></button>
+    <PageWrapper
+      title="Danh sách Mã hàng"
+      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Mã hàng' }]}
+      actions={
+        <div className="d-flex gap-2">
+          <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
+            <span><i className="fe fe-rotate-ccw"></i></span>
+          </button>
           {canWrite && (
-            <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              <Plus className="h-4 w-4" /> Thêm mã hàng
+            <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="btn btn-primary btn-icon text-white">
+              <span><i className="fe fe-plus"></i></span> Thêm mã hàng
             </button>
           )}
         </div>
-      </div>
-
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input className="rounded-lg border pl-9 pr-3 py-2 text-sm w-56" placeholder="Tìm mã, tên..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
+      }
+    >
+      {/* Filters */}
+      <div className="row mb-3">
+        <div className="col-auto">
+          <div className="input-group">
+            <input
+              className="form-control"
+              placeholder="Tìm mã, tên..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            />
+            <span className="input-group-text"><i className="fe fe-search"></i></span>
+          </div>
         </div>
-        <select className="rounded-lg border px-3 py-2 text-sm bg-background" value={filterCustomerId ?? ''} onChange={(e) => { setFilterCustomerId(e.target.value ? +e.target.value : undefined); setPage(1) }}>
-          <option value="">Tất cả khách hàng</option>
-          {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <div className="col-auto">
+          <select
+            className="form-select"
+            value={filterCustomerId ?? ''}
+            onChange={(e) => { setFilterCustomerId(e.target.value ? +e.target.value : undefined); setPage(1) }}
+          >
+            <option value="">Tất cả khách hàng</option>
+            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div className="col-auto d-flex align-items-center">
+          <small className="text-muted">{data?.total ?? 0} mã hàng</small>
+        </div>
       </div>
 
-      <div className="rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">Mã hàng</th>
-              <th className="px-4 py-3 text-left font-medium">Tên</th>
-              <th className="px-4 py-3 text-left font-medium">Khách hàng</th>
-              <th className="px-4 py-3 text-left font-medium">Mùa vụ</th>
-              <th className="px-4 py-3 text-left font-medium">SAM</th>
-              {canWrite && <th className="px-4 py-3 text-right font-medium">Thao tác</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Đang tải...</td></tr>
-            ) : data?.data.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Không có dữ liệu</td></tr>
-            ) : (
-              data?.data.map((s) => (
-                <tr key={s.id} className={`border-t hover:bg-muted/20 ${s.deletedAt ? 'opacity-60' : ''}`}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      {s.image && <img src={s.image} className="h-8 w-8 rounded object-cover" alt="" />}
-                      <span className="font-mono text-xs font-medium">{s.code}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-medium">{s.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.customer?.name ?? '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{s.season || '—'}</td>
-                  <td className="px-4 py-3">{s.sam ? `${s.sam} phút` : '—'}</td>
-                  {canWrite && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        {s.deletedAt ? (
-                          <button onClick={() => restoreStyle.mutate(s.id)} className="p-1.5 rounded hover:bg-accent text-muted-foreground"><RotateCcw className="h-4 w-4" /></button>
-                        ) : (
-                          <>
-                            <button onClick={() => { setEditTarget(s); setFormOpen(true) }} className="p-1.5 rounded hover:bg-accent text-muted-foreground"><Pencil className="h-4 w-4" /></button>
-                            <button onClick={() => setDeleteTarget(s)} className="p-1.5 rounded hover:bg-accent text-destructive"><Trash2 className="h-4 w-4" /></button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  )}
+      {/* Table */}
+      <div className="card">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-vcenter mb-0">
+              <thead className="thead-light">
+                <tr>
+                  <th>Mã hàng</th>
+                  <th>Tên</th>
+                  <th>Khách hàng</th>
+                  <th>Mùa vụ</th>
+                  <th>SAM</th>
+                  {canWrite && <th className="text-end">Thao tác</th>}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={6} className="text-center py-4 text-muted">Đang tải...</td></tr>
+                ) : data?.data.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-4 text-muted">Không có dữ liệu</td></tr>
+                ) : (
+                  data?.data.map((s) => (
+                    <tr key={s.id} className={s.deletedAt ? 'opacity-50' : ''}>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          {s.image && <img src={s.image} className="rounded" style={{ width: 32, height: 32, objectFit: 'cover' }} alt="" />}
+                          <code>{s.code}</code>
+                        </div>
+                      </td>
+                      <td className="fw-medium">{s.name}</td>
+                      <td className="text-muted">{s.customer?.name ?? '—'}</td>
+                      <td className="text-muted">{s.season || '—'}</td>
+                      <td>{s.sam ? `${s.sam} phút` : '—'}</td>
+                      {canWrite && (
+                        <td className="text-end">
+                          <div className="d-flex justify-content-end gap-1">
+                            {s.deletedAt ? (
+                              <button onClick={() => restoreStyle.mutate(s.id)} className="btn btn-sm btn-outline-secondary">
+                                <i className="fe fe-rotate-ccw"></i>
+                              </button>
+                            ) : (
+                              <>
+                                <button onClick={() => { setEditTarget(s); setFormOpen(true) }} className="btn btn-sm btn-outline-secondary">
+                                  <i className="fe fe-edit-2"></i>
+                                </button>
+                                <button onClick={() => setDeleteTarget(s)} className="btn btn-sm btn-outline-danger">
+                                  <i className="fe fe-trash-2"></i>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {data && <Pagination page={page} totalPages={data.totalPages} total={data.total} pageSize={data.pageSize} onPageChange={setPage} />}
@@ -127,6 +155,6 @@ export default function StylesPage() {
         onConfirm={() => deleteTarget && deleteStyle.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </PageWrapper>
   )
 }

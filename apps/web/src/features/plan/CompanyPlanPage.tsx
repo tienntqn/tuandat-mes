@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, RefreshCw, Trash2, ChevronDown, ChevronRight, GitBranch } from 'lucide-react'
+import { GitBranch, ChevronDown, ChevronRight } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import {
   useCompanyPlans,
@@ -11,9 +11,9 @@ import { CompanyPlanFormDialog } from './CompanyPlanFormDialog'
 import { FactoryPlanAllocateDialog } from './FactoryPlanAllocateDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
+import { PageWrapper } from '@/components/layout/PageWrapper'
 import { useAuthStore } from '@/stores/auth.store'
 import { factoryApi } from '@/features/factory/factory.api'
-import { styleApi } from '@/features/style/style.api'
 import { poApi } from '@/features/purchase-order/po.api'
 import type { CompanyPlan, CreateCompanyPlanDto, UpdateCompanyPlanDto } from './plan.api'
 
@@ -22,24 +22,24 @@ function AllocationBar({ allocated, total, label }: { allocated: number; total: 
   const pct = total > 0 ? Math.min(100, Math.round((allocated / total) * 100)) : 0
   const isOver = allocated > total
   return (
-    <div className="space-y-1 min-w-[140px]">
-      <div className="flex justify-between text-xs text-muted-foreground">
+    <div style={{ minWidth: 140 }}>
+      <div className="d-flex justify-content-between small text-muted mb-1">
         <span>{label}</span>
-        <span className={isOver ? 'text-destructive font-medium' : ''}>
+        <span className={isOver ? 'text-danger fw-medium' : ''}>
           {allocated.toLocaleString()} / {total.toLocaleString()}
         </span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+      <div className="progress" style={{ height: 6 }}>
         <div
-          className={`h-full rounded-full transition-all ${isOver ? 'bg-destructive' : pct >= 90 ? 'bg-amber-500' : 'bg-primary'}`}
+          className={`progress-bar ${isOver ? 'bg-danger' : pct >= 90 ? 'bg-warning' : 'bg-primary'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-xs text-muted-foreground">
-        Còn lại: <span className={total - allocated < 0 ? 'text-destructive font-medium' : 'text-foreground font-medium'}>
+      <div className="small text-muted mt-1">
+        Còn lại: <span className={total - allocated < 0 ? 'text-danger fw-medium' : 'fw-medium'}>
           {(total - allocated).toLocaleString()}
         </span>
-      </p>
+      </div>
     </div>
   )
 }
@@ -50,7 +50,7 @@ function ExpandedFactoryPlans({ plan }: { plan: CompanyPlan }) {
   if (fps.length === 0) {
     return (
       <tr>
-        <td colSpan={8} className="px-6 py-3 text-sm text-muted-foreground italic bg-muted/30">
+        <td colSpan={8} className="px-4 py-2 small text-muted fst-italic" style={{ backgroundColor: 'var(--bs-light, #f8f9fa)' }}>
           Chưa phân bổ cho chuyền nào
         </td>
       </tr>
@@ -59,16 +59,16 @@ function ExpandedFactoryPlans({ plan }: { plan: CompanyPlan }) {
   return (
     <>
       {fps.map((fp) => (
-        <tr key={fp.id} className="bg-muted/20 border-b">
+        <tr key={fp.id} style={{ backgroundColor: 'var(--bs-light, #f8f9fa)' }}>
           <td />
-          <td className="px-6 py-2 text-sm">
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <GitBranch className="h-3 w-3" />
+          <td colSpan={2} className="py-2 ps-4 small">
+            <span className="d-inline-flex align-items-center gap-1 text-muted">
+              <GitBranch size={12} />
               Chuyền {fp.line?.lineNumber} — {fp.line?.name}
             </span>
           </td>
-          <td className="px-3 py-2 text-sm text-right font-mono">{fp.plannedQuantity.toLocaleString()}</td>
-          <td className="px-3 py-2 text-sm text-center text-muted-foreground" colSpan={5}>
+          <td className="py-2 text-end font-monospace small">{fp.plannedQuantity.toLocaleString()}</td>
+          <td colSpan={4} className="py-2 small text-muted text-center">
             Deadline: {new Date(fp.expectedFinishDate).toLocaleDateString('vi-VN')}
           </td>
         </tr>
@@ -130,166 +130,165 @@ export default function CompanyPlanPage() {
   const plans = data?.data ?? []
 
   return (
-    <div className="p-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Kế hoạch Công ty</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Phân bổ chỉ tiêu sản xuất từ PO xuống các xưởng · {data?.total ?? 0} kế hoạch
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => refetch()}
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-accent"
-          >
-            <RefreshCw className="h-4 w-4" />
+    <PageWrapper
+      title="Kế hoạch Công ty"
+      breadcrumbs={[{ label: 'Kế hoạch' }, { label: 'Công ty' }]}
+      actions={
+        <div className="d-flex gap-2">
+          <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
+            <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
           {canWrite && (
             <button
               onClick={() => { setEditTarget(null); setFormOpen(true) }}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="btn btn-primary btn-icon text-white"
             >
-              <Plus className="h-4 w-4" />
-              Thêm kế hoạch
+              <span><i className="fe fe-plus"></i></span> Thêm kế hoạch
             </button>
           )}
         </div>
-      </div>
+      }
+    >
+      <p className="text-muted mb-3">
+        Phân bổ chỉ tiêu sản xuất từ PO xuống các xưởng · {data?.total ?? 0} kế hoạch
+      </p>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <select
-          value={filterFactoryId}
-          onChange={(e) => { setFilterFactoryId(e.target.value); setPage(1) }}
-          className="rounded-lg border bg-background px-3 py-2 text-sm"
-        >
-          <option value="">Tất cả xưởng</option>
-          {factoryList.map((f: any) => (
-            <option key={f.id} value={f.id}>{f.name}</option>
-          ))}
-        </select>
-        <select
-          value={filterPoId}
-          onChange={(e) => { setFilterPoId(e.target.value); setPage(1) }}
-          className="rounded-lg border bg-background px-3 py-2 text-sm"
-        >
-          <option value="">Tất cả PO</option>
-          {poList.map((p: any) => (
-            <option key={p.id} value={p.id}>{p.poNumber}</option>
-          ))}
-        </select>
+      <div className="row mb-3 g-2">
+        <div className="col-auto">
+          <select
+            value={filterFactoryId}
+            onChange={(e) => { setFilterFactoryId(e.target.value); setPage(1) }}
+            className="form-select"
+          >
+            <option value="">Tất cả xưởng</option>
+            {factoryList.map((f: any) => (
+              <option key={f.id} value={f.id}>{f.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="col-auto">
+          <select
+            value={filterPoId}
+            onChange={(e) => { setFilterPoId(e.target.value); setPage(1) }}
+            className="form-select"
+          >
+            <option value="">Tất cả PO</option>
+            {poList.map((p: any) => (
+              <option key={p.id} value={p.id}>{p.poNumber}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="w-8" />
-                <th className="px-4 py-3 text-left font-medium">Mã hàng / PO</th>
-                <th className="px-4 py-3 text-left font-medium">Xưởng</th>
-                <th className="px-4 py-3 text-right font-medium">Chỉ tiêu</th>
-                <th className="px-4 py-3 text-left font-medium">Phân bổ cho chuyền</th>
-                <th className="px-4 py-3 text-center font-medium">Ngày bắt đầu</th>
-                <th className="px-4 py-3 text-center font-medium">Deadline</th>
-                <th className="px-4 py-3 text-center font-medium">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {isLoading ? (
+      <div className="card">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-vcenter mb-0">
+              <thead className="thead-light">
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                    Đang tải...
-                  </td>
+                  <th style={{ width: 32 }}></th>
+                  <th>Mã hàng / PO</th>
+                  <th>Xưởng</th>
+                  <th className="text-end">Chỉ tiêu</th>
+                  <th>Phân bổ cho chuyền</th>
+                  <th className="text-center">Ngày bắt đầu</th>
+                  <th className="text-center">Deadline</th>
+                  <th className="text-center">Thao tác</th>
                 </tr>
-              ) : plans.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
-                    Chưa có kế hoạch nào. Nhấn "Thêm kế hoạch" để bắt đầu.
-                  </td>
-                </tr>
-              ) : (
-                plans.map((plan) => {
-                  const isExpanded = expandedIds.has(plan.id)
-                  const fpCount = plan.factoryPlans?.length ?? 0
-                  return (
-                    <>
-                      <tr
-                        key={plan.id}
-                        className="hover:bg-muted/30 transition-colors cursor-pointer"
-                        onClick={() => toggleExpand(plan.id)}
-                      >
-                        <td className="px-2 py-3 text-center text-muted-foreground">
-                          {isExpanded
-                            ? <ChevronDown className="h-4 w-4 mx-auto" />
-                            : <ChevronRight className="h-4 w-4 mx-auto" />}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="font-medium">{plan.style?.code} — {plan.style?.name}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            PO: {plan.po?.poNumber} · Tổng: {plan.po?.totalQuantity?.toLocaleString()} SP
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="font-medium">{plan.factory?.name}</span>
-                          <div className="text-xs text-muted-foreground">{plan.factory?.code}</div>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono font-semibold">
-                          {plan.plannedQuantity.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                          <AllocationBar
-                            allocated={plan.allocatedToLines ?? 0}
-                            total={plan.plannedQuantity}
-                            label={`${fpCount} chuyền`}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-center text-muted-foreground">
-                          {new Date(plan.startDate).toLocaleDateString('vi-VN')}
-                        </td>
-                        <td className="px-4 py-3 text-center text-muted-foreground">
-                          {new Date(plan.expectedFinishDate).toLocaleDateString('vi-VN')}
-                        </td>
-                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex justify-center gap-1">
-                            {canAllocate && (
-                              <button
-                                onClick={() => setAllocateTarget(plan)}
-                                title="Phân bổ cho chuyền"
-                                className="rounded p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
-                              >
-                                <GitBranch className="h-4 w-4" />
-                              </button>
-                            )}
-                            {canWrite && (
-                              <button
-                                onClick={() => { setEditTarget(plan); setFormOpen(true) }}
-                                className="rounded p-1.5 text-muted-foreground hover:bg-accent"
-                              >
-                                ✏️
-                              </button>
-                            )}
-                            {canWrite && (
-                              <button
-                                onClick={() => setDeleteTarget(plan)}
-                                className="rounded p-1.5 text-destructive hover:bg-destructive/10"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                      {isExpanded && <ExpandedFactoryPlans key={`exp-${plan.id}`} plan={plan} />}
-                    </>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-4 text-muted">Đang tải...</td>
+                  </tr>
+                ) : plans.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-5 text-muted">
+                      Chưa có kế hoạch nào. Nhấn "Thêm kế hoạch" để bắt đầu.
+                    </td>
+                  </tr>
+                ) : (
+                  plans.map((plan) => {
+                    const isExpanded = expandedIds.has(plan.id)
+                    const fpCount = plan.factoryPlans?.length ?? 0
+                    return (
+                      <>
+                        <tr
+                          key={plan.id}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => toggleExpand(plan.id)}
+                        >
+                          <td className="text-center text-muted">
+                            {isExpanded
+                              ? <ChevronDown className="h-4 w-4 mx-auto" />
+                              : <ChevronRight className="h-4 w-4 mx-auto" />}
+                          </td>
+                          <td>
+                            <div className="fw-medium">{plan.style?.code} — {plan.style?.name}</div>
+                            <small className="text-muted">
+                              PO: {plan.po?.poNumber} · Tổng: {plan.po?.totalQuantity?.toLocaleString()} SP
+                            </small>
+                          </td>
+                          <td>
+                            <span className="fw-medium">{plan.factory?.name}</span>
+                            <div className="small text-muted">{plan.factory?.code}</div>
+                          </td>
+                          <td className="text-end font-monospace fw-semibold">
+                            {plan.plannedQuantity.toLocaleString()}
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <AllocationBar
+                              allocated={plan.allocatedToLines ?? 0}
+                              total={plan.plannedQuantity}
+                              label={`${fpCount} chuyền`}
+                            />
+                          </td>
+                          <td className="text-center text-muted">
+                            {new Date(plan.startDate).toLocaleDateString('vi-VN')}
+                          </td>
+                          <td className="text-center text-muted">
+                            {new Date(plan.expectedFinishDate).toLocaleDateString('vi-VN')}
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div className="d-flex justify-content-center gap-1">
+                              {canAllocate && (
+                                <button
+                                  onClick={() => setAllocateTarget(plan)}
+                                  title="Phân bổ cho chuyền"
+                                  className="btn btn-sm btn-outline-primary"
+                                >
+                                  <GitBranch size={14} />
+                                </button>
+                              )}
+                              {canWrite && (
+                                <button
+                                  onClick={() => { setEditTarget(plan); setFormOpen(true) }}
+                                  className="btn btn-sm btn-outline-secondary"
+                                >
+                                  <i className="fe fe-edit-2"></i>
+                                </button>
+                              )}
+                              {canWrite && (
+                                <button
+                                  onClick={() => setDeleteTarget(plan)}
+                                  className="btn btn-sm btn-outline-danger"
+                                >
+                                  <i className="fe fe-trash-2"></i>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && <ExpandedFactoryPlans key={`exp-${plan.id}`} plan={plan} />}
+                      </>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -322,9 +321,9 @@ export default function CompanyPlanPage() {
         onConfirm={() => {
           if (deleteTarget) deletePlan.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
         }}
-        onCancel={() => setDeleteTarget(null)}
-        loading={deletePlan.isPending}
+        onClose={() => setDeleteTarget(null)}
+        isPending={deletePlan.isPending}
       />
-    </div>
+    </PageWrapper>
   )
 }

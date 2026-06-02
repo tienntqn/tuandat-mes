@@ -1,14 +1,8 @@
 import { useState, useMemo } from 'react'
-import { Download, Printer, AlertTriangle, TrendingDown, TrendingUp, Minus } from 'lucide-react'
+import { AlertTriangle, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import { useProgressReport } from './report.hooks'
 import { type ProgressRow } from './report.api'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Progress } from '@/components/ui/progress'
-import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
+import { PageWrapper } from '@/components/layout/PageWrapper'
 
 const STAGE_LABELS: Record<string, string> = {
   CUTTING: 'Cắt',
@@ -56,23 +50,23 @@ function exportCsv(rows: ProgressRow[]) {
 function PctBadge({ pct, isLate }: { pct: number; isLate: boolean }) {
   if (isLate)
     return (
-      <Badge variant="destructive" className="gap-1">
-        <TrendingDown className="h-3 w-3" />
+      <span className="badge bg-danger d-inline-flex align-items-center gap-1">
+        <TrendingDown size={12} />
         {pct}%
-      </Badge>
+      </span>
     )
   if (pct >= 100)
     return (
-      <Badge className="bg-green-600 gap-1">
-        <TrendingUp className="h-3 w-3" />
+      <span className="badge bg-success d-inline-flex align-items-center gap-1">
+        <TrendingUp size={12} />
         {pct}%
-      </Badge>
+      </span>
     )
   return (
-    <Badge variant="secondary" className="gap-1">
-      <Minus className="h-3 w-3" />
+    <span className="badge bg-secondary d-inline-flex align-items-center gap-1">
+      <Minus size={12} />
       {pct}%
-    </Badge>
+    </span>
   )
 }
 
@@ -88,90 +82,84 @@ export default function ReportPage() {
   const lateCount = rows.filter((r) => r.isLate).length
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Báo cáo tiến độ sản xuất</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            So sánh kế hoạch vs thực tế theo chuyền / mã hàng / công đoạn
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-2">
-            <Printer className="h-4 w-4" />
-            In / PDF
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
+    <PageWrapper
+      title="Báo cáo tiến độ sản xuất"
+      breadcrumbs={[{ label: 'Báo cáo' }, { label: 'Tiến độ' }]}
+      actions={
+        <div className="d-flex gap-2 no-print">
+          <button onClick={() => window.print()} className="btn btn-outline-secondary btn-icon">
+            <span><i className="fe fe-printer"></i></span> In / PDF
+          </button>
+          <button
             onClick={() => exportCsv(rows)}
             disabled={rows.length === 0}
-            className="gap-2"
+            className="btn btn-outline-secondary btn-icon"
           >
-            <Download className="h-4 w-4" />
-            Xuất Excel
-          </Button>
+            <span><i className="fe fe-download"></i></span> Xuất Excel
+          </button>
         </div>
-      </div>
+      }
+    >
+      <p className="text-muted mb-3">
+        So sánh kế hoạch vs thực tế theo chuyền / mã hàng / công đoạn
+      </p>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <Select value={stageFilter} onValueChange={setStageFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Tất cả công đoạn" />
-          </SelectTrigger>
-          <SelectContent>
+      <div className="row mb-3 g-2 align-items-center">
+        <div className="col-auto">
+          <select
+            className="form-select"
+            value={stageFilter}
+            onChange={(e) => setStageFilter(e.target.value)}
+          >
             {STAGES.map((s) => (
-              <SelectItem key={s} value={s}>
+              <option key={s} value={s}>
                 {s ? STAGE_LABELS[s] : 'Tất cả công đoạn'}
-              </SelectItem>
+              </option>
             ))}
-          </SelectContent>
-        </Select>
-
+          </select>
+        </div>
         {lateCount > 0 && (
-          <Badge variant="destructive" className="gap-1 px-3 py-1.5">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            {lateCount} mục chậm tiến độ
-          </Badge>
+          <div className="col-auto">
+            <span className="badge bg-danger d-inline-flex align-items-center gap-1 px-3 py-2">
+              <AlertTriangle size={14} />
+              {lateCount} mục chậm tiến độ
+            </span>
+          </div>
         )}
-
         {!isLoading && (
-          <span className="text-sm text-muted-foreground ml-auto">
-            {rows.length} dòng
-          </span>
+          <div className="col-auto ms-auto">
+            <small className="text-muted">{rows.length} dòng</small>
+          </div>
         )}
       </div>
 
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
+      <div className="card">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-vcenter mb-0">
+              <thead className="thead-light">
                 <tr>
                   {['Xưởng', 'Chuyền', 'Mã hàng', 'Công đoạn', 'KH', 'TT', '% HT', 'Deadline', 'Dự báo', 'Trạng thái'].map((h) => (
-                    <th key={h} className="text-left px-4 py-3 font-medium text-muted-foreground whitespace-nowrap">
-                      {h}
-                    </th>
+                    <th key={h} className="text-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y">
+              <tbody>
                 {isLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
                       {Array.from({ length: 10 }).map((__, j) => (
-                        <td key={j} className="px-4 py-3">
-                          <Skeleton className="h-4 w-20" />
+                        <td key={j}>
+                          <span className="placeholder col-8 placeholder-sm"></span>
                         </td>
                       ))}
                     </tr>
                   ))
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="text-center py-12 text-muted-foreground">
+                    <td colSpan={10} className="text-center py-5 text-muted">
                       Chưa có dữ liệu
                     </td>
                   </tr>
@@ -179,64 +167,60 @@ export default function ReportPage() {
                   rows.map((row, i) => (
                     <tr
                       key={i}
-                      className={cn(
-                        'hover:bg-muted/30 transition-colors',
-                        row.isLate && 'bg-red-50 hover:bg-red-50',
-                      )}
+                      className={row.isLate ? 'table-danger' : ''}
                     >
-                      <td className="px-4 py-3 whitespace-nowrap font-medium">{row.factoryName}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{row.lineName}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium">{row.styleCode}</div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[120px]">{row.styleName}</div>
+                      <td className="text-nowrap fw-medium">{row.factoryName}</td>
+                      <td className="text-nowrap">{row.lineName}</td>
+                      <td>
+                        <div className="fw-medium">{row.styleCode}</div>
+                        <div className="small text-muted text-truncate" style={{ maxWidth: 120 }}>{row.styleName}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <Badge variant="outline" className="text-xs">
+                      <td className="text-nowrap">
+                        <span className="badge bg-light text-dark border">
                           {STAGE_LABELS[row.stage] ?? row.stage}
-                        </Badge>
+                        </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap tabular-nums">
+                      <td className="text-nowrap tabular-nums">
                         {row.plannedQty.toLocaleString('vi-VN')}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap tabular-nums font-medium">
+                      <td className="text-nowrap tabular-nums fw-medium">
                         {row.actualQty.toLocaleString('vi-VN')}
                       </td>
-                      <td className="px-4 py-3 min-w-[120px]">
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={Math.min(row.pct, 100)}
-                            className={cn('h-1.5 flex-1', row.isLate ? '[&>div]:bg-red-500' : '')}
-                          />
+                      <td style={{ minWidth: 120 }}>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress flex-grow-1" style={{ height: 6 }}>
+                            <div
+                              className={`progress-bar ${row.isLate ? 'bg-danger' : 'bg-primary'}`}
+                              style={{ width: `${Math.min(row.pct, 100)}%` }}
+                            />
+                          </div>
                           <PctBadge pct={row.pct} isLate={row.isLate} />
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                      <td className="text-nowrap text-muted">
                         {row.expectedFinishDate}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="text-nowrap">
                         {row.estimatedFinishDate ? (
                           <span
-                            className={cn(
-                              'text-sm',
-                              row.estimatedFinishDate > row.expectedFinishDate ? 'text-red-600 font-medium' : 'text-green-600',
-                            )}
+                            className={row.estimatedFinishDate > row.expectedFinishDate ? 'text-danger fw-medium' : 'text-success'}
                           >
                             {row.estimatedFinishDate}
                           </span>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="text-nowrap">
                         {row.isLate ? (
-                          <Badge variant="destructive" className="gap-1 text-xs">
-                            <AlertTriangle className="h-3 w-3" />
+                          <span className="badge bg-danger d-inline-flex align-items-center gap-1">
+                            <AlertTriangle size={12} />
                             Chậm
-                          </Badge>
+                          </span>
                         ) : (
-                          <Badge variant="outline" className="text-green-600 border-green-300 text-xs">
+                          <span className="badge bg-success-transparent text-success border border-success">
                             Đúng hạn
-                          </Badge>
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -245,8 +229,8 @@ export default function ReportPage() {
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Print styles */}
       <style>{`
@@ -257,6 +241,6 @@ export default function ReportPage() {
           td, th { border: 1px solid #ddd; padding: 4px 8px; }
         }
       `}</style>
-    </div>
+    </PageWrapper>
   )
 }

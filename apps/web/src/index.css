@@ -1,10 +1,45 @@
 /* Zanex Bootstrap template là stylesheet chính — load qua index.html */
-/* Chỉ dùng Tailwind utilities, KHÔNG dùng base/preflight để tránh conflict với Zanex */
+/* Chỉ dùng Tailwind components + utilities, không dùng preflight để tránh conflict */
 
 @tailwind components;
 @tailwind utilities;
 
+/* CSS variables cho shadcn/ui components (dialog, select, v.v.) */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  --primary: 248 50% 58%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 248 50% 58%;
+  --radius: 0.5rem;
+}
+
 /* Đảm bảo React app content nằm đúng vị trí */
 #root {
   display: contents;
+}
+
+/* Zanex card-title font fix khi dùng Bootstrap + Tailwind */
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Page content padding */
+.main-container.container-fluid {
+  padding-top: 0;
 }

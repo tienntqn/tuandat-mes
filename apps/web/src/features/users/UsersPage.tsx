@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Plus, RefreshCw, KeyRound, ToggleLeft, ToggleRight, Shield } from 'lucide-react'
 import { useUsers, useRoles, useUpdateUser, useResetPassword } from './users.hooks'
 import { CreateUserDialog } from './CreateUserDialog'
 import { EditRolesDialog } from './EditRolesDialog'
+import { PageWrapper } from '@/components/layout/PageWrapper'
 import type { UserListItem } from './users.api'
-import { cn } from '@/lib/utils'
 
 const POSITION_LABEL: Record<string, string> = {
   ADMIN: 'Admin',
@@ -40,155 +39,133 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Quản lý Tài khoản</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {data?.total ?? 0} tài khoản
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => refetch()}
-            className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-accent"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Làm mới
+    <PageWrapper
+      title="Quản lý Tài khoản"
+      breadcrumbs={[{ label: 'Hệ thống' }, { label: 'Tài khoản' }]}
+      actions={
+        <div className="d-flex gap-2">
+          <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
+            <span><i className="fe fe-rotate-ccw"></i></span> Làm mới
           </button>
           <button
             onClick={() => setCreateOpen(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="btn btn-primary btn-icon text-white"
           >
-            <Plus className="h-4 w-4" />
-            Tạo tài khoản
+            <span><i className="fe fe-plus"></i></span> Tạo tài khoản
           </button>
         </div>
-      </div>
+      }
+    >
+      <p className="text-muted mb-3">{data?.total ?? 0} tài khoản</p>
 
       {/* Table */}
-      <div className="rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">Nhân viên</th>
-              <th className="px-4 py-3 text-left font-medium">Tài khoản</th>
-              <th className="px-4 py-3 text-left font-medium">Chức danh</th>
-              <th className="px-4 py-3 text-left font-medium">Vai trò</th>
-              <th className="px-4 py-3 text-left font-medium">Trạng thái</th>
-              <th className="px-4 py-3 text-right font-medium">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                  Đang tải...
-                </td>
-              </tr>
-            ) : data?.data.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                  Chưa có tài khoản nào
-                </td>
-              </tr>
-            ) : (
-              data?.data.map((user) => (
-                <tr key={user.id} className="border-t hover:bg-muted/20">
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{user.employee.fullName}</p>
-                    <p className="text-xs text-muted-foreground">{user.employee.code}</p>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs">{user.username}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">
-                      {POSITION_LABEL[user.employee.position] ?? user.employee.position}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      {user.userRoles.map((ur) => (
-                        <span
-                          key={ur.role.id}
-                          className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
-                        >
-                          {ur.role.name}
-                        </span>
-                      ))}
-                      {user.userRoles.length === 0 && (
-                        <span className="text-xs text-muted-foreground">Chưa có vai trò</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                        user.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-red-100 text-red-700',
-                      )}
-                    >
-                      {user.isActive ? 'Hoạt động' : 'Đã khóa'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setEditRolesUser(user)}
-                        title="Phân quyền"
-                        className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                      >
-                        <Shield className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => { setResetUser(user); setNewPw('') }}
-                        title="Đặt lại mật khẩu"
-                        className="p-1.5 rounded hover:bg-accent text-muted-foreground"
-                      >
-                        <KeyRound className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => toggleActive(user)}
-                        title={user.isActive ? 'Khóa tài khoản' : 'Mở khóa'}
-                        className={cn(
-                          'p-1.5 rounded hover:bg-accent',
-                          user.isActive ? 'text-green-600' : 'text-muted-foreground',
-                        )}
-                      >
-                        {user.isActive ? (
-                          <ToggleRight className="h-4 w-4" />
-                        ) : (
-                          <ToggleLeft className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </td>
+      <div className="card">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-vcenter mb-0">
+              <thead className="thead-light">
+                <tr>
+                  <th>Nhân viên</th>
+                  <th>Tài khoản</th>
+                  <th>Chức danh</th>
+                  <th>Vai trò</th>
+                  <th>Trạng thái</th>
+                  <th className="text-end">Thao tác</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-4 text-muted">Đang tải...</td>
+                  </tr>
+                ) : data?.data.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-4 text-muted">Chưa có tài khoản nào</td>
+                  </tr>
+                ) : (
+                  data?.data.map((user) => (
+                    <tr key={user.id}>
+                      <td>
+                        <p className="fw-medium mb-0">{user.employee.fullName}</p>
+                        <small className="text-muted">{user.employee.code}</small>
+                      </td>
+                      <td className="font-monospace small">{user.username}</td>
+                      <td>
+                        <span className="badge bg-secondary-transparent text-secondary">
+                          {POSITION_LABEL[user.employee.position] ?? user.employee.position}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex flex-wrap gap-1">
+                          {user.userRoles.map((ur) => (
+                            <span
+                              key={ur.role.id}
+                              className="badge bg-primary-transparent text-primary"
+                            >
+                              {ur.role.name}
+                            </span>
+                          ))}
+                          {user.userRoles.length === 0 && (
+                            <span className="text-muted small">Chưa có vai trò</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${user.isActive ? 'bg-success-transparent text-success' : 'bg-danger-transparent text-danger'}`}>
+                          {user.isActive ? 'Hoạt động' : 'Đã khóa'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="d-flex justify-content-end gap-1">
+                          <button
+                            onClick={() => setEditRolesUser(user)}
+                            title="Phân quyền"
+                            className="btn btn-sm btn-outline-secondary"
+                          >
+                            <i className="fe fe-shield"></i>
+                          </button>
+                          <button
+                            onClick={() => { setResetUser(user); setNewPw('') }}
+                            title="Đặt lại mật khẩu"
+                            className="btn btn-sm btn-outline-secondary"
+                          >
+                            <i className="fe fe-key"></i>
+                          </button>
+                          <button
+                            onClick={() => toggleActive(user)}
+                            title={user.isActive ? 'Khóa tài khoản' : 'Mở khóa'}
+                            className={`btn btn-sm ${user.isActive ? 'btn-outline-success' : 'btn-outline-secondary'}`}
+                          >
+                            <i className={`fe ${user.isActive ? 'fe-toggle-right' : 'fe-toggle-left'}`}></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* Pagination */}
       {data && data.totalPages > 1 && (
-        <div className="flex items-center justify-end gap-2 text-sm">
+        <div className="d-flex align-items-center justify-content-end gap-2 mt-3">
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
-            className="rounded border px-3 py-1 disabled:opacity-40 hover:bg-accent"
+            className="btn btn-sm btn-outline-secondary"
           >
             Trước
           </button>
-          <span className="text-muted-foreground">
+          <span className="text-muted small">
             Trang {page} / {data.totalPages}
           </span>
           <button
             disabled={page >= data.totalPages}
             onClick={() => setPage(page + 1)}
-            className="rounded border px-3 py-1 disabled:opacity-40 hover:bg-accent"
+            className="btn btn-sm btn-outline-secondary"
           >
             Sau
           </button>
@@ -207,40 +184,46 @@ export default function UsersPage() {
 
       {/* Reset password modal */}
       {resetUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-sm rounded-xl bg-card border p-6 shadow-xl">
-            <h2 className="font-bold text-lg">Đặt lại mật khẩu</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Tài khoản: <strong>{resetUser.username}</strong>
-            </p>
-            <input
-              className="mt-4 w-full rounded-lg border px-3 py-2 text-sm"
-              type="password"
-              placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
-              value={newPw}
-              onChange={(e) => setNewPw(e.target.value)}
-            />
-            {newPw.length > 0 && newPw.length < 6 && (
-              <p className="text-xs text-destructive mt-1">Mật khẩu phải có ít nhất 6 ký tự</p>
-            )}
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={() => setResetUser(null)}
-                className="rounded-lg border px-4 py-2 text-sm hover:bg-accent"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleResetPw}
-                disabled={newPw.length < 6 || resetPw.isPending}
-                className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                {resetPw.isPending ? 'Đang xử lý...' : 'Xác nhận'}
-              </button>
+        <div className="modal d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+          <div className="modal-dialog modal-dialog-centered modal-sm">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Đặt lại mật khẩu</h5>
+              </div>
+              <div className="modal-body">
+                <p className="text-muted small">
+                  Tài khoản: <strong>{resetUser.username}</strong>
+                </p>
+                <input
+                  className="form-control"
+                  type="password"
+                  placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
+                  value={newPw}
+                  onChange={(e) => setNewPw(e.target.value)}
+                />
+                {newPw.length > 0 && newPw.length < 6 && (
+                  <div className="text-danger small mt-1">Mật khẩu phải có ít nhất 6 ký tự</div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  onClick={() => setResetUser(null)}
+                  className="btn btn-outline-secondary"
+                >
+                  Hủy
+                </button>
+                <button
+                  onClick={handleResetPw}
+                  disabled={newPw.length < 6 || resetPw.isPending}
+                  className="btn btn-primary text-white"
+                >
+                  {resetPw.isPending ? 'Đang xử lý...' : 'Xác nhận'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </PageWrapper>
   )
 }

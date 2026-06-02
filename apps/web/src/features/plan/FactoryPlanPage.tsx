@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { RefreshCw, GitBranch, ChevronDown, ChevronRight, Pencil } from 'lucide-react'
+import { GitBranch, ChevronDown, ChevronRight } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useFactoryPlans, useUpdateFactoryPlan } from './plan.hooks'
 import { FactoryPlanEditDialog } from './FactoryPlanEditDialog'
 import { Pagination } from '@/components/shared/Pagination'
+import { PageWrapper } from '@/components/layout/PageWrapper'
 import { useAuthStore } from '@/stores/auth.store'
 import { factoryApi } from '@/features/factory/factory.api'
 import type { FactoryPlan, UpdateFactoryPlanDto } from './plan.api'
@@ -13,16 +14,16 @@ function AllocBar({ allocated, total }: { allocated: number; total: number }) {
   const pct = total > 0 ? Math.min(100, Math.round((allocated / total) * 100)) : 0
   const isOver = allocated > total
   return (
-    <div className="space-y-1 min-w-[120px]">
-      <div className="flex justify-between text-xs">
-        <span className="text-muted-foreground">{pct}%</span>
-        <span className={isOver ? 'text-destructive font-medium' : 'text-foreground'}>
+    <div style={{ minWidth: 120 }}>
+      <div className="d-flex justify-content-between small mb-1">
+        <span className="text-muted">{pct}%</span>
+        <span className={isOver ? 'text-danger fw-medium' : ''}>
           {allocated.toLocaleString()} / {total.toLocaleString()}
         </span>
       </div>
-      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+      <div className="progress" style={{ height: 6 }}>
         <div
-          className={`h-full rounded-full ${isOver ? 'bg-destructive' : pct >= 90 ? 'bg-amber-500' : 'bg-primary'}`}
+          className={`progress-bar ${isOver ? 'bg-danger' : pct >= 90 ? 'bg-warning' : 'bg-primary'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -107,134 +108,134 @@ export default function FactoryPlanPage() {
   const showFactoryFilter = isAdmin() || hasRole('BOD') || hasRole('COMPANY_PLANNER')
 
   return (
-    <div className="p-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Kế hoạch Xưởng</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Phân bổ chỉ tiêu xuống từng chuyền · {grouped.length} nhóm kế hoạch
-          </p>
-        </div>
-        <button
-          onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-accent"
-        >
-          <RefreshCw className="h-4 w-4" />
+    <PageWrapper
+      title="Kế hoạch Xưởng"
+      breadcrumbs={[{ label: 'Kế hoạch' }, { label: 'Xưởng' }]}
+      actions={
+        <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
+          <span><i className="fe fe-rotate-ccw"></i></span>
         </button>
-      </div>
+      }
+    >
+      <p className="text-muted mb-3">
+        Phân bổ chỉ tiêu xuống từng chuyền · {grouped.length} nhóm kế hoạch
+      </p>
 
       {/* Filters */}
       {showFactoryFilter && (
-        <div className="flex gap-3">
-          <select
-            value={filterFactoryId}
-            onChange={(e) => { setFilterFactoryId(e.target.value); setPage(1) }}
-            className="rounded-lg border bg-background px-3 py-2 text-sm"
-          >
-            <option value="">Tất cả xưởng</option>
-            {factories?.data?.map((f: any) => (
-              <option key={f.id} value={f.id}>{f.name}</option>
-            ))}
-          </select>
+        <div className="row mb-3">
+          <div className="col-auto">
+            <select
+              value={filterFactoryId}
+              onChange={(e) => { setFilterFactoryId(e.target.value); setPage(1) }}
+              className="form-select"
+            >
+              <option value="">Tất cả xưởng</option>
+              {factories?.data?.map((f: any) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
       {/* Grouped table */}
-      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-muted-foreground">
-              <tr>
-                <th className="w-8" />
-                <th className="px-4 py-3 text-left font-medium">Mã hàng / PO / Xưởng</th>
-                <th className="px-4 py-3 text-right font-medium">Chỉ tiêu xưởng</th>
-                <th className="px-4 py-3 text-left font-medium">Phân bổ chuyền</th>
-                <th className="px-4 py-3 text-center font-medium">Deadline</th>
-                {canWrite && <th className="px-4 py-3 text-center font-medium">Thao tác</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {isLoading ? (
+      <div className="card">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-vcenter mb-0">
+              <thead className="thead-light">
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Đang tải...</td>
+                  <th style={{ width: 32 }}></th>
+                  <th>Mã hàng / PO / Xưởng</th>
+                  <th className="text-end">Chỉ tiêu xưởng</th>
+                  <th>Phân bổ chuyền</th>
+                  <th className="text-center">Deadline</th>
+                  {canWrite && <th className="text-center">Thao tác</th>}
                 </tr>
-              ) : grouped.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                    Chưa có kế hoạch xưởng nào. Cần phân bổ từ Kế hoạch Công ty trước.
-                  </td>
-                </tr>
-              ) : (
-                grouped.map((group) => {
-                  const isExpanded = expandedGroups.has(group.companyPlanId)
-                  return (
-                    <>
-                      {/* Group header row */}
-                      <tr
-                        key={`g-${group.companyPlanId}`}
-                        className="bg-muted/10 hover:bg-muted/20 cursor-pointer font-medium"
-                        onClick={() => toggleGroup(group.companyPlanId)}
-                      >
-                        <td className="px-2 py-3 text-center text-muted-foreground">
-                          {isExpanded
-                            ? <ChevronDown className="h-4 w-4 mx-auto" />
-                            : <ChevronRight className="h-4 w-4 mx-auto" />}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div>{group.style?.code} — {group.style?.name}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5 font-normal">
-                            PO: {group.po?.poNumber} · Xưởng: {group.factory?.name}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono">
-                          {group.plannedQty.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3">
-                          <AllocBar allocated={group.totalAllocated} total={group.plannedQty} />
-                        </td>
-                        <td className="px-4 py-3 text-center text-muted-foreground">—</td>
-                        {canWrite && <td className="px-4 py-3" />}
-                      </tr>
-
-                      {/* Child rows: từng chuyền */}
-                      {isExpanded && group.plans.map((fp) => (
-                        <tr key={fp.id} className="hover:bg-muted/10 border-b last:border-0">
-                          <td />
-                          <td className="px-6 py-2.5">
-                            <span className="flex items-center gap-1.5 text-muted-foreground">
-                              <GitBranch className="h-3.5 w-3.5 text-primary" />
-                              Chuyền {fp.line?.lineNumber} — {fp.line?.name}
-                            </span>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-4 text-muted">Đang tải...</td>
+                  </tr>
+                ) : grouped.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-5 text-muted">
+                      Chưa có kế hoạch xưởng nào. Cần phân bổ từ Kế hoạch Công ty trước.
+                    </td>
+                  </tr>
+                ) : (
+                  grouped.map((group) => {
+                    const isExpanded = expandedGroups.has(group.companyPlanId)
+                    return (
+                      <>
+                        {/* Group header row */}
+                        <tr
+                          key={`g-${group.companyPlanId}`}
+                          style={{ cursor: 'pointer', backgroundColor: 'var(--bs-light, #f8f9fa)' }}
+                          onClick={() => toggleGroup(group.companyPlanId)}
+                        >
+                          <td className="text-center text-muted">
+                            {isExpanded
+                              ? <ChevronDown className="h-4 w-4 mx-auto" />
+                              : <ChevronRight className="h-4 w-4 mx-auto" />}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-mono">
-                            {fp.plannedQuantity.toLocaleString()}
+                          <td>
+                            <div className="fw-medium">{group.style?.code} — {group.style?.name}</div>
+                            <small className="text-muted fw-normal">
+                              PO: {group.po?.poNumber} · Xưởng: {group.factory?.name}
+                            </small>
                           </td>
-                          <td className="px-4 py-2.5 text-muted-foreground text-sm">
-                            {Math.round((fp.plannedQuantity / group.plannedQty) * 100)}% chỉ tiêu xưởng
+                          <td className="text-end font-monospace fw-medium">
+                            {group.plannedQty.toLocaleString()}
                           </td>
-                          <td className="px-4 py-2.5 text-center text-muted-foreground">
-                            {new Date(fp.expectedFinishDate).toLocaleDateString('vi-VN')}
+                          <td>
+                            <AllocBar allocated={group.totalAllocated} total={group.plannedQty} />
                           </td>
-                          {canWrite && (
-                            <td className="px-4 py-2.5 text-center">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setEditTarget(fp) }}
-                                className="rounded p-1.5 text-muted-foreground hover:bg-accent"
-                                title="Sửa số lượng / deadline"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </button>
-                            </td>
-                          )}
+                          <td className="text-center text-muted">—</td>
+                          {canWrite && <td />}
                         </tr>
-                      ))}
-                    </>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+
+                        {/* Child rows: từng chuyền */}
+                        {isExpanded && group.plans.map((fp) => (
+                          <tr key={fp.id}>
+                            <td />
+                            <td className="ps-4 py-2">
+                              <span className="d-inline-flex align-items-center gap-1 text-muted">
+                                <GitBranch size={14} className="text-primary" />
+                                Chuyền {fp.line?.lineNumber} — {fp.line?.name}
+                              </span>
+                            </td>
+                            <td className="text-end font-monospace py-2">
+                              {fp.plannedQuantity.toLocaleString()}
+                            </td>
+                            <td className="text-muted small py-2">
+                              {Math.round((fp.plannedQuantity / group.plannedQty) * 100)}% chỉ tiêu xưởng
+                            </td>
+                            <td className="text-center text-muted py-2">
+                              {new Date(fp.expectedFinishDate).toLocaleDateString('vi-VN')}
+                            </td>
+                            {canWrite && (
+                              <td className="text-center py-2">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); setEditTarget(fp) }}
+                                  className="btn btn-sm btn-outline-secondary"
+                                  title="Sửa số lượng / deadline"
+                                >
+                                  <i className="fe fe-edit-2"></i>
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -252,6 +253,6 @@ export default function FactoryPlanPage() {
           loading={updatePlan.isPending}
         />
       )}
-    </div>
+    </PageWrapper>
   )
 }

@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Plus, RefreshCw, Pencil, Trash2, RotateCcw, Search } from 'lucide-react'
 import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee, useRestoreEmployee } from './employee.hooks'
 import { EmployeeFormDialog } from './EmployeeFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
+import { PageWrapper } from '@/components/layout/PageWrapper'
 import { useFactories } from '@/features/factory/factory.hooks'
 import { POSITION_LABELS, type Employee, type CreateEmployeeDto } from './employee.api'
 import { useAuthStore } from '@/stores/auth.store'
@@ -45,126 +45,138 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Danh sách Nhân viên</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{data?.total ?? 0} nhân viên</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => refetch()} className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-accent">
-            <RefreshCw className="h-4 w-4" />
+    <PageWrapper
+      title="Danh sách Nhân viên"
+      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Nhân viên' }]}
+      actions={
+        <div className="d-flex gap-2">
+          <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
+            <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
           {canWrite && (
             <button
               onClick={() => { setEditTarget(null); setFormOpen(true) }}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="btn btn-primary btn-icon text-white"
             >
-              <Plus className="h-4 w-4" />
-              Thêm nhân viên
+              <span><i className="fe fe-plus"></i></span> Thêm nhân viên
             </button>
           )}
         </div>
-      </div>
-
-      <div className="flex gap-3 flex-wrap">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            className="rounded-lg border pl-9 pr-3 py-2 text-sm w-56"
-            placeholder="Tìm mã, tên, SĐT..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-          />
+      }
+    >
+      {/* Filters */}
+      <div className="row mb-3">
+        <div className="col-auto">
+          <div className="input-group">
+            <input
+              className="form-control"
+              placeholder="Tìm mã, tên, SĐT..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            />
+            <span className="input-group-text"><i className="fe fe-search"></i></span>
+          </div>
         </div>
-        <select
-          className="rounded-lg border px-3 py-2 text-sm bg-background"
-          value={filterFactoryId ?? ''}
-          onChange={(e) => { setFilterFactoryId(e.target.value ? +e.target.value : undefined); setPage(1) }}
-        >
-          <option value="">Tất cả xưởng</option>
-          {factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-        </select>
-        <select
-          className="rounded-lg border px-3 py-2 text-sm bg-background"
-          value={filterPosition}
-          onChange={(e) => { setFilterPosition(e.target.value); setPage(1) }}
-        >
-          <option value="">Tất cả chức vụ</option>
-          {Object.entries(POSITION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        <div className="col-auto">
+          <select
+            className="form-select"
+            value={filterFactoryId ?? ''}
+            onChange={(e) => { setFilterFactoryId(e.target.value ? +e.target.value : undefined); setPage(1) }}
+          >
+            <option value="">Tất cả xưởng</option>
+            {factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+        <div className="col-auto">
+          <select
+            className="form-select"
+            value={filterPosition}
+            onChange={(e) => { setFilterPosition(e.target.value); setPage(1) }}
+          >
+            <option value="">Tất cả chức vụ</option>
+            {Object.entries(POSITION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+        <div className="col-auto d-flex align-items-center">
+          <small className="text-muted">{data?.total ?? 0} nhân viên</small>
+        </div>
       </div>
 
-      <div className="rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">Mã NV</th>
-              <th className="px-4 py-3 text-left font-medium">Họ tên</th>
-              <th className="px-4 py-3 text-left font-medium">Chức vụ</th>
-              <th className="px-4 py-3 text-left font-medium">Xưởng / Chuyền</th>
-              <th className="px-4 py-3 text-left font-medium">Liên hệ</th>
-              <th className="px-4 py-3 text-left font-medium">Tài khoản</th>
-              {canWrite && <th className="px-4 py-3 text-right font-medium">Thao tác</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Đang tải...</td></tr>
-            ) : data?.data.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Không có dữ liệu</td></tr>
-            ) : (
-              data?.data.map((emp) => (
-                <tr key={emp.id} className={`border-t hover:bg-muted/20 ${emp.deletedAt ? 'opacity-60' : ''}`}>
-                  <td className="px-4 py-3 font-mono text-xs font-medium">{emp.code}</td>
-                  <td className="px-4 py-3 font-medium">{emp.fullName}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">
-                      {POSITION_LABELS[emp.position] ?? emp.position}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {emp.factory?.name && <div>{emp.factory.name}</div>}
-                    {emp.line && <div className="text-muted-foreground">Chuyền {emp.line.lineNumber} — {emp.line.name}</div>}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {emp.phone && <div>{emp.phone}</div>}
-                    {emp.email && <div>{emp.email}</div>}
-                  </td>
-                  <td className="px-4 py-3">
-                    {emp.user ? (
-                      <span className={`text-xs rounded-full px-2 py-0.5 ${emp.user.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {emp.user.username}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Chưa có</span>
-                    )}
-                  </td>
-                  {canWrite && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        {emp.deletedAt ? (
-                          <button onClick={() => restoreEmployee.mutate(emp.id)} className="p-1.5 rounded hover:bg-accent text-muted-foreground">
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                        ) : (
-                          <>
-                            <button onClick={() => { setEditTarget(emp); setFormOpen(true) }} className="p-1.5 rounded hover:bg-accent text-muted-foreground">
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button onClick={() => setDeleteTarget(emp)} className="p-1.5 rounded hover:bg-accent text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  )}
+      {/* Table */}
+      <div className="card">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-vcenter mb-0">
+              <thead className="thead-light">
+                <tr>
+                  <th>Mã NV</th>
+                  <th>Họ tên</th>
+                  <th>Chức vụ</th>
+                  <th>Xưởng / Chuyền</th>
+                  <th>Liên hệ</th>
+                  <th>Tài khoản</th>
+                  {canWrite && <th className="text-end">Thao tác</th>}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={7} className="text-center py-4 text-muted">Đang tải...</td></tr>
+                ) : data?.data.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-4 text-muted">Không có dữ liệu</td></tr>
+                ) : (
+                  data?.data.map((emp) => (
+                    <tr key={emp.id} className={emp.deletedAt ? 'opacity-50' : ''}>
+                      <td><code>{emp.code}</code></td>
+                      <td className="fw-medium">{emp.fullName}</td>
+                      <td>
+                        <span className="badge bg-secondary-transparent">
+                          {POSITION_LABELS[emp.position] ?? emp.position}
+                        </span>
+                      </td>
+                      <td className="text-muted small">
+                        {emp.factory?.name && <div>{emp.factory.name}</div>}
+                        {emp.line && <div>Chuyền {emp.line.lineNumber} — {emp.line.name}</div>}
+                      </td>
+                      <td className="text-muted small">
+                        {emp.phone && <div>{emp.phone}</div>}
+                        {emp.email && <div>{emp.email}</div>}
+                      </td>
+                      <td>
+                        {emp.user ? (
+                          <span className={`badge ${emp.user.isActive ? 'bg-success-transparent text-success' : 'bg-danger-transparent text-danger'}`}>
+                            {emp.user.username}
+                          </span>
+                        ) : (
+                          <span className="text-muted small">Chưa có</span>
+                        )}
+                      </td>
+                      {canWrite && (
+                        <td className="text-end">
+                          <div className="d-flex justify-content-end gap-1">
+                            {emp.deletedAt ? (
+                              <button onClick={() => restoreEmployee.mutate(emp.id)} className="btn btn-sm btn-outline-secondary">
+                                <i className="fe fe-rotate-ccw"></i>
+                              </button>
+                            ) : (
+                              <>
+                                <button onClick={() => { setEditTarget(emp); setFormOpen(true) }} className="btn btn-sm btn-outline-secondary">
+                                  <i className="fe fe-edit-2"></i>
+                                </button>
+                                <button onClick={() => setDeleteTarget(emp)} className="btn btn-sm btn-outline-danger">
+                                  <i className="fe fe-trash-2"></i>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {data && <Pagination page={page} totalPages={data.totalPages} total={data.total} pageSize={data.pageSize} onPageChange={setPage} />}
@@ -187,6 +199,6 @@ export default function EmployeesPage() {
         onConfirm={() => deleteTarget && deleteEmployee.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </PageWrapper>
   )
 }

@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Plus, RefreshCw, Pencil, Trash2, RotateCcw, Search } from 'lucide-react'
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, useRestoreCustomer } from './customer.hooks'
 import { CustomerFormDialog } from './CustomerFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
+import { PageWrapper } from '@/components/layout/PageWrapper'
 import type { Customer, CreateCustomerDto } from './customer.api'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -32,69 +32,95 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Danh sách Khách hàng</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{data?.total ?? 0} khách hàng</p>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => refetch()} className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm hover:bg-accent"><RefreshCw className="h-4 w-4" /></button>
+    <PageWrapper
+      title="Danh sách Khách hàng"
+      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Khách hàng' }]}
+      actions={
+        <div className="d-flex gap-2">
+          <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
+            <span><i className="fe fe-rotate-ccw"></i></span>
+          </button>
           {canWrite && (
-            <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-              <Plus className="h-4 w-4" /> Thêm khách hàng
+            <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="btn btn-primary btn-icon text-white">
+              <span><i className="fe fe-plus"></i></span> Thêm khách hàng
             </button>
           )}
         </div>
+      }
+    >
+      {/* Filters */}
+      <div className="row mb-3">
+        <div className="col-auto">
+          <div className="input-group">
+            <input
+              className="form-control"
+              placeholder="Tìm mã, tên, quốc gia..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            />
+            <span className="input-group-text"><i className="fe fe-search"></i></span>
+          </div>
+        </div>
+        <div className="col-auto d-flex align-items-center">
+          <small className="text-muted">{data?.total ?? 0} khách hàng</small>
+        </div>
       </div>
 
-      <div className="relative w-64">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input className="rounded-lg border pl-9 pr-3 py-2 text-sm w-full" placeholder="Tìm mã, tên, quốc gia..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} />
-      </div>
-
-      <div className="rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">Mã</th>
-              <th className="px-4 py-3 text-left font-medium">Tên khách hàng</th>
-              <th className="px-4 py-3 text-left font-medium">Quốc gia</th>
-              <th className="px-4 py-3 text-left font-medium">Thông tin liên hệ</th>
-              {canWrite && <th className="px-4 py-3 text-right font-medium">Thao tác</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Đang tải...</td></tr>
-            ) : data?.data.length === 0 ? (
-              <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Không có dữ liệu</td></tr>
-            ) : (
-              data?.data.map((c) => (
-                <tr key={c.id} className={`border-t hover:bg-muted/20 ${c.deletedAt ? 'opacity-60' : ''}`}>
-                  <td className="px-4 py-3 font-mono text-xs font-medium">{c.code}</td>
-                  <td className="px-4 py-3 font-medium">{c.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{c.country || '—'}</td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px] truncate">{c.contactInfo || '—'}</td>
-                  {canWrite && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        {c.deletedAt ? (
-                          <button onClick={() => restoreCustomer.mutate(c.id)} className="p-1.5 rounded hover:bg-accent text-muted-foreground"><RotateCcw className="h-4 w-4" /></button>
-                        ) : (
-                          <>
-                            <button onClick={() => { setEditTarget(c); setFormOpen(true) }} className="p-1.5 rounded hover:bg-accent text-muted-foreground"><Pencil className="h-4 w-4" /></button>
-                            <button onClick={() => setDeleteTarget(c)} className="p-1.5 rounded hover:bg-accent text-destructive"><Trash2 className="h-4 w-4" /></button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  )}
+      {/* Table */}
+      <div className="card">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-vcenter mb-0">
+              <thead className="thead-light">
+                <tr>
+                  <th>Mã</th>
+                  <th>Tên khách hàng</th>
+                  <th>Quốc gia</th>
+                  <th>Thông tin liên hệ</th>
+                  {canWrite && <th className="text-end">Thao tác</th>}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={5} className="text-center py-4 text-muted">Đang tải...</td></tr>
+                ) : data?.data.length === 0 ? (
+                  <tr><td colSpan={5} className="text-center py-4 text-muted">Không có dữ liệu</td></tr>
+                ) : (
+                  data?.data.map((c) => (
+                    <tr key={c.id} className={c.deletedAt ? 'opacity-50' : ''}>
+                      <td><code>{c.code}</code></td>
+                      <td className="fw-medium">{c.name}</td>
+                      <td className="text-muted">{c.country || '—'}</td>
+                      <td className="text-muted" style={{ maxWidth: 200 }}>
+                        <span className="text-truncate d-inline-block" style={{ maxWidth: 200 }}>{c.contactInfo || '—'}</span>
+                      </td>
+                      {canWrite && (
+                        <td className="text-end">
+                          <div className="d-flex justify-content-end gap-1">
+                            {c.deletedAt ? (
+                              <button onClick={() => restoreCustomer.mutate(c.id)} className="btn btn-sm btn-outline-secondary">
+                                <i className="fe fe-rotate-ccw"></i>
+                              </button>
+                            ) : (
+                              <>
+                                <button onClick={() => { setEditTarget(c); setFormOpen(true) }} className="btn btn-sm btn-outline-secondary">
+                                  <i className="fe fe-edit-2"></i>
+                                </button>
+                                <button onClick={() => setDeleteTarget(c)} className="btn btn-sm btn-outline-danger">
+                                  <i className="fe fe-trash-2"></i>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {data && <Pagination page={page} totalPages={data.totalPages} total={data.total} pageSize={data.pageSize} onPageChange={setPage} />}
@@ -111,6 +137,6 @@ export default function CustomersPage() {
         onConfirm={() => deleteTarget && deleteCustomer.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })}
         onClose={() => setDeleteTarget(null)}
       />
-    </div>
+    </PageWrapper>
   )
 }

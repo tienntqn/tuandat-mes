@@ -1,11 +1,6 @@
 import { useState } from 'react'
 import { useOutputHistory } from './output.hooks'
 import { STAGE_LABELS, STAGE_COLORS, type DailyOutput } from './output.api'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
 
 function groupByDate(outputs: DailyOutput[]): Record<string, DailyOutput[]> {
   return outputs.reduce(
@@ -40,30 +35,36 @@ export default function OutputHistoryPage() {
   const dates = Object.keys(grouped).sort((a, b) => b.localeCompare(a))
 
   return (
-    <div className="min-h-screen bg-muted/30 pb-8">
-      <div className="sticky top-0 z-10 bg-background border-b px-4 py-3">
-        <div className="flex items-center justify-between max-w-lg mx-auto">
-          <h1 className="text-lg font-bold">Lịch sử sản lượng</h1>
-          <Select value={String(days)} onValueChange={(v) => setDays(parseInt(v))}>
-            <SelectTrigger className="w-36 h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 ngày qua</SelectItem>
-              <SelectItem value="14">14 ngày qua</SelectItem>
-              <SelectItem value="30">30 ngày qua</SelectItem>
-            </SelectContent>
-          </Select>
+    <div style={{ minHeight: '100vh', backgroundColor: 'var(--bs-light, #f8f9fa)', paddingBottom: 32 }}>
+      {/* Header */}
+      <div className="sticky-top bg-white border-bottom px-3 py-3">
+        <div className="d-flex align-items-center justify-content-between" style={{ maxWidth: 512, margin: '0 auto' }}>
+          <h5 className="fw-bold mb-0">Lịch sử sản lượng</h5>
+          <select
+            className="form-select form-select-sm"
+            style={{ width: 140 }}
+            value={String(days)}
+            onChange={(e) => setDays(parseInt(e.target.value))}
+          >
+            <option value="7">7 ngày qua</option>
+            <option value="14">14 ngày qua</option>
+            <option value="30">30 ngày qua</option>
+          </select>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 pt-4 space-y-4">
+      <div style={{ maxWidth: 512, margin: '0 auto', padding: '16px 16px 0' }}>
         {isLoading ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-28 w-full rounded-lg" />
+            <div key={i} className="card mb-3">
+              <div className="card-body placeholder-glow">
+                <span className="placeholder col-12 mb-2" style={{ height: 20 }}></span>
+                <span className="placeholder col-8" style={{ height: 20 }}></span>
+              </div>
+            </div>
           ))
         ) : dates.length === 0 ? (
-          <div className="py-16 text-center text-muted-foreground">
+          <div className="py-5 text-center text-muted">
             <p>Chưa có dữ liệu sản lượng</p>
           </div>
         ) : (
@@ -71,34 +72,32 @@ export default function OutputHistoryPage() {
             const dayOutputs = grouped[date]
             const total = dayOutputs.reduce((s, o) => s + o.quantity, 0)
             return (
-              <Card key={date}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                      {formatDateHeader(date)}
-                    </CardTitle>
-                    <span className="text-sm font-bold">{total.toLocaleString('vi-VN')} sản phẩm</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
+              <div key={date} className="card mb-3">
+                <div className="card-header d-flex align-items-center justify-content-between py-2">
+                  <span className="small fw-semibold text-muted text-uppercase">
+                    {formatDateHeader(date)}
+                  </span>
+                  <span className="fw-bold small">{total.toLocaleString('vi-VN')} sản phẩm</span>
+                </div>
+                <div className="card-body pt-2 pb-2">
                   {dayOutputs.map((o) => (
                     <div
                       key={o.id}
-                      className="flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2"
+                      className="d-flex align-items-center justify-content-between rounded bg-light px-3 py-2 mb-2"
                     >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <Badge variant="outline" className={cn('text-xs shrink-0', STAGE_COLORS[o.stage])}>
+                      <div className="d-flex align-items-center gap-2 flex-grow-1 overflow-hidden">
+                        <span className={`badge flex-shrink-0 ${STAGE_COLORS[o.stage]}`}>
                           {STAGE_LABELS[o.stage]}
-                        </Badge>
-                        <span className="text-sm font-medium truncate">
+                        </span>
+                        <span className="fw-medium text-truncate small">
                           {o.style?.code ?? `Style #${o.styleId}`}
                         </span>
                       </div>
-                      <span className="text-base font-bold ml-2">{o.quantity.toLocaleString('vi-VN')}</span>
+                      <span className="fw-bold ms-2">{o.quantity.toLocaleString('vi-VN')}</span>
                     </div>
                   ))}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )
           })
         )}
