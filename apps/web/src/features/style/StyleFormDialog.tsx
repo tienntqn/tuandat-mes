@@ -13,15 +13,15 @@ interface Props {
 
 export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: Props) {
   const { data: customers = [] } = useCustomersActive()
-  const [form, setForm] = useState<CreateStyleDto>({ code: '', name: '', customerId: 0, season: '', image: '', description: '', sam: undefined })
+  const [form, setForm] = useState<CreateStyleDto>({ name: '', customerId: 0, season: '', image: '', description: '', sam: undefined })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (open) {
       setForm(
         style
-          ? { code: style.code, name: style.name, customerId: style.customerId, season: style.season ?? '', image: style.image ?? '', description: style.description ?? '', sam: style.sam ? +style.sam : undefined }
-          : { code: '', name: '', customerId: customers[0]?.id ?? 0, season: '', image: '', description: '', sam: undefined },
+          ? { name: style.name, customerId: style.customerId, season: style.season ?? '', image: style.image ?? '', description: style.description ?? '', sam: style.sam ? +style.sam : undefined }
+          : { name: '', customerId: customers[0]?.id ?? 0, season: '', image: '', description: '', sam: undefined },
       )
       setErrors({})
     }
@@ -29,7 +29,6 @@ export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: P
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.code.trim()) e.code = 'Mã hàng không được để trống'
     if (!form.name.trim()) e.name = 'Tên không được để trống'
     if (!form.customerId) e.customerId = 'Vui lòng chọn khách hàng'
     setErrors(e)
@@ -51,11 +50,14 @@ export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: P
           <button onClick={onClose}><X className="h-5 w-5 text-muted-foreground" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <Field label="Mã hàng *" error={errors.code}>
-            <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.code} disabled={!!style} onChange={(e) => setForm({ ...form, code: e.target.value })} />
-          </Field>
+          {style && (
+            <div className="rounded-lg bg-muted px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Mã hàng: </span>
+              <code className="font-semibold">{style.code}</code>
+            </div>
+          )}
           <Field label="Tên mã hàng *" error={errors.name}>
-            <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.name} autoFocus onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
           <Field label="Khách hàng *" error={errors.customerId}>
             <select className="w-full rounded-lg border px-3 py-2 text-sm bg-background" value={form.customerId} onChange={(e) => setForm({ ...form, customerId: +e.target.value })}>

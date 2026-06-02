@@ -78,8 +78,20 @@ export class EmployeeService {
     return emp
   }
 
+  private async generateEmployeeCode(): Promise<string> {
+    let seq = (await this.prisma.employee.count()) + 1
+    let code = `NV${String(seq).padStart(4, '0')}`
+    while (await this.prisma.employee.findFirst({ where: { code } })) {
+      seq++
+      code = `NV${String(seq).padStart(4, '0')}`
+    }
+    return code
+  }
+
   async create(dto: CreateEmployeeDto) {
-    const existing = await this.prisma.employee.findFirst({ where: { code: dto.code } })
+    const code = dto.code ?? (await this.generateEmployeeCode())
+
+    const existing = await this.prisma.employee.findFirst({ where: { code } })
     if (existing) throw new ConflictException('Mã nhân viên đã tồn tại')
 
     await this.validatePositionScope(dto.position, dto.factoryId, dto.lineId)
@@ -97,6 +109,7 @@ export class EmployeeService {
     return this.prisma.employee.create({
       data: {
         ...dto,
+        code,
         factoryId: resolvedFactoryId ?? null,
         lineId: dto.lineId ?? null,
       },

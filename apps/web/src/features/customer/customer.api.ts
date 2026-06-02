@@ -18,7 +18,7 @@ export interface CustomerListResult {
   totalPages: number
 }
 
-export type CreateCustomerDto = { code: string; name: string; country?: string; contactInfo?: string }
+export type CreateCustomerDto = { code?: string; name: string; country?: string; contactInfo?: string }
 export type UpdateCustomerDto = Partial<CreateCustomerDto>
 
 export const customerApi = {

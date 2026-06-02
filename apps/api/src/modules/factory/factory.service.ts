@@ -52,15 +52,27 @@ export class FactoryService {
     return factory
   }
 
+  private async generateFactoryCode(): Promise<string> {
+    let seq = (await this.prisma.factory.count()) + 1
+    let code = `XW${String(seq).padStart(3, '0')}`
+    while (await this.prisma.factory.findFirst({ where: { code } })) {
+      seq++
+      code = `XW${String(seq).padStart(3, '0')}`
+    }
+    return code
+  }
+
   async create(dto: CreateFactoryDto) {
-    const existing = await this.prisma.factory.findFirst({ where: { code: dto.code } })
+    const code = dto.code ?? (await this.generateFactoryCode())
+
+    const existing = await this.prisma.factory.findFirst({ where: { code } })
     if (existing) throw new ConflictException('Mã xưởng đã tồn tại')
 
     const company = await this.prisma.company.findFirst({ where: { deletedAt: null } })
     if (!company) throw new NotFoundException('Chưa có thông tin công ty')
 
     return this.prisma.factory.create({
-      data: { ...dto, companyId: company.id },
+      data: { ...dto, code, companyId: company.id },
     })
   }
 

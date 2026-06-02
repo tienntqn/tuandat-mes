@@ -54,8 +54,20 @@ export class StyleService {
     return style
   }
 
+  private async generateStyleCode(): Promise<string> {
+    let seq = (await this.prisma.style.count()) + 1
+    let code = `MH${String(seq).padStart(4, '0')}`
+    while (await this.prisma.style.findFirst({ where: { code } })) {
+      seq++
+      code = `MH${String(seq).padStart(4, '0')}`
+    }
+    return code
+  }
+
   async create(dto: CreateStyleDto) {
-    const existing = await this.prisma.style.findFirst({ where: { code: dto.code } })
+    const code = dto.code ?? (await this.generateStyleCode())
+
+    const existing = await this.prisma.style.findFirst({ where: { code } })
     if (existing) throw new ConflictException('Mã hàng đã tồn tại')
 
     const customer = await this.prisma.customer.findFirst({
@@ -63,7 +75,7 @@ export class StyleService {
     })
     if (!customer) throw new NotFoundException('Khách hàng không tồn tại')
 
-    return this.prisma.style.create({ data: dto })
+    return this.prisma.style.create({ data: { ...dto, code } })
   }
 
   async update(id: number, dto: UpdateStyleDto) {

@@ -28,7 +28,7 @@ export interface FactoryParams {
   pageSize?: number
 }
 
-export type CreateFactoryDto = Pick<Factory, 'code' | 'name'> & Partial<Pick<Factory, 'address' | 'phone' | 'status'>>
+export type CreateFactoryDto = Partial<Pick<Factory, 'code'>> & Pick<Factory, 'name'> & Partial<Pick<Factory, 'address' | 'phone' | 'status'>>
 export type UpdateFactoryDto = Partial<CreateFactoryDto>
 
 export const factoryApi = {

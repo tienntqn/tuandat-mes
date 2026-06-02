@@ -10,7 +10,7 @@ interface Props {
   isPending?: boolean
 }
 
-const EMPTY: CreateFactoryDto = { code: '', name: '', address: '', phone: '', status: 'ACTIVE' }
+const EMPTY: CreateFactoryDto = { name: '', address: '', phone: '', status: 'ACTIVE' }
 
 export function FactoryFormDialog({ open, factory, onClose, onSubmit, isPending }: Props) {
   const [form, setForm] = useState<CreateFactoryDto>(EMPTY)
@@ -18,15 +18,16 @@ export function FactoryFormDialog({ open, factory, onClose, onSubmit, isPending 
 
   useEffect(() => {
     if (open) {
-      setForm(factory ? { code: factory.code, name: factory.name, address: factory.address ?? '', phone: factory.phone ?? '', status: factory.status } : EMPTY)
+      setForm(factory
+        ? { name: factory.name, address: factory.address ?? '', phone: factory.phone ?? '', status: factory.status }
+        : EMPTY)
       setErrors({})
     }
   }, [open, factory])
 
   const validate = () => {
     const e: typeof errors = {}
-    if (!form.code.trim()) e.code = 'Mã xưởng không được để trống'
-    if (!form.name.trim()) e.name = 'Tên xưởng không được để trống'
+    if (!form.name?.trim()) e.name = 'Tên xưởng không được để trống'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -48,21 +49,20 @@ export function FactoryFormDialog({ open, factory, onClose, onSubmit, isPending 
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <FormField label="Mã xưởng *" error={errors.code}>
-            <input
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              placeholder="VD: XUONG-1"
-              value={form.code}
-              onChange={(e) => setForm({ ...form, code: e.target.value })}
-              disabled={!!factory}
-            />
-          </FormField>
+          {/* Hiển thị mã khi edit */}
+          {factory && (
+            <div className="rounded-lg bg-muted px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Mã xưởng: </span>
+              <code className="font-semibold">{factory.code}</code>
+            </div>
+          )}
           <FormField label="Tên xưởng *" error={errors.name}>
             <input
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              placeholder="VD: Xưởng 1 - Hà Nội"
-              value={form.name}
+              placeholder="VD: Xưởng May 1 - Hà Nội"
+              value={form.name ?? ''}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
+              autoFocus
             />
           </FormField>
           <FormField label="Số điện thoại">

@@ -14,7 +14,6 @@ interface Props {
 }
 
 const EMPTY: CreateMachineDto = {
-  code: '',
   name: '',
   type: 'SEWING',
   factoryId: 0,
@@ -35,7 +34,6 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
       setForm(
         machine
           ? {
-              code: machine.code,
               name: machine.name,
               type: machine.type,
               factoryId: machine.factoryId,
@@ -56,7 +54,6 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
 
   const validate = () => {
     const e: typeof errors = {}
-    if (!form.code.trim()) e.code = 'Mã máy không được để trống'
     if (!form.name.trim()) e.name = 'Tên máy không được để trống'
     if (!form.factoryId) e.factoryId = 'Vui lòng chọn xưởng'
     setErrors(e)
@@ -89,14 +86,21 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {machine && (
+            <div className="rounded-lg bg-muted px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Mã máy: </span>
+              <code className="font-semibold">{machine.code}</code>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Mã máy *" error={errors.code}>
+            <FormField label="Tên máy *" error={errors.name}>
               <input
                 className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="VD: MAY-001"
-                value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value })}
-                disabled={!!machine}
+                placeholder="VD: Máy may Juki"
+                value={form.name}
+                autoFocus
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
             </FormField>
             <FormField label="Loại máy *">
@@ -111,15 +115,6 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
               </select>
             </FormField>
           </div>
-
-          <FormField label="Tên máy *" error={errors.name}>
-            <input
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              placeholder="VD: Máy may công nghiệp Juki"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-            />
-          </FormField>
 
           <FormField label="Xưởng *" error={errors.factoryId as string}>
             <select
@@ -162,50 +157,24 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Hãng sản xuất">
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="VD: Juki"
-                value={form.brand ?? ''}
-                onChange={(e) => setForm({ ...form, brand: e.target.value })}
-              />
+              <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="VD: Juki" value={form.brand ?? ''} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
             </FormField>
             <FormField label="Model">
-              <input
-                className="w-full rounded-lg border px-3 py-2 text-sm"
-                placeholder="VD: DDL-8700"
-                value={form.model ?? ''}
-                onChange={(e) => setForm({ ...form, model: e.target.value })}
-              />
+              <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="VD: DDL-8700" value={form.model ?? ''} onChange={(e) => setForm({ ...form, model: e.target.value })} />
             </FormField>
           </div>
 
           <FormField label="Ngày mua">
-            <input
-              type="date"
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              value={form.purchaseDate ?? ''}
-              onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })}
-            />
+            <input type="date" className="w-full rounded-lg border px-3 py-2 text-sm" value={form.purchaseDate ?? ''} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} />
           </FormField>
 
           <FormField label="Ghi chú">
-            <textarea
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              rows={2}
-              value={form.note ?? ''}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-            />
+            <textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} value={form.note ?? ''} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </FormField>
 
           <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-accent">
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
+            <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-accent">Hủy</button>
+            <button type="submit" disabled={isPending} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               {isPending ? 'Đang lưu...' : machine ? 'Cập nhật' : 'Tạo mới'}
             </button>
           </div>

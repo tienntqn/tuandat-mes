@@ -11,19 +11,20 @@ interface Props {
 }
 
 export function CustomerFormDialog({ open, customer, onClose, onSubmit, isPending }: Props) {
-  const [form, setForm] = useState<CreateCustomerDto>({ code: '', name: '', country: '', contactInfo: '' })
+  const [form, setForm] = useState<CreateCustomerDto>({ name: '', country: '', contactInfo: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (open) {
-      setForm(customer ? { code: customer.code, name: customer.name, country: customer.country ?? '', contactInfo: customer.contactInfo ?? '' } : { code: '', name: '', country: '', contactInfo: '' })
+      setForm(customer
+        ? { name: customer.name, country: customer.country ?? '', contactInfo: customer.contactInfo ?? '' }
+        : { name: '', country: '', contactInfo: '' })
       setErrors({})
     }
   }, [open, customer])
 
   const validate = () => {
     const e: Record<string, string> = {}
-    if (!form.code.trim()) e.code = 'Mã khách hàng không được để trống'
     if (!form.name.trim()) e.name = 'Tên khách hàng không được để trống'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -44,11 +45,14 @@ export function CustomerFormDialog({ open, customer, onClose, onSubmit, isPendin
           <button onClick={onClose}><X className="h-5 w-5 text-muted-foreground" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <Field label="Mã khách hàng *" error={errors.code}>
-            <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.code} disabled={!!customer} onChange={(e) => setForm({ ...form, code: e.target.value })} />
-          </Field>
+          {customer && (
+            <div className="rounded-lg bg-muted px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Mã: </span>
+              <code className="font-semibold">{customer.code}</code>
+            </div>
+          )}
           <Field label="Tên khách hàng *" error={errors.name}>
-            <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.name} autoFocus onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </Field>
           <Field label="Quốc gia">
             <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.country ?? ''} onChange={(e) => setForm({ ...form, country: e.target.value })} />

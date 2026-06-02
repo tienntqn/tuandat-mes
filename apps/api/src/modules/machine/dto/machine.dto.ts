@@ -3,11 +3,11 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { MachineType, MachineStatus } from '@prisma/client'
 
 export class CreateMachineDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Mã máy — tự sinh nếu bỏ trống' })
   @IsString()
-  @IsNotEmpty({ message: 'Mã máy không được để trống' })
+  @IsOptional()
   @MaxLength(30)
-  code: string
+  code?: string
 
   @ApiProperty()
   @IsString()

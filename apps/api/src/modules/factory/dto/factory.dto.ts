@@ -3,11 +3,11 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { FactoryStatus } from '@prisma/client'
 
 export class CreateFactoryDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Mã xưởng — tự sinh nếu bỏ trống' })
   @IsString()
-  @IsNotEmpty({ message: 'Mã xưởng không được để trống' })
+  @IsOptional()
   @MaxLength(20)
-  code: string
+  code?: string
 
   @ApiProperty()
   @IsString()

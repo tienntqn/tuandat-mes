@@ -83,8 +83,20 @@ export class MachineService {
     return machine
   }
 
+  private async generateMachineCode(): Promise<string> {
+    let seq = (await this.prisma.machine.count()) + 1
+    let code = `MAY${String(seq).padStart(4, '0')}`
+    while (await this.prisma.machine.findFirst({ where: { code } })) {
+      seq++
+      code = `MAY${String(seq).padStart(4, '0')}`
+    }
+    return code
+  }
+
   async create(dto: CreateMachineDto) {
-    const existing = await this.prisma.machine.findFirst({ where: { code: dto.code } })
+    const code = dto.code ?? (await this.generateMachineCode())
+
+    const existing = await this.prisma.machine.findFirst({ where: { code } })
     if (existing) throw new ConflictException('Mã máy đã tồn tại')
 
     // Kiểm tra factory tồn tại
@@ -101,7 +113,7 @@ export class MachineService {
 
     return this.prisma.machine.create({
       data: {
-        code: dto.code,
+        code,
         name: dto.name,
         type: dto.type,
         factoryId: dto.factoryId,

@@ -39,10 +39,22 @@ export class CustomerService {
     return customer
   }
 
+  private async generateCustomerCode(): Promise<string> {
+    let seq = (await this.prisma.customer.count()) + 1
+    let code = `KH${String(seq).padStart(3, '0')}`
+    while (await this.prisma.customer.findFirst({ where: { code } })) {
+      seq++
+      code = `KH${String(seq).padStart(3, '0')}`
+    }
+    return code
+  }
+
   async create(dto: CreateCustomerDto) {
-    const existing = await this.prisma.customer.findFirst({ where: { code: dto.code } })
+    const code = dto.code ?? (await this.generateCustomerCode())
+
+    const existing = await this.prisma.customer.findFirst({ where: { code } })
     if (existing) throw new ConflictException('Mã khách hàng đã tồn tại')
-    return this.prisma.customer.create({ data: dto })
+    return this.prisma.customer.create({ data: { ...dto, code } })
   }
 
   async update(id: number, dto: UpdateCustomerDto) {

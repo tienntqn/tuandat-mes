@@ -27,7 +27,7 @@ export interface LineParams {
   pageSize?: number
 }
 
-export type CreateLineDto = { factoryId: number; lineNumber: number; name: string; capacity?: number; status?: string }
+export type CreateLineDto = { factoryId: number; lineNumber?: number; name: string; capacity?: number; status?: string }
 export type UpdateLineDto = Partial<CreateLineDto>
 
 export const lineApi = {

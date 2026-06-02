@@ -23,7 +23,7 @@ export interface StyleListResult {
 }
 
 export type CreateStyleDto = {
-  code: string
+  code?: string
   name: string
   customerId: number
   season?: string

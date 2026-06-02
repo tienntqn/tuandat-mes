@@ -18,7 +18,6 @@ export function LineFormDialog({ open, line, defaultFactoryId, onClose, onSubmit
 
   const [form, setForm] = useState<CreateLineDto>({
     factoryId: defaultFactoryId ?? 0,
-    lineNumber: 1,
     name: '',
     capacity: 0,
     status: 'ACTIVE',
@@ -29,8 +28,8 @@ export function LineFormDialog({ open, line, defaultFactoryId, onClose, onSubmit
     if (open) {
       setForm(
         line
-          ? { factoryId: line.factoryId, lineNumber: line.lineNumber, name: line.name, capacity: line.capacity, status: line.status }
-          : { factoryId: defaultFactoryId ?? factories[0]?.id ?? 0, lineNumber: 1, name: '', capacity: 0, status: 'ACTIVE' },
+          ? { factoryId: line.factoryId, name: line.name, capacity: line.capacity, status: line.status }
+          : { factoryId: defaultFactoryId ?? factories[0]?.id ?? 0, name: '', capacity: 0, status: 'ACTIVE' },
       )
       setErrors({})
     }
@@ -39,7 +38,6 @@ export function LineFormDialog({ open, line, defaultFactoryId, onClose, onSubmit
   const validate = () => {
     const e: Record<string, string> = {}
     if (!form.factoryId) e.factoryId = 'Vui lòng chọn xưởng'
-    if (!form.lineNumber || form.lineNumber < 1) e.lineNumber = 'Số chuyền phải lớn hơn 0'
     if (!form.name.trim()) e.name = 'Tên chuyền không được để trống'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -60,6 +58,12 @@ export function LineFormDialog({ open, line, defaultFactoryId, onClose, onSubmit
           <button onClick={onClose}><X className="h-5 w-5 text-muted-foreground" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          {line && (
+            <div className="rounded-lg bg-muted px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Số chuyền: </span>
+              <code className="font-semibold">Chuyền {line.lineNumber}</code>
+            </div>
+          )}
           <FormField label="Xưởng *" error={errors.factoryId}>
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm bg-background"
@@ -73,20 +77,12 @@ export function LineFormDialog({ open, line, defaultFactoryId, onClose, onSubmit
               ))}
             </select>
           </FormField>
-          <FormField label="Số chuyền *" error={errors.lineNumber}>
-            <input
-              type="number"
-              min={1}
-              className="w-full rounded-lg border px-3 py-2 text-sm"
-              value={form.lineNumber}
-              onChange={(e) => setForm({ ...form, lineNumber: +e.target.value })}
-            />
-          </FormField>
           <FormField label="Tên chuyền *" error={errors.name}>
             <input
               className="w-full rounded-lg border px-3 py-2 text-sm"
               placeholder="VD: Chuyền May 1"
               value={form.name}
+              autoFocus
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </FormField>

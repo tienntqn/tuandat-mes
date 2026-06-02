@@ -3,10 +3,10 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 
 export class CreateStyleDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Mã hàng — tự sinh nếu bỏ trống' })
   @IsString()
-  @IsNotEmpty({ message: 'Mã hàng không được để trống' })
-  code: string
+  @IsOptional()
+  code?: string
 
   @ApiProperty()
   @IsString()

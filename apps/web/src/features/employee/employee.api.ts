@@ -44,7 +44,7 @@ export interface EmployeeParams {
 }
 
 export type CreateEmployeeDto = {
-  code: string
+  code?: string
   fullName: string
   phone?: string
   email?: string

@@ -2,11 +2,11 @@ import { IsString, IsNotEmpty, IsOptional, MaxLength } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 
 export class CreateCustomerDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Mã khách hàng — tự sinh nếu bỏ trống' })
   @IsString()
-  @IsNotEmpty({ message: 'Mã khách hàng không được để trống' })
+  @IsOptional()
   @MaxLength(20)
-  code: string
+  code?: string
 
   @ApiProperty()
   @IsString()

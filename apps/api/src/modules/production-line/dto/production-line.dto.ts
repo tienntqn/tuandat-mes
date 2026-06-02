@@ -9,11 +9,12 @@ export class CreateProductionLineDto {
   @Type(() => Number)
   factoryId: number
 
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Số thứ tự chuyền — tự sinh nếu bỏ trống' })
   @IsInt({ message: 'Số chuyền phải là số nguyên' })
   @Min(1)
+  @IsOptional()
   @Type(() => Number)
-  lineNumber: number
+  lineNumber?: number
 
   @ApiProperty()
   @IsString()

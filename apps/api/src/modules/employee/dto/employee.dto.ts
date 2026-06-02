@@ -19,10 +19,10 @@ const FACTORY_POSITIONS = [
 const LINE_POSITIONS = [EmployeePosition.LINE_LEADER, EmployeePosition.LINE_DEPUTY]
 
 export class CreateEmployeeDto {
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Mã nhân viên — tự sinh nếu bỏ trống' })
   @IsString()
-  @IsNotEmpty({ message: 'Mã nhân viên không được để trống' })
-  code: string
+  @IsOptional()
+  code?: string
 
   @ApiProperty()
   @IsString()
@@ -43,14 +43,12 @@ export class CreateEmployeeDto {
   @IsEnum(EmployeePosition, { message: 'Chức vụ không hợp lệ' })
   position: EmployeePosition
 
-  // Bắt buộc khi position là FACTORY_DIRECTOR, FACTORY_PLANNER, MECHANIC
   @ValidateIf((o) => FACTORY_POSITIONS.includes(o.position) && !LINE_POSITIONS.includes(o.position))
   @IsInt({ message: 'factoryId bắt buộc cho chức vụ này' })
   @IsOptional()
   @Type(() => Number)
   factoryId?: number
 
-  // Bắt buộc khi position là LINE_LEADER, LINE_DEPUTY
   @ValidateIf((o) => LINE_POSITIONS.includes(o.position))
   @IsInt({ message: 'lineId bắt buộc cho Tổ trưởng/Tổ phó' })
   @IsOptional()

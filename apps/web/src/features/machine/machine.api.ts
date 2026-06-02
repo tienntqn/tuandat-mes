@@ -95,7 +95,7 @@ export interface TransferListResult {
 }
 
 export type CreateMachineDto = {
-  code: string
+  code?: string
   name: string
   type: MachineType
   factoryId: number

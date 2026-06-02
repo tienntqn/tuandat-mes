@@ -63,18 +63,28 @@ export class ProductionLineService {
     return line
   }
 
+  private async generateLineNumber(factoryId: number): Promise<number> {
+    const last = await this.prisma.productionLine.findFirst({
+      where: { factoryId },
+      orderBy: { lineNumber: 'desc' },
+    })
+    return (last?.lineNumber ?? 0) + 1
+  }
+
   async create(dto: CreateProductionLineDto) {
     const factory = await this.prisma.factory.findFirst({
       where: { id: dto.factoryId, deletedAt: null },
     })
     if (!factory) throw new NotFoundException('Xưởng không tồn tại')
 
+    const lineNumber = dto.lineNumber ?? (await this.generateLineNumber(dto.factoryId))
+
     const existing = await this.prisma.productionLine.findFirst({
-      where: { factoryId: dto.factoryId, lineNumber: dto.lineNumber, deletedAt: null },
+      where: { factoryId: dto.factoryId, lineNumber, deletedAt: null },
     })
     if (existing) throw new ConflictException('Số chuyền đã tồn tại trong xưởng này')
 
-    return this.prisma.productionLine.create({ data: dto })
+    return this.prisma.productionLine.create({ data: { ...dto, lineNumber } })
   }
 
   async update(id: number, dto: UpdateProductionLineDto) {
