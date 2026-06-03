@@ -7,6 +7,7 @@ interface NavSubItem {
   path?: string
   icon?: string
   roles?: string[]
+  end?: boolean
   children?: NavSubItem[]
 }
 
@@ -52,16 +53,16 @@ const NAV_SECTIONS: NavSection[] = [
         ],
       },
       {
-        label: 'Dữ liệu nền',
-        path: '/master',
-        icon: 'fe fe-database',
-        roles: ['ADMIN', 'COMPANY_PLANNER', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER'],
-      },
-      {
-        label: 'Máy móc',
+        label: 'Quản lý máy móc',
         path: '/machines',
-        icon: 'fe fe-tool',
+        icon: 'fe fe-hard-drive',
         roles: ['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC'],
+        children: [
+          { label: 'Danh sách máy', path: '/machines', end: true },
+          { label: 'Bảo dưỡng', path: '/machines/maintenance' },
+          { label: 'Điều chuyển', path: '/machines/transfers' },
+          { label: 'Lịch sử di chuyển', path: '/machines/history' },
+        ],
       },
     ],
   },
@@ -120,14 +121,32 @@ const NAV_SECTIONS: NavSection[] = [
   {
     category: 'HỆ THỐNG',
     items: [
-      { label: 'Quản lý User', path: '/users', icon: 'fe fe-users', roles: ['ADMIN'] },
-      { label: 'Cài đặt', path: '/settings', icon: 'fe fe-settings', roles: ['ADMIN'] },
+      {
+        label: 'Quản lý User',
+        path: '/users',
+        icon: 'fe fe-users',
+        roles: ['ADMIN', 'BOD'],
+        children: [
+          { label: 'Tài khoản', path: '/users', end: true, roles: ['ADMIN'] },
+          { label: 'Nhân viên', path: '/employees', roles: ['ADMIN', 'BOD'] },
+        ],
+      },
+      {
+        label: 'Cài đặt',
+        path: '/settings',
+        icon: 'fe fe-settings',
+        roles: ['ADMIN'],
+        children: [
+          { label: 'Cài đặt chung', path: '/settings', end: true },
+          { label: 'Thông tin công ty', path: '/settings/company' },
+        ],
+      },
     ],
   },
 ]
 
 // Thu thập mọi path của các node lá nằm dưới một node (để xác định active/expand)
-function collectLeafPaths(node: NavSubItem): string[] {
+function collectLeafPaths(node: NavSubItem | NavItem): string[] {
   if (node.children) return node.children.flatMap(collectLeafPaths)
   return node.path ? [node.path] : []
 }
@@ -140,74 +159,67 @@ function isNodeVisible(node: NavSubItem, isAdmin: () => boolean, hasRole: (r: st
   return isAdmin() || node.roles.some((r) => hasRole(r))
 }
 
-// Render đệ quy: hỗ trợ menu nhiều cấp (Phân hệ Kế hoạch → nhóm → mục con)
-function NavNode({
-  node,
-  depth,
-  icon,
-  onClose,
-  isVisible,
-}: {
-  node: NavSubItem
-  depth: number
-  icon?: string
-  onClose: () => void
-  isVisible: (n: NavSubItem) => boolean
-}) {
+/**
+ * Danh sách menu con dạng accordion: tại mỗi cấp chỉ MỘT mục được mở.
+ * Khi click vào một nhóm, các nhóm cùng cấp đang mở sẽ tự thu gọn.
+ */
+function NavTree({ nodes, onClose, isVisible }: { nodes: NavSubItem[]; onClose: () => void; isVisible: (n: NavSubItem) => boolean }) {
   const location = useLocation()
-  const isActive = collectLeafPaths(node).some((p) => location.pathname.startsWith(p))
-  const [open, setOpen] = useState(isActive)
+  const visible = nodes.filter(isVisible)
+  const activeLabel =
+    visible.find((n) => n.children && collectLeafPaths(n).some((p) => location.pathname.startsWith(p)))?.label ?? null
+  const [open, setOpen] = useState<string | null>(activeLabel)
 
+  // Mở nhánh chứa route đang active (khi điều hướng bằng URL)
   useEffect(() => {
-    if (isActive) setOpen(true)
-  }, [isActive])
-
-  // Node lá → link
-  if (!node.children) {
-    return (
-      <li>
-        <NavLink
-          to={node.path!}
-          className={({ isActive: a }) => `slide-item${a ? ' active' : ''}`}
-          onClick={onClose}
-          style={{ whiteSpace: 'nowrap' }}
-        >
-          {node.label}
-        </NavLink>
-      </li>
-    )
-  }
-
-  // Node nhóm → lọc con theo RBAC; ẩn nhóm nếu không có con nào hiển thị
-  const visibleChildren = node.children.filter(isVisible)
-  if (visibleChildren.length === 0) return null
+    if (activeLabel) setOpen(activeLabel)
+  }, [activeLabel])
 
   return (
-    <li className={`slide has-sub${open || isActive ? ' is-expanded' : ''}`}>
-      <a
-        className={`side-menu__item${isActive ? ' active' : ''}`}
-        href="javascript:void(0);"
-        onClick={() => setOpen((v) => !v)}
-        style={depth > 0 ? { whiteSpace: 'nowrap' } : undefined}
-      >
-        {depth === 0 && icon && <i className={`side-menu__icon ${icon}`}></i>}
-        <span className="side-menu__label">{node.label}</span>
-        <i
-          className="angle fe fe-chevron-right"
-          style={{ transition: 'transform 0.2s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
-        ></i>
-      </a>
-      <ul className="slide-menu" style={{ display: open ? 'block' : 'none' }}>
-        {visibleChildren.map((child) => (
-          <NavNode key={child.label} node={child} depth={depth + 1} onClose={onClose} isVisible={isVisible} />
-        ))}
-      </ul>
-    </li>
-  )
-}
+    <>
+      {visible.map((node) => {
+        // Node lá → link
+        if (!node.children) {
+          return (
+            <li key={node.label}>
+              <NavLink
+                to={node.path!}
+                end={node.end}
+                className={({ isActive }) => `slide-item${isActive ? ' active' : ''}`}
+                onClick={onClose}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {node.label}
+              </NavLink>
+            </li>
+          )
+        }
 
-function SubMenuNav({ item, onClose, isVisible }: { item: NavItem; onClose: () => void; isVisible: (n: NavSubItem) => boolean }) {
-  return <NavNode node={item} depth={0} icon={item.icon} onClose={onClose} isVisible={isVisible} />
+        // Node nhóm → accordion
+        const isOpen = open === node.label
+        const isActive = collectLeafPaths(node).some((p) => location.pathname.startsWith(p))
+        return (
+          <li key={node.label} className={`slide has-sub${isOpen ? ' is-expanded' : ''}`}>
+            <a
+              className={`side-menu__item${isActive ? ' active' : ''}`}
+              href="javascript:void(0);"
+              onClick={() => setOpen(isOpen ? null : node.label)}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              <span className="side-menu__label">{node.label}</span>
+              <i
+                className="angle fe fe-chevron-right"
+                style={{ transition: 'transform 0.2s', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
+              ></i>
+            </a>
+            <ul className="slide-menu" style={{ display: isOpen ? 'block' : 'none' }}>
+              <NavTree nodes={node.children} onClose={onClose} isVisible={isVisible} />
+            </ul>
+          </li>
+        )
+      })}
+    </>
+  )
 }
 
 export function Sidebar() {
@@ -238,6 +250,15 @@ export function Sidebar() {
 
   const isVisible = (node: NavSubItem) => isNodeVisible(node, isAdmin, hasRole)
 
+  // Accordion cấp 1 (các menu cha): chỉ một menu cha mở tại một thời điểm.
+  const topItems = NAV_SECTIONS.flatMap((s) => s.items).filter((i) => i.children)
+  const activeTop =
+    topItems.find((i) => collectLeafPaths(i).some((p) => location.pathname.startsWith(p)))?.label ?? null
+  const [openTop, setOpenTop] = useState<string | null>(activeTop)
+  useEffect(() => {
+    if (activeTop) setOpenTop(activeTop)
+  }, [activeTop])
+
   const renderItems = () => {
     const elements: React.ReactNode[] = []
 
@@ -252,13 +273,36 @@ export function Sidebar() {
       )
 
       visibleItems.forEach((item) => {
+        // Menu cha có con → accordion cấp 1
         if (item.children) {
+          const visibleChildren = item.children.filter(isVisible)
+          if (visibleChildren.length === 0) return
+
+          const open = openTop === item.label
+          const active = collectLeafPaths(item).some((p) => location.pathname.startsWith(p))
           elements.push(
-            <SubMenuNav key={item.path} item={item} onClose={closeMobileSidebar} isVisible={isVisible} />,
+            <li key={item.path} className={`slide has-sub${open ? ' is-expanded' : ''}`}>
+              <a
+                className={`side-menu__item${active ? ' active' : ''}`}
+                href="javascript:void(0);"
+                onClick={() => setOpenTop(open ? null : item.label)}
+              >
+                <i className={`side-menu__icon ${item.icon}`}></i>
+                <span className="side-menu__label">{item.label}</span>
+                <i
+                  className="angle fe fe-chevron-right"
+                  style={{ transition: 'transform 0.2s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
+                ></i>
+              </a>
+              <ul className="slide-menu" style={{ display: open ? 'block' : 'none' }}>
+                <NavTree nodes={item.children} onClose={closeMobileSidebar} isVisible={isVisible} />
+              </ul>
+            </li>,
           )
           return
         }
 
+        // Menu lá cấp 1 → link trực tiếp
         const active = isItemActive(item)
         elements.push(
           <li key={item.path} className={`slide${active ? ' active is-expanded' : ''}`}>

@@ -8,7 +8,8 @@ import { ProtectedRoute } from './ProtectedRoute'
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const UsersPage = lazy(() => import('@/features/users/UsersPage'))
 const FactoryManagementLayout = lazy(() => import('@/features/factory-management/FactoryManagementLayout'))
-const MasterLayout = lazy(() => import('@/features/master/MasterLayout'))
+const CompanyPage = lazy(() => import('@/features/company/CompanyPage'))
+const EmployeesPage = lazy(() => import('@/features/employee/EmployeesPage'))
 const MachineLayout = lazy(() => import('@/features/machine/MachineLayout'))
 const PlanLayout = lazy(() => import('@/features/plan/PlanLayout'))
 const PlanningLayout = lazy(() => import('@/features/planning/PlanningLayout'))
@@ -48,7 +49,14 @@ export default function AppLayout() {
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/master/*" element={<MasterLayout />} />
+                <Route
+                  path="/employees"
+                  element={
+                    <ProtectedRoute roles={['ADMIN', 'BOD']}>
+                      <EmployeesPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/machines/*"
                   element={
@@ -94,6 +102,14 @@ export default function AppLayout() {
                   element={
                     <ProtectedRoute roles={['ADMIN']}>
                       <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/settings/company"
+                  element={
+                    <ProtectedRoute roles={['ADMIN']}>
+                      <CompanyPage />
                     </ProtectedRoute>
                   }
                 />
