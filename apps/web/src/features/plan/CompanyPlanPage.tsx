@@ -64,7 +64,7 @@ function ExpandedFactoryPlans({ plan }: { plan: CompanyPlan }) {
           <td colSpan={2} className="py-2 ps-4 small">
             <span className="d-inline-flex align-items-center gap-1 text-muted">
               <GitBranch size={12} />
-              Chuyền {fp.line?.lineNumber} — {fp.line?.name}
+              {plan.factory?.name} — {fp.line?.name}
             </span>
           </td>
           <td className="py-2 text-end font-monospace small">{fp.plannedQuantity.toLocaleString()}</td>

@@ -19,6 +19,6 @@ export interface ProgressRow {
 }
 
 export const progressApi = {
-  byStage: (stage: string) =>
-    api.get<ProgressRow[]>('/report/progress', { params: { stage } }).then((r) => r.data),
+  byStage: (params: { stage: string; factoryId?: number; styleId?: number }) =>
+    api.get<ProgressRow[]>('/report/progress', { params }).then((r) => r.data),
 }

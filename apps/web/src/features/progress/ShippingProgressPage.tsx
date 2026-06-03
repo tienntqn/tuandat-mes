@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useDeliveryPlans } from '@/features/delivery-plan/delivery.hooks'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { StatusBadge } from '@/components/shared/StatusBadge'
+import { useStylesActive } from '@/features/style/style.hooks'
 
 const formatDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—')
 
@@ -17,8 +19,11 @@ function Bar({ pct }: { pct: number }) {
 }
 
 export default function ShippingProgressPage() {
+  const [styleId, setStyleId] = useState<number | undefined>()
+  const { data: styles = [] } = useStylesActive()
   const { data, isLoading, refetch } = useDeliveryPlans({ pageSize: 200 })
-  const plans = data?.data ?? []
+  const allPlans = data?.data ?? []
+  const plans = styleId ? allPlans.filter((p) => p.po?.style?.id === styleId) : allPlans
 
   const totalPlanned = plans.reduce((s, p) => s + p.plannedQuantity, 0)
   const totalActual = plans.reduce((s, p) => s + (p.actualQuantity ?? 0), 0)
@@ -38,6 +43,20 @@ export default function ShippingProgressPage() {
         <div className="col-auto"><div className="card"><div className="card-body py-2 px-3"><small className="text-muted d-block">SL kế hoạch giao</small><span className="fw-bold">{totalPlanned.toLocaleString()}</span></div></div></div>
         <div className="col-auto"><div className="card"><div className="card-body py-2 px-3"><small className="text-muted d-block">SL thực giao</small><span className="fw-bold">{totalActual.toLocaleString()}</span></div></div></div>
         <div className="col-auto"><div className="card"><div className="card-body py-2 px-3"><small className="text-muted d-block">Tiến độ giao hàng</small><span className="fw-bold">{overallPct}%</span></div></div></div>
+      </div>
+
+      {/* Bộ lọc */}
+      <div className="row mb-3">
+        <div className="col-auto">
+          <select
+            className="form-select form-select-sm"
+            value={styleId ?? ''}
+            onChange={(e) => setStyleId(e.target.value ? Number(e.target.value) : undefined)}
+          >
+            <option value="">Tất cả mã hàng</option>
+            {styles.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="card">
