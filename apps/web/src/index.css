@@ -53,6 +53,21 @@
   margin-bottom: 1rem !important;
 }
 
+/* Cho phép menu sidebar trái cuộn khi có nhiều mục (template thiếu JS scrollbar) */
+.app-sidebar {
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden !important;
+}
+.app-sidebar .side-header {
+  flex: 0 0 auto;
+}
+.app-sidebar .main-sidemenu {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 /* Breadcrumb: ép màu chữ dễ đọc (tránh chữ trắng gần trùng nền) */
 .page-header .breadcrumb .breadcrumb-item {
   color: #6e7687 !important;
