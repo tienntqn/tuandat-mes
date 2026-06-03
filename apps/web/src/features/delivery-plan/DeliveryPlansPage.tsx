@@ -5,8 +5,13 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PageWrapper } from '@/components/layout/PageWrapper'
-import { DELIVERY_STATUS_LABELS, type DeliveryPlan, type CreateDeliveryPlanDto } from './delivery.api'
+import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
+import { cellStr, cellNum, cellDate } from '@/lib/excel'
+import { usePurchaseOrders } from '@/features/purchase-order/po.hooks'
+import { deliveryApi, DELIVERY_STATUS_LABELS, type DeliveryPlan, type CreateDeliveryPlanDto } from './delivery.api'
 import { useAuthStore } from '@/stores/auth.store'
+
+const DELIVERY_STATUS_BY_LABEL = Object.fromEntries(Object.entries(DELIVERY_STATUS_LABELS).map(([k, v]) => [v, k]))
 
 export default function DeliveryPlansPage() {
   const [page, setPage] = useState(1)
@@ -18,6 +23,8 @@ export default function DeliveryPlansPage() {
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('COMPANY_PLANNER') || hasRole('FACTORY_PLANNER')
 
+  const { data: poData } = usePurchaseOrders({ pageSize: 200 })
+  const pos = poData?.data ?? []
   const { data, isLoading, refetch } = useDeliveryPlans({ status: filterStatus || undefined, page, pageSize: 20 })
   const createPlan = useCreateDeliveryPlan()
   const updatePlan = useUpdateDeliveryPlan()
@@ -34,6 +41,49 @@ export default function DeliveryPlansPage() {
 
   const formatDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—')
 
+  const exportRows = () => (data?.data ?? []).map((p) => ({
+    'PO': p.po?.poNumber ?? '',
+    'Mã hàng': p.po?.style?.code ?? '',
+    'Ngày giao dự kiến': p.plannedDate ? p.plannedDate.split('T')[0] : '',
+    'SL dự kiến': p.plannedQuantity,
+    'Ngày giao thực tế': p.actualDate ? p.actualDate.split('T')[0] : '',
+    'SL thực giao': p.actualQuantity ?? '',
+    'Trạng thái': DELIVERY_STATUS_LABELS[p.status] ?? p.status,
+    'Ghi chú': p.note ?? '',
+  }))
+
+  const templateRows = [
+    { 'PO': 'PO-2026-001', 'Ngày giao dự kiến': '2026-08-01', 'SL dự kiến': 500, 'Ngày giao thực tế': '', 'SL thực giao': '', 'Trạng thái': 'Chờ giao', 'Ghi chú': '' },
+  ]
+
+  const handleImportRows = async (rows: Record<string, string | number>[]) => {
+    const poMap = new Map(pos.map((p) => [p.poNumber.trim().toLowerCase(), p.id]))
+    let success = 0
+    let error = 0
+    for (const row of rows) {
+      const poId = poMap.get(cellStr(row['PO']).toLowerCase())
+      const plannedDate = cellDate(row['Ngày giao dự kiến'])
+      const plannedQuantity = cellNum(row['SL dự kiến'])
+      if (!poId || !plannedDate || plannedQuantity < 1) { error++; continue }
+      const actualDate = cellDate(row['Ngày giao thực tế'])
+      const actualQtyRaw = cellStr(row['SL thực giao'])
+      try {
+        await deliveryApi.create({
+          poId,
+          plannedDate,
+          plannedQuantity,
+          actualDate: actualDate || undefined,
+          actualQuantity: actualQtyRaw ? cellNum(actualQtyRaw) : undefined,
+          status: DELIVERY_STATUS_BY_LABEL[cellStr(row['Trạng thái'])] ?? undefined,
+          note: cellStr(row['Ghi chú']) || undefined,
+        })
+        success++
+      } catch { error++ }
+    }
+    refetch()
+    return { success, error }
+  }
+
   return (
     <PageWrapper
       title="Kế hoạch giao hàng"
@@ -43,6 +93,15 @@ export default function DeliveryPlansPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ExcelToolbar
+            sheetName="Kế hoạch giao hàng"
+            fileBase="ke-hoach-giao-hang"
+            exportRows={exportRows}
+            templateRows={templateRows}
+            onImport={canWrite ? handleImportRows : undefined}
+            canWrite={canWrite}
+            entityLabel="kế hoạch"
+          />
           {canWrite && (
             <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="btn btn-primary btn-icon text-white">
               <span><i className="fe fe-plus"></i></span> Tạo kế hoạch

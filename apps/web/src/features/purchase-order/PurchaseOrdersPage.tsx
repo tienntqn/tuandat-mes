@@ -5,8 +5,14 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PageWrapper } from '@/components/layout/PageWrapper'
-import { PO_STATUS_LABELS, type PurchaseOrder, type CreatePODto } from './po.api'
+import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
+import { cellStr, cellNum, cellDate } from '@/lib/excel'
+import { useStylesActive } from '@/features/style/style.hooks'
+import { useOrdersActive } from '@/features/order/order.hooks'
+import { poApi, PO_STATUS_LABELS, type PurchaseOrder, type CreatePODto } from './po.api'
 import { useAuthStore } from '@/stores/auth.store'
+
+const PO_STATUS_BY_LABEL = Object.fromEntries(Object.entries(PO_STATUS_LABELS).map(([k, v]) => [v, k]))
 
 export default function PurchaseOrdersPage() {
   const [page, setPage] = useState(1)
@@ -19,6 +25,8 @@ export default function PurchaseOrdersPage() {
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('COMPANY_PLANNER')
 
+  const { data: styles = [] } = useStylesActive()
+  const { data: orders = [] } = useOrdersActive()
   const { data, isLoading, refetch } = usePurchaseOrders({ search: search || undefined, status: filterStatus || undefined, page, pageSize: 20 })
   const createPO = useCreatePO()
   const updatePO = useUpdatePO()
@@ -35,6 +43,48 @@ export default function PurchaseOrdersPage() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('vi-VN')
 
+  const exportRows = () => (data?.data ?? []).map((po) => ({
+    'Số PO': po.poNumber,
+    'Mã hàng': po.style?.code ?? '',
+    'Khách hàng': po.style?.customer?.name ?? '',
+    'Số lượng': po.totalQuantity,
+    'Ngày giao': po.deliveryDate ? po.deliveryDate.split('T')[0] : '',
+    'Trạng thái': PO_STATUS_LABELS[po.status] ?? po.status,
+    'Đơn hàng': po.order?.orderNumber ?? '',
+  }))
+
+  const templateRows = [
+    { 'Số PO': 'PO-2026-001', 'Mã hàng': 'MH001', 'Số lượng': 1000, 'Ngày giao': '2026-08-01', 'Trạng thái': 'Mở', 'Đơn hàng': '' },
+  ]
+
+  const handleImportRows = async (rows: Record<string, string | number>[]) => {
+    const styleMap = new Map(styles.map((s) => [s.code.trim().toLowerCase(), s.id]))
+    const orderMap = new Map(orders.map((o) => [o.orderNumber.trim().toLowerCase(), o.id]))
+    let success = 0
+    let error = 0
+    for (const row of rows) {
+      const poNumber = cellStr(row['Số PO'])
+      const styleId = styleMap.get(cellStr(row['Mã hàng']).toLowerCase())
+      const totalQuantity = cellNum(row['Số lượng'])
+      const deliveryDate = cellDate(row['Ngày giao'])
+      if (!poNumber || !styleId || totalQuantity < 1 || !deliveryDate) { error++; continue }
+      const orderId = orderMap.get(cellStr(row['Đơn hàng']).toLowerCase()) ?? null
+      try {
+        await poApi.create({
+          poNumber,
+          styleId,
+          totalQuantity,
+          deliveryDate,
+          status: PO_STATUS_BY_LABEL[cellStr(row['Trạng thái'])] ?? undefined,
+          orderId,
+        })
+        success++
+      } catch { error++ }
+    }
+    refetch()
+    return { success, error }
+  }
+
   return (
     <PageWrapper
       title="Purchase Orders"
@@ -44,6 +94,15 @@ export default function PurchaseOrdersPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ExcelToolbar
+            sheetName="Purchase Orders"
+            fileBase="purchase-orders"
+            exportRows={exportRows}
+            templateRows={templateRows}
+            onImport={canWrite ? handleImportRows : undefined}
+            canWrite={canWrite}
+            entityLabel="PO"
+          />
           {canWrite && (
             <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="btn btn-primary btn-icon text-white">
               <span><i className="fe fe-plus"></i></span> Tạo PO
