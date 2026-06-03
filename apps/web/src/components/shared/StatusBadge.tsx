@@ -7,6 +7,9 @@ const STATUS_MAP: Record<string, { label: string; class: string }> = {
   IN_PROGRESS: { label: 'Đang sản xuất', class: 'bg-yellow-100 text-yellow-700' },
   COMPLETED: { label: 'Hoàn thành', class: 'bg-green-100 text-green-700' },
   CANCELLED: { label: 'Hủy', class: 'bg-red-100 text-red-700' },
+  PENDING: { label: 'Chờ giao', class: 'bg-gray-100 text-gray-600' },
+  PARTIAL: { label: 'Giao một phần', class: 'bg-yellow-100 text-yellow-700' },
+  DELIVERED: { label: 'Đã giao', class: 'bg-green-100 text-green-700' },
 }
 
 export function StatusBadge({ status }: { status: string }) {
