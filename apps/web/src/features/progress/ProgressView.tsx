@@ -59,7 +59,7 @@ export function ProgressView({ stage, title }: Props) {
       <div className="row mb-3">
         <div className="col-auto">
           <select
-            className="form-select form-select-sm"
+            className="form-select"
             value={factoryId ?? ''}
             onChange={(e) => setFactoryId(e.target.value ? Number(e.target.value) : undefined)}
           >
@@ -69,7 +69,7 @@ export function ProgressView({ stage, title }: Props) {
         </div>
         <div className="col-auto">
           <select
-            className="form-select form-select-sm"
+            className="form-select"
             value={styleId ?? ''}
             onChange={(e) => setStyleId(e.target.value ? Number(e.target.value) : undefined)}
           >

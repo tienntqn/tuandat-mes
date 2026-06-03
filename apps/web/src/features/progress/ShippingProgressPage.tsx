@@ -49,7 +49,7 @@ export default function ShippingProgressPage() {
       <div className="row mb-3">
         <div className="col-auto">
           <select
-            className="form-select form-select-sm"
+            className="form-select"
             value={styleId ?? ''}
             onChange={(e) => setStyleId(e.target.value ? Number(e.target.value) : undefined)}
           >
