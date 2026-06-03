@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AlertTriangle, Clock, Wifi, WifiOff, RefreshCw, ChevronLeft, ChevronRight, CheckCircle2, History } from 'lucide-react'
+import { AlertTriangle, Clock, Wifi, WifiOff, RefreshCw, CheckCircle2, History } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useMyStyles, useTodayOutput, useUpsertOutput, useOfflineSync } from './output.hooks'
 import { STAGE_LABELS, STAGE_COLORS, type ProductionStage, type DailyOutput, type StyleForLine } from './output.api'
@@ -8,198 +8,128 @@ import { getOfflineQueueCount } from './lib/offline-store'
 const STAGES: ProductionStage[] = ['CUTTING', 'SEWING', 'QC', 'PACKING']
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('vi-VN', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-  })
+  return new Date(dateStr).toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'numeric', day: 'numeric' })
 }
 
-// Kiểm tra mã hàng đã nhập đủ 4 công đoạn chưa (ít nhất 1 công đoạn có qty > 0)
-function isStyleFullyEntered(styleId: number, outputs: DailyOutput[]) {
-  const entered = outputs.filter((o) => o.styleId === styleId && o.quantity > 0)
-  return entered.length === STAGES.length
-}
+const key = (stage: string, colorId: number, sizeId: number) => `${stage}:${colorId}:${sizeId}`
 
-function isStylePartiallyEntered(styleId: number, outputs: DailyOutput[]) {
-  return outputs.some((o) => o.styleId === styleId && o.quantity > 0)
-}
-
-type StageValues = Record<ProductionStage, string>
-
-const emptyStages = (): StageValues => ({ CUTTING: '', SEWING: '', QC: '', PACKING: '' })
-
-interface StyleCardProps {
+interface MatrixCardProps {
   style: StyleForLine
-  index: number
-  total: number
   outputs: DailyOutput[]
-  factoryPlans: { companyPlan?: { styleId: number; plannedQuantity?: number } }[]
   isPastCutoff: boolean
   isSaving: boolean
-  onSave: (styleId: number, values: StageValues) => Promise<void>
-  onPrev: () => void
-  onNext: () => void
+  onSaveStage: (styleId: number, stage: ProductionStage, cells: { colorId: number; sizeId: number; quantity: number }[]) => Promise<void>
 }
 
-function StyleCard({ style, index, total, outputs, isPastCutoff, isSaving, onSave, onPrev, onNext }: StyleCardProps) {
-  const [values, setValues] = useState<StageValues>(() => {
-    const init = emptyStages()
-    STAGES.forEach((stage) => {
-      const existing = outputs.find((o) => o.styleId === style.id && o.stage === stage)
-      if (existing) init[stage] = String(existing.quantity)
-    })
-    return init
-  })
+function StyleMatrixCard({ style, outputs, isPastCutoff, isSaving, onSaveStage }: MatrixCardProps) {
+  const colors = (style.styleColors ?? []).map((sc) => sc.color).filter((c): c is NonNullable<typeof c> => !!c)
+  const sizes = (style.styleSizes ?? [])
+    .map((ss) => ss.size)
+    .filter((s): s is NonNullable<typeof s> => !!s)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+  const hasMatrix = colors.length > 0 && sizes.length > 0
+
+  const [activeStage, setActiveStage] = useState<ProductionStage>('SEWING')
+  const [values, setValues] = useState<Record<string, string>>({})
   const [saved, setSaved] = useState(false)
 
-  // Khi style thay đổi, reset values từ outputs hiện tại
+  // Prefill từ sản lượng hôm nay (theo style, mọi công đoạn)
   useEffect(() => {
-    const init = emptyStages()
-    STAGES.forEach((stage) => {
-      const existing = outputs.find((o) => o.styleId === style.id && o.stage === stage)
-      if (existing) init[stage] = String(existing.quantity)
-    })
-    setValues(init)
+    const v: Record<string, string> = {}
+    for (const o of outputs) {
+      if (o.styleId === style.id && o.colorId != null && o.sizeId != null) {
+        v[key(o.stage, o.colorId, o.sizeId)] = String(o.quantity)
+      }
+    }
+    setValues(v)
     setSaved(false)
   }, [style.id, outputs])
 
+  if (!hasMatrix) {
+    return (
+      <div className="card mb-3"><div className="card-body text-center text-muted py-4">
+        <p className="mb-0">Mã hàng <b>{style.code}</b> chưa khai báo Màu/Size.</p>
+        <small>Báo phòng kế hoạch thêm Màu/Size cho mã hàng này.</small>
+      </div></div>
+    )
+  }
+
+  const cellVal = (c: number, s: number) => values[key(activeStage, c, s)] ?? ''
+  const setCell = (c: number, s: number, val: string) => setValues((v) => ({ ...v, [key(activeStage, c, s)]: val }))
+  const colTotal = (sizeId: number) => colors.reduce((sum, c) => sum + (parseInt(cellVal(c.id, sizeId) || '0') || 0), 0)
+  const rowTotal = (colorId: number) => sizes.reduce((sum, s) => sum + (parseInt(cellVal(colorId, s.id) || '0') || 0), 0)
+  const stageTotal = colors.reduce((sum, c) => sum + rowTotal(c.id), 0)
+
   const handleSave = async () => {
-    await onSave(style.id, values)
+    const cells = colors
+      .flatMap((c) => sizes.map((s) => ({ colorId: c.id, sizeId: s.id, raw: values[key(activeStage, c.id, s.id)] })))
+      .filter((x) => x.raw !== undefined && x.raw !== '')
+      .map((x) => ({ colorId: x.colorId, sizeId: x.sizeId, quantity: parseInt(x.raw || '0') || 0 }))
+    await onSaveStage(style.id, activeStage, cells)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const handleSaveAndNext = async () => {
-    await onSave(style.id, values)
-    onNext()
-  }
-
-  const anyFilled = STAGES.some((s) => values[s] !== '' && parseInt(values[s] || '0') >= 0)
-  const isFullyEntered = isStyleFullyEntered(style.id, outputs)
-
   return (
     <div className="card mb-3">
-      {/* Style header */}
-      <div className="card-header py-2 d-flex align-items-center justify-content-between">
-        <div className="d-flex align-items-center gap-2">
-          <span className="badge bg-primary-transparent text-primary fw-semibold">{index + 1}/{total}</span>
-          {isFullyEntered && <CheckCircle2 size={16} className="text-success" />}
-          <div>
-            <div className="fw-bold small">{style.code}</div>
-            <div className="text-muted" style={{ fontSize: '0.75rem' }}>{style.name}</div>
-          </div>
-        </div>
-        <div className="d-flex gap-1">
-          <button
-            className="btn btn-sm btn-outline-secondary px-2"
-            onClick={onPrev}
-            disabled={index === 0}
-            title="Mã hàng trước"
-          >
-            <ChevronLeft size={16} />
-          </button>
-          <button
-            className="btn btn-sm btn-outline-secondary px-2"
-            onClick={onNext}
-            disabled={index === total - 1}
-            title="Mã hàng tiếp theo"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
+      <div className="card-header py-2">
+        <div className="fw-bold small">{style.code}</div>
+        <div className="text-muted" style={{ fontSize: '0.75rem' }}>{style.name}</div>
       </div>
-
       <div className="card-body py-3">
-        {/* 4 công đoạn nhập sản lượng */}
-        <div className="d-flex flex-column gap-2 mb-3">
-          {STAGES.map((stage) => {
-            const existing = outputs.find((o) => o.styleId === style.id && o.stage === stage)
-            return (
-              <div key={stage} className="d-flex align-items-center gap-2">
-                <span className={`badge flex-shrink-0 ${STAGE_COLORS[stage]}`} style={{ width: 76, textAlign: 'center' }}>
-                  {STAGE_LABELS[stage]}
-                </span>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  min={0}
-                  disabled={isPastCutoff}
-                  placeholder={existing ? String(existing.quantity) : '0'}
-                  value={values[stage]}
-                  onChange={(e) => setValues((v) => ({ ...v, [stage]: e.target.value }))}
-                  className="form-control text-end fw-bold"
-                  style={{ fontSize: '1.3rem', padding: '8px 12px', borderWidth: 2 }}
-                />
-                <span className="text-muted small flex-shrink-0">SP</span>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Buttons */}
-        {!isPastCutoff && (
-          <div className="d-flex gap-2">
-            <button
-              className="btn btn-outline-primary flex-1"
-              disabled={!anyFilled || isSaving}
-              onClick={handleSave}
-            >
-              {saved ? (
-                <span className="d-flex align-items-center justify-content-center gap-1">
-                  <CheckCircle2 size={16} /> Đã lưu
-                </span>
-              ) : isSaving ? 'Đang lưu...' : 'Lưu'}
+        {/* Tab công đoạn */}
+        <div className="d-flex gap-1 mb-3 overflow-auto pb-1">
+          {STAGES.map((st) => (
+            <button key={st} onClick={() => setActiveStage(st)}
+              className={`btn btn-sm flex-shrink-0 ${activeStage === st ? `${STAGE_COLORS[st]} fw-semibold` : 'btn-outline-secondary'}`}>
+              {STAGE_LABELS[st]}
             </button>
-            {index < total - 1 && (
-              <button
-                className="btn btn-primary flex-1 d-flex align-items-center justify-content-center gap-1"
-                disabled={isSaving}
-                onClick={handleSaveAndNext}
-              >
-                Lưu & Tiếp <ChevronRight size={16} />
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// Thanh tiến độ tất cả mã hàng
-function StyleProgressBar({ styles, outputs }: { styles: StyleForLine[]; outputs: DailyOutput[] }) {
-  const done = styles.filter((s) => isStyleFullyEntered(s.id, outputs)).length
-  const partial = styles.filter((s) => !isStyleFullyEntered(s.id, outputs) && isStylePartiallyEntered(s.id, outputs)).length
-  const total = styles.length
-
-  return (
-    <div className="card mb-3">
-      <div className="card-body py-2 px-3">
-        <div className="d-flex align-items-center justify-content-between mb-1">
-          <small className="text-muted">Tiến độ nhập hôm nay</small>
-          <small className="fw-semibold">{done}/{total} mã hàng đủ công đoạn</small>
+          ))}
         </div>
-        <div className="d-flex gap-1" style={{ height: 8 }}>
-          {styles.map((s) => {
-            const full = isStyleFullyEntered(s.id, outputs)
-            const part = isStylePartiallyEntered(s.id, outputs)
-            return (
-              <div
-                key={s.id}
-                className={`flex-1 rounded ${full ? 'bg-success' : part ? 'bg-warning' : 'bg-secondary-transparent'}`}
-                style={{ minWidth: 8 }}
-                title={s.code}
-              />
-            )
-          })}
+
+        {/* Lưới màu × size */}
+        <div className="table-responsive border rounded">
+          <table className="table table-sm table-bordered mb-0 text-center" style={{ minWidth: 320 }}>
+            <thead className="thead-light">
+              <tr>
+                <th className="text-start" style={{ minWidth: 96 }}>Màu \\ Size</th>
+                {sizes.map((s) => <th key={s.id}>{s.code}</th>)}
+                <th>Tổng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {colors.map((c) => (
+                <tr key={c.id}>
+                  <td className="text-start">
+                    <span className="d-inline-flex align-items-center gap-1">
+                      <span style={{ width: 12, height: 12, borderRadius: 3, border: '1px solid #ccc', background: c.hex ?? '#fff', display: 'inline-block' }} />
+                      {c.name}
+                    </span>
+                  </td>
+                  {sizes.map((s) => (
+                    <td key={s.id} style={{ padding: 2 }}>
+                      <input type="number" inputMode="numeric" min={0} disabled={isPastCutoff}
+                        className="form-control form-control-sm text-center" style={{ width: 60, margin: '0 auto' }}
+                        value={cellVal(c.id, s.id)}
+                        onChange={(e) => setCell(c.id, s.id, e.target.value)} />
+                    </td>
+                  ))}
+                  <td className="fw-medium align-middle">{rowTotal(c.id).toLocaleString()}</td>
+                </tr>
+              ))}
+              <tr className="thead-light">
+                <td className="text-start fw-semibold">Tổng</td>
+                {sizes.map((s) => <td key={s.id} className="fw-medium">{colTotal(s.id).toLocaleString()}</td>)}
+                <td className="fw-bold text-primary">{stageTotal.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        {partial > 0 && (
-          <small className="text-warning d-block mt-1">
-            {partial} mã chưa đủ công đoạn
-          </small>
+
+        {!isPastCutoff && (
+          <button className="btn btn-primary w-100 mt-3" disabled={isSaving} onClick={handleSave}>
+            {saved ? <span className="d-flex align-items-center justify-content-center gap-1"><CheckCircle2 size={16} /> Đã lưu</span> : isSaving ? 'Đang lưu...' : `Lưu công đoạn ${STAGE_LABELS[activeStage]}`}
+          </button>
         )}
       </div>
     </div>
@@ -218,42 +148,24 @@ export default function OutputPage() {
   const { sync } = useOfflineSync()
 
   useEffect(() => {
-    const onOnline = async () => {
-      setIsOnline(true)
-      await sync()
-      setOfflineCount(await getOfflineQueueCount())
-    }
+    const onOnline = async () => { setIsOnline(true); await sync(); setOfflineCount(await getOfflineQueueCount()) }
     const onOffline = () => setIsOnline(false)
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
-    return () => {
-      window.removeEventListener('online', onOnline)
-      window.removeEventListener('offline', onOffline)
-    }
+    return () => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline) }
   }, [sync])
 
-  useEffect(() => {
-    getOfflineQueueCount().then(setOfflineCount)
-  }, [])
-
-  // Tự động focus vào mã hàng chưa nhập đầu tiên
-  useEffect(() => {
-    if (styles.length > 0 && today) {
-      const firstUnfinished = styles.findIndex((s) => !isStyleFullyEntered(s.id, today.outputs))
-      if (firstUnfinished >= 0) setCurrentIndex(firstUnfinished)
-    }
-  }, [styles.length, !!today])
+  useEffect(() => { getOfflineQueueCount().then(setOfflineCount) }, [])
 
   const isPastCutoff = today?.isPastCutoff ?? false
   const cutoffHour = today?.cutoffHour ?? 19
+  const outputs = today?.outputs ?? []
+  const hasOutput = (styleId: number) => outputs.some((o) => o.styleId === styleId && o.quantity > 0)
 
-  const handleSave = useCallback(
-    async (styleId: number, values: StageValues) => {
-      for (const stage of STAGES) {
-        const qty = parseInt(values[stage] || '0')
-        if (values[stage] !== '') {
-          await upsert.mutateAsync({ styleId, stage, quantity: qty })
-        }
+  const handleSaveStage = useCallback(
+    async (styleId: number, stage: ProductionStage, cells: { colorId: number; sizeId: number; quantity: number }[]) => {
+      for (const cell of cells) {
+        await upsert.mutateAsync({ styleId, colorId: cell.colorId, sizeId: cell.sizeId, stage, quantity: cell.quantity })
       }
       await refetchToday()
       setOfflineCount(await getOfflineQueueCount())
@@ -261,20 +173,11 @@ export default function OutputPage() {
     [upsert, refetchToday],
   )
 
-  const isLoading = stylesLoading || todayLoading
-
-  if (isLoading) {
+  if (stylesLoading || todayLoading) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: 'var(--bs-light, #f8f9fa)' }}>
-        <div style={{ maxWidth: 512, margin: '0 auto', padding: 16 }}>
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="card mb-3">
-              <div className="card-body placeholder-glow">
-                <span className="placeholder col-8 mb-2" style={{ height: 20 }}></span>
-                <span className="placeholder col-12" style={{ height: 44 }}></span>
-              </div>
-            </div>
-          ))}
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: 16 }}>
+          <div className="card mb-3"><div className="card-body placeholder-glow"><span className="placeholder col-8 mb-2" style={{ height: 20 }}></span><span className="placeholder col-12" style={{ height: 60 }}></span></div></div>
         </div>
       </div>
     )
@@ -282,32 +185,24 @@ export default function OutputPage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bs-light, #f8f9fa)', paddingBottom: 32 }}>
-      {/* Header */}
       <div className="sticky-top bg-white border-bottom px-3 py-2">
-        <div className="d-flex align-items-center justify-content-between" style={{ maxWidth: 512, margin: '0 auto' }}>
+        <div className="d-flex align-items-center justify-content-between" style={{ maxWidth: 640, margin: '0 auto' }}>
           <div>
             <h5 className="fw-bold mb-0">Nhập sản lượng</h5>
             {today && <small className="text-muted">{formatDate(today.date)}</small>}
           </div>
           <div className="d-flex align-items-center gap-2">
             {isOnline ? (
-              <span className="badge bg-success-transparent text-success border border-success d-flex align-items-center gap-1">
-                <Wifi size={12} /> Online
-              </span>
+              <span className="badge bg-success-transparent text-success border border-success d-flex align-items-center gap-1"><Wifi size={12} /> Online</span>
             ) : (
-              <span className="badge bg-warning-transparent text-warning border border-warning d-flex align-items-center gap-1">
-                <WifiOff size={12} /> Offline{offlineCount > 0 ? ` (${offlineCount})` : ''}
-              </span>
+              <span className="badge bg-warning-transparent text-warning border border-warning d-flex align-items-center gap-1"><WifiOff size={12} /> Offline{offlineCount > 0 ? ` (${offlineCount})` : ''}</span>
             )}
-            <button className="btn btn-sm btn-outline-secondary" onClick={() => refetchToday()}>
-              <RefreshCw size={14} />
-            </button>
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => refetchToday()}><RefreshCw size={14} /></button>
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 512, margin: '0 auto', padding: '12px 16px 0' }}>
-        {/* Cảnh báo cutoff */}
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '12px 16px 0' }}>
         {today && isPastCutoff && (
           <div className="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3">
             <AlertTriangle size={18} className="flex-shrink-0" />
@@ -321,69 +216,36 @@ export default function OutputPage() {
           </div>
         )}
 
-        {/* Không có mã hàng nào */}
         {styles.length === 0 ? (
-          <div className="card mb-3">
-            <div className="card-body text-center text-muted py-5">
-              <p className="mb-0">Chuyền chưa được gán mã hàng nào</p>
-            </div>
-          </div>
+          <div className="card mb-3"><div className="card-body text-center text-muted py-5"><p className="mb-0">Chuyền chưa được gán mã hàng nào</p></div></div>
         ) : (
           <>
-            {/* Thanh tiến độ tổng */}
-            <StyleProgressBar styles={styles} outputs={today?.outputs ?? []} />
-
-            {/* Selector mã hàng — scroll ngang */}
             <div className="d-flex gap-2 mb-3 overflow-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-              {styles.map((s, i) => {
-                const full = isStyleFullyEntered(s.id, today?.outputs ?? [])
-                const part = isStylePartiallyEntered(s.id, today?.outputs ?? [])
-                const isActive = i === currentIndex
-                return (
-                  <button
-                    key={s.id}
-                    className={`btn btn-sm flex-shrink-0 d-flex align-items-center gap-1 ${
-                      isActive
-                        ? 'btn-primary text-white'
-                        : full
-                          ? 'btn-success-transparent text-success border border-success'
-                          : part
-                            ? 'btn-warning-transparent text-warning border border-warning'
-                            : 'btn-outline-secondary'
-                    }`}
-                    onClick={() => setCurrentIndex(i)}
-                  >
-                    {full && <CheckCircle2 size={12} />}
-                    {s.code}
-                  </button>
-                )
-              })}
+              {styles.map((s, i) => (
+                <button key={s.id}
+                  className={`btn btn-sm flex-shrink-0 d-flex align-items-center gap-1 ${i === currentIndex ? 'btn-primary text-white' : hasOutput(s.id) ? 'btn-success-transparent text-success border border-success' : 'btn-outline-secondary'}`}
+                  onClick={() => setCurrentIndex(i)}>
+                  {hasOutput(s.id) && <CheckCircle2 size={12} />}
+                  {s.code}
+                </button>
+              ))}
             </div>
 
-            {/* Card nhập liệu cho mã hàng hiện tại */}
-            <StyleCard
-              key={styles[currentIndex]?.id}
-              style={styles[currentIndex]}
-              index={currentIndex}
-              total={styles.length}
-              outputs={today?.outputs ?? []}
-              factoryPlans={today?.factoryPlans ?? []}
-              isPastCutoff={isPastCutoff}
-              isSaving={upsert.isPending}
-              onSave={handleSave}
-              onPrev={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-              onNext={() => setCurrentIndex((i) => Math.min(styles.length - 1, i + 1))}
-            />
+            {styles[currentIndex] && (
+              <StyleMatrixCard
+                key={styles[currentIndex].id}
+                style={styles[currentIndex]}
+                outputs={outputs}
+                isPastCutoff={isPastCutoff}
+                isSaving={upsert.isPending}
+                onSaveStage={handleSaveStage}
+              />
+            )}
           </>
         )}
 
-        {/* Nút xem lịch sử */}
-        <button
-          className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2"
-          onClick={() => navigate('/output/history')}
-        >
-          <History size={16} />
-          Xem lịch sử sản xuất chuyền
+        <button className="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-2" onClick={() => navigate('/output/history')}>
+          <History size={16} /> Xem lịch sử sản xuất chuyền
         </button>
       </div>
     </div>

@@ -350,7 +350,7 @@ async function main() {
     { poIdx: 7, styleIdx: 7, fIdx: 1, startOff: -52, finishOff: -6, lines: [{ lineIdx: 2, qty: 3700, progress: 1.0 }, { lineIdx: 3, qty: 3700, progress: 1.0 }, { lineIdx: 4, qty: 3600, progress: 1.0 }] },
   ]
 
-  const outputRows: { lineId: number; styleId: number; stage: ProductionStage; outputDate: Date; quantity: number; enteredBy: number; isLocked: boolean }[] = []
+  const outputRows: { lineId: number; styleId: number; colorId: number; sizeId: number; stage: ProductionStage; outputDate: Date; quantity: number; enteredBy: number; isLocked: boolean }[] = []
   let cpCount = 0
   let fpCount = 0
   for (const g of groups) {
@@ -379,12 +379,23 @@ async function main() {
         [ProductionStage.QC, Math.round(sewCum * 0.85)],
         [ProductionStage.PACKING, Math.round(sewCum * 0.7)],
       ]
+      // Màu/size của mã hàng để chia sản lượng theo ma trận
+      const cs = styleColorIds[g.styleIdx]
+      const ss = styleSizeIds[g.styleIdx]
       for (const [stage, cum] of stageCum) {
         const parts = spread(cum, nDays)
-        parts.forEach((q, k) => {
-          if (q <= 0) return
+        parts.forEach((dayQty, k) => {
+          if (dayQty <= 0) return
           const outputDate = new Date(endDay.getTime() - (nDays - 1 - k) * dayMs)
-          outputRows.push({ lineId: line.id, styleId, stage, outputDate, quantity: q, enteredBy, isLocked: outputDate.getTime() < today.getTime() })
+          const isLocked = outputDate.getTime() < today.getTime()
+          // Thực tế: mỗi ngày chuyền chạy 1 màu (xoay vòng), chia SL theo các size
+          const colorId = cs[k % cs.length]
+          const sizeParts = spread(dayQty, ss.length)
+          ss.forEach((sizeId, si) => {
+            const q = sizeParts[si]
+            if (q <= 0) return
+            outputRows.push({ lineId: line.id, styleId, colorId, sizeId, stage, outputDate, quantity: q, enteredBy, isLocked })
+          })
         })
       }
     }

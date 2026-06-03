@@ -12,6 +12,14 @@ export class CreateDailyOutputDto {
   @IsInt()
   styleId: number
 
+  @IsInt()
+  @IsOptional()
+  colorId?: number
+
+  @IsInt()
+  @IsOptional()
+  sizeId?: number
+
   @IsEnum(ProductionStage)
   stage: ProductionStage
 

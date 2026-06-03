@@ -42,7 +42,11 @@ export class OutputService {
       where: { lineId },
       include: {
         style: {
-          include: { customer: true },
+          include: {
+            customer: true,
+            styleColors: { include: { color: true } },
+            styleSizes: { include: { size: true } },
+          },
         },
       },
     })
@@ -61,6 +65,8 @@ export class OutputService {
       },
       include: {
         style: true,
+        color: true,
+        size: true,
       },
       orderBy: { enteredAt: 'desc' },
     })
@@ -121,15 +127,18 @@ export class OutputService {
       throw new BadRequestException('Mã hàng không thuộc chuyền của bạn')
     }
 
-    // UPSERT: unique(lineId, styleId, stage, outputDate)
-    const existing = await this.prisma.dailyOutput.findUnique({
+    // UPSERT theo (lineId, styleId, colorId, sizeId, stage, outputDate) — lấy lần cuối.
+    // Dùng findFirst để xử lý đúng cả trường hợp colorId/sizeId null (dữ liệu cũ mức Style).
+    const colorId = dto.colorId ?? null
+    const sizeId = dto.sizeId ?? null
+    const existing = await this.prisma.dailyOutput.findFirst({
       where: {
-        lineId_styleId_stage_outputDate: {
-          lineId,
-          styleId: dto.styleId,
-          stage: dto.stage,
-          outputDate,
-        },
+        lineId,
+        styleId: dto.styleId,
+        colorId,
+        sizeId,
+        stage: dto.stage,
+        outputDate,
       },
     })
 
@@ -149,6 +158,8 @@ export class OutputService {
         data: {
           lineId,
           styleId: dto.styleId,
+          colorId,
+          sizeId,
           stage: dto.stage,
           outputDate,
           quantity: dto.quantity,

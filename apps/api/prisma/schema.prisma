@@ -92,8 +92,9 @@ model Color {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  styleColors StyleColor[]
-  poItems     PoItem[]
+  styleColors  StyleColor[]
+  poItems      PoItem[]
+  dailyOutputs DailyOutput[]
 
   @@index([deletedAt])
 }
@@ -107,8 +108,9 @@ model Size {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  styleSizes StyleSize[]
-  poItems    PoItem[]
+  styleSizes   StyleSize[]
+  poItems      PoItem[]
+  dailyOutputs DailyOutput[]
 
   @@index([sortOrder])
   @@index([deletedAt])
@@ -521,6 +523,8 @@ model DailyOutput {
   id         Int             @id @default(autoincrement())
   lineId     Int
   styleId    Int
+  colorId    Int?
+  sizeId     Int?
   stage      ProductionStage
   outputDate DateTime        @db.Date
   quantity   Int
@@ -532,9 +536,11 @@ model DailyOutput {
 
   line  ProductionLine   @relation(fields: [lineId], references: [id])
   style Style            @relation(fields: [styleId], references: [id])
+  color Color?           @relation(fields: [colorId], references: [id])
+  size  Size?            @relation(fields: [sizeId], references: [id])
   logs  DailyOutputLog[]
 
-  @@unique([lineId, styleId, stage, outputDate])
+  @@unique([lineId, styleId, colorId, sizeId, stage, outputDate])
   @@index([lineId])
   @@index([styleId])
   @@index([outputDate])
