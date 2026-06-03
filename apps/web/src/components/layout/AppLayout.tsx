@@ -4,6 +4,9 @@ import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { LoadingScreen } from './LoadingScreen'
 import { ProtectedRoute } from './ProtectedRoute'
+import { useAuthStore } from '@/stores/auth.store'
+
+const ShopFloorLayout = lazy(() => import('./ShopFloorLayout'))
 
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const UsersPage = lazy(() => import('@/features/users/UsersPage'))
@@ -20,6 +23,17 @@ const ForbiddenPage = lazy(() => import('./ForbiddenPage'))
 const NotFoundPage = lazy(() => import('./NotFoundPage'))
 
 export default function AppLayout() {
+  const { isLineLevel, isAdmin } = useAuthStore()
+
+  // Tổ trưởng / Tổ phó: chỉ thấy trang nhập sản lượng, ẩn sidebar
+  if (isLineLevel() && !isAdmin()) {
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        <ShopFloorLayout />
+      </Suspense>
+    )
+  }
+
   return (
     <div className="page">
       <div className="page-main">
