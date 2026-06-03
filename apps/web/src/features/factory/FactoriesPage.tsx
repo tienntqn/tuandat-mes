@@ -5,7 +5,9 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PageWrapper } from '@/components/layout/PageWrapper'
-import type { Factory, CreateFactoryDto } from './factory.api'
+import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
+import { cellStr } from '@/lib/excel'
+import { factoryApi, type Factory, type CreateFactoryDto } from './factory.api'
 import { useAuthStore } from '@/stores/auth.store'
 
 export default function FactoriesPage() {
@@ -39,6 +41,39 @@ export default function FactoriesPage() {
     deleteFactory.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) })
   }
 
+  const exportRows = () => (data?.data ?? []).map((f) => ({
+    'Mã': f.code,
+    'Tên xưởng': f.name,
+    'Địa chỉ': f.address ?? '',
+    'SĐT': f.phone ?? '',
+    'Trạng thái': f.status === 'ACTIVE' ? 'Hoạt động' : 'Ngừng hoạt động',
+  }))
+
+  const templateRows = [
+    { 'Mã': '', 'Tên xưởng': 'Xưởng 1', 'Địa chỉ': 'KCN ABC', 'SĐT': '0900000000', 'Trạng thái': 'Hoạt động' },
+  ]
+
+  const handleImportRows = async (rows: Record<string, string | number>[]) => {
+    let success = 0
+    let error = 0
+    for (const row of rows) {
+      const name = cellStr(row['Tên xưởng'])
+      if (!name) { error++; continue }
+      try {
+        await factoryApi.create({
+          code: cellStr(row['Mã']) || undefined,
+          name,
+          address: cellStr(row['Địa chỉ']) || undefined,
+          phone: cellStr(row['SĐT']) || undefined,
+          status: cellStr(row['Trạng thái']) === 'Ngừng hoạt động' ? 'INACTIVE' : 'ACTIVE',
+        })
+        success++
+      } catch { error++ }
+    }
+    refetch()
+    return { success, error }
+  }
+
   return (
     <PageWrapper
       title="Danh sách Xưởng"
@@ -48,6 +83,15 @@ export default function FactoriesPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ExcelToolbar
+            sheetName="Xưởng"
+            fileBase="xuong"
+            exportRows={exportRows}
+            templateRows={templateRows}
+            onImport={canWrite ? handleImportRows : undefined}
+            canWrite={canWrite}
+            entityLabel="xưởng"
+          />
           {canWrite && (
             <button
               onClick={() => { setEditTarget(null); setFormOpen(true) }}

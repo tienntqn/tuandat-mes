@@ -4,7 +4,9 @@ import { CustomerFormDialog } from './CustomerFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { PageWrapper } from '@/components/layout/PageWrapper'
-import type { Customer, CreateCustomerDto } from './customer.api'
+import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
+import { cellStr } from '@/lib/excel'
+import { customerApi, type Customer, type CreateCustomerDto } from './customer.api'
 import { useAuthStore } from '@/stores/auth.store'
 
 export default function CustomersPage() {
@@ -31,6 +33,37 @@ export default function CustomersPage() {
     }
   }
 
+  const exportRows = () => (data?.data ?? []).map((c) => ({
+    'Mã': c.code,
+    'Tên khách hàng': c.name,
+    'Quốc gia': c.country ?? '',
+    'Thông tin liên hệ': c.contactInfo ?? '',
+  }))
+
+  const templateRows = [
+    { 'Mã': '', 'Tên khách hàng': 'Công ty ABC', 'Quốc gia': 'Việt Nam', 'Thông tin liên hệ': 'email@abc.com' },
+  ]
+
+  const handleImportRows = async (rows: Record<string, string | number>[]) => {
+    let success = 0
+    let error = 0
+    for (const row of rows) {
+      const name = cellStr(row['Tên khách hàng'])
+      if (!name) { error++; continue }
+      try {
+        await customerApi.create({
+          code: cellStr(row['Mã']) || undefined,
+          name,
+          country: cellStr(row['Quốc gia']) || undefined,
+          contactInfo: cellStr(row['Thông tin liên hệ']) || undefined,
+        })
+        success++
+      } catch { error++ }
+    }
+    refetch()
+    return { success, error }
+  }
+
   return (
     <PageWrapper
       title="Danh sách Khách hàng"
@@ -40,6 +73,15 @@ export default function CustomersPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ExcelToolbar
+            sheetName="Khách hàng"
+            fileBase="khach-hang"
+            exportRows={exportRows}
+            templateRows={templateRows}
+            onImport={canWrite ? handleImportRows : undefined}
+            canWrite={canWrite}
+            entityLabel="khách hàng"
+          />
           {canWrite && (
             <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="btn btn-primary btn-icon text-white">
               <span><i className="fe fe-plus"></i></span> Thêm khách hàng
