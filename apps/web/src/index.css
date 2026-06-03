@@ -43,3 +43,23 @@
 .main-container.container-fluid {
   padding-top: 0;
 }
+
+/* Giảm khoảng cách content với đỉnh trang (header cao ~70px) */
+.app-content {
+  margin-top: 68px !important;
+}
+.page-header {
+  margin-top: 0.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Breadcrumb: ép màu chữ dễ đọc (tránh chữ trắng gần trùng nền) */
+.page-header .breadcrumb .breadcrumb-item {
+  color: #6e7687 !important;
+}
+.page-header .breadcrumb .breadcrumb-item a {
+  color: #6259ca !important;
+}
+.page-header .breadcrumb .breadcrumb-item.active {
+  color: #374151 !important;
+}
