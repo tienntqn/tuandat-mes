@@ -155,7 +155,13 @@ export class ReportService {
     const rows: ProgressRow[] = []
 
     for (const fp of factoryPlans) {
-      const stages = stage ? [stage] : ['CUTTING', 'SEWING', 'QC', 'PACKING']
+      // 'FINISHING' (hoàn thiện) gộp 2 công đoạn QC + PACKING
+      const stages =
+        stage === 'FINISHING'
+          ? ['QC', 'PACKING']
+          : stage
+            ? [stage]
+            : ['CUTTING', 'SEWING', 'QC', 'PACKING']
       for (const st of stages) {
         // Tổng sản lượng thực tế cho line + style + stage
         const agg = await this.prisma.dailyOutput.aggregate({
