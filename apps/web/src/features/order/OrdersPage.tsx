@@ -5,8 +5,13 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { PageWrapper } from '@/components/layout/PageWrapper'
-import { ORDER_STATUS_LABELS, type Order, type CreateOrderDto } from './order.api'
+import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
+import { cellStr, cellDate } from '@/lib/excel'
+import { useCustomersActive } from '@/features/customer/customer.hooks'
+import { orderApi, ORDER_STATUS_LABELS, type Order, type CreateOrderDto } from './order.api'
 import { useAuthStore } from '@/stores/auth.store'
+
+const STATUS_BY_LABEL = Object.fromEntries(Object.entries(ORDER_STATUS_LABELS).map(([k, v]) => [v, k]))
 
 export default function OrdersPage() {
   const [page, setPage] = useState(1)
@@ -19,6 +24,7 @@ export default function OrdersPage() {
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('COMPANY_PLANNER')
 
+  const { data: customers = [] } = useCustomersActive()
   const { data, isLoading, refetch } = useOrders({ search: search || undefined, status: filterStatus || undefined, page, pageSize: 20 })
   const createOrder = useCreateOrder()
   const updateOrder = useUpdateOrder()
@@ -35,6 +41,45 @@ export default function OrdersPage() {
 
   const formatDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—')
 
+  const exportRows = () => (data?.data ?? []).map((o) => ({
+    'Số đơn hàng': o.orderNumber,
+    'Mã KH': o.customer?.code ?? '',
+    'Khách hàng': o.customer?.name ?? '',
+    'Ngày đặt': o.orderDate ? o.orderDate.split('T')[0] : '',
+    'Ngày giao': o.deliveryDate ? o.deliveryDate.split('T')[0] : '',
+    'Trạng thái': ORDER_STATUS_LABELS[o.status] ?? o.status,
+    'Ghi chú': o.note ?? '',
+  }))
+
+  const templateRows = [
+    { 'Số đơn hàng': '', 'Mã KH': 'KH001', 'Ngày đặt': '2026-06-01', 'Ngày giao': '2026-08-01', 'Trạng thái': 'Mở', 'Ghi chú': '' },
+  ]
+
+  const handleImportRows = async (rows: Record<string, string | number>[]) => {
+    const customerMap = new Map(customers.map((c) => [c.code.trim().toLowerCase(), c.id]))
+    let success = 0
+    let error = 0
+    for (const row of rows) {
+      const customerId = customerMap.get(cellStr(row['Mã KH']).toLowerCase())
+      const orderDate = cellDate(row['Ngày đặt'])
+      if (!customerId || !orderDate) { error++; continue }
+      const deliveryDate = cellDate(row['Ngày giao'])
+      try {
+        await orderApi.create({
+          orderNumber: cellStr(row['Số đơn hàng']) || undefined,
+          customerId,
+          orderDate,
+          deliveryDate: deliveryDate || undefined,
+          status: STATUS_BY_LABEL[cellStr(row['Trạng thái'])] ?? undefined,
+          note: cellStr(row['Ghi chú']) || undefined,
+        })
+        success++
+      } catch { error++ }
+    }
+    refetch()
+    return { success, error }
+  }
+
   return (
     <PageWrapper
       title="Đơn đặt hàng"
@@ -44,6 +89,15 @@ export default function OrdersPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ExcelToolbar
+            sheetName="Đơn đặt hàng"
+            fileBase="don-dat-hang"
+            exportRows={exportRows}
+            templateRows={templateRows}
+            onImport={canWrite ? handleImportRows : undefined}
+            canWrite={canWrite}
+            entityLabel="đơn hàng"
+          />
           {canWrite && (
             <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="btn btn-primary btn-icon text-white">
               <span><i className="fe fe-plus"></i></span> Tạo đơn hàng

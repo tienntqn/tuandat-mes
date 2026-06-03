@@ -4,8 +4,10 @@ import { StyleFormDialog } from './StyleFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { PageWrapper } from '@/components/layout/PageWrapper'
+import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
+import { cellStr, cellNum } from '@/lib/excel'
 import { useCustomersActive } from '@/features/customer/customer.hooks'
-import type { Style, CreateStyleDto } from './style.api'
+import { styleApi, type Style, type CreateStyleDto } from './style.api'
 import { useAuthStore } from '@/stores/auth.store'
 
 export default function StylesPage() {
@@ -34,6 +36,45 @@ export default function StylesPage() {
     }
   }
 
+  const exportRows = () => (data?.data ?? []).map((s) => ({
+    'Mã hàng': s.code,
+    'Tên': s.name,
+    'Mã KH': s.customer?.code ?? '',
+    'Khách hàng': s.customer?.name ?? '',
+    'Mùa vụ': s.season ?? '',
+    'SAM (phút)': s.sam ?? '',
+    'Mô tả': s.description ?? '',
+  }))
+
+  const templateRows = [
+    { 'Mã hàng': '', 'Tên': 'Áo thun cơ bản', 'Mã KH': 'KH001', 'Mùa vụ': 'SS25', 'SAM (phút)': 12.5, 'Mô tả': '' },
+  ]
+
+  const handleImportRows = async (rows: Record<string, string | number>[]) => {
+    const customerMap = new Map(customers.map((c) => [c.code.trim().toLowerCase(), c.id]))
+    let success = 0
+    let error = 0
+    for (const row of rows) {
+      const name = cellStr(row['Tên'])
+      const customerId = customerMap.get(cellStr(row['Mã KH']).toLowerCase())
+      if (!name || !customerId) { error++; continue }
+      const samRaw = cellStr(row['SAM (phút)'])
+      try {
+        await styleApi.create({
+          code: cellStr(row['Mã hàng']) || undefined,
+          name,
+          customerId,
+          season: cellStr(row['Mùa vụ']) || undefined,
+          description: cellStr(row['Mô tả']) || undefined,
+          sam: samRaw ? cellNum(samRaw) : undefined,
+        })
+        success++
+      } catch { error++ }
+    }
+    refetch()
+    return { success, error }
+  }
+
   return (
     <PageWrapper
       title="Danh sách Mã hàng"
@@ -43,6 +84,15 @@ export default function StylesPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ExcelToolbar
+            sheetName="Mã hàng"
+            fileBase="ma-hang"
+            exportRows={exportRows}
+            templateRows={templateRows}
+            onImport={canWrite ? handleImportRows : undefined}
+            canWrite={canWrite}
+            entityLabel="mã hàng"
+          />
           {canWrite && (
             <button onClick={() => { setEditTarget(null); setFormOpen(true) }} className="btn btn-primary btn-icon text-white">
               <span><i className="fe fe-plus"></i></span> Thêm mã hàng
