@@ -140,14 +140,14 @@ export default function FactoryLinesPage() {
           {canWrite && (
             <>
               <button
-                className="btn btn-outline-secondary btn-sm"
+                className="btn btn-outline-secondary"
                 onClick={handleDownloadTemplate}
                 title="Tải file mẫu Excel"
               >
                 <i className="fe fe-download me-1"></i> Mẫu Excel
               </button>
               <button
-                className="btn btn-outline-success btn-sm"
+                className="btn btn-outline-success"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={importing}
                 title="Import từ Excel"
@@ -160,7 +160,7 @@ export default function FactoryLinesPage() {
             </>
           )}
           <button
-            className="btn btn-outline-info btn-sm"
+            className="btn btn-outline-info"
             onClick={handleExportExcel}
             title="Xuất Excel"
           >
@@ -168,7 +168,7 @@ export default function FactoryLinesPage() {
           </button>
           {canWrite && (
             <button
-              className="btn btn-primary btn-sm text-white"
+              className="btn btn-primary text-white"
               onClick={() => { setEditTarget(null); setFormOpen(true) }}
             >
               <i className="fe fe-plus me-1"></i> Thêm chuyền

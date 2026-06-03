@@ -50,7 +50,7 @@ export function ExcelToolbar({ sheetName, fileBase, exportRows, templateRows, on
     <>
       {canWrite && (
         <button
-          className="btn btn-outline-secondary btn-sm"
+          className="btn btn-outline-secondary"
           onClick={() => downloadTemplate(templateRows, sheetName, `template-${fileBase}.xlsx`)}
           title="Tải file mẫu Excel"
         >
@@ -59,7 +59,7 @@ export function ExcelToolbar({ sheetName, fileBase, exportRows, templateRows, on
       )}
       {canWrite && onImport && (
         <button
-          className="btn btn-outline-success btn-sm"
+          className="btn btn-outline-success"
           onClick={() => fileInputRef.current?.click()}
           disabled={importing}
           title="Import từ Excel"
@@ -70,7 +70,7 @@ export function ExcelToolbar({ sheetName, fileBase, exportRows, templateRows, on
         </button>
       )}
       <button
-        className="btn btn-outline-primary btn-sm"
+        className="btn btn-outline-primary"
         onClick={() => exportToExcel(exportRows(), sheetName, `${fileBase}.xlsx`)}
         title="Xuất ra Excel"
       >
