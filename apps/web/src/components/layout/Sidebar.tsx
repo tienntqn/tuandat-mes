@@ -4,7 +4,9 @@ import { useAuthStore } from '@/stores/auth.store'
 
 interface NavSubItem {
   label: string
-  path: string
+  path?: string
+  icon?: string
+  children?: NavSubItem[]
 }
 
 interface NavItem {
@@ -59,22 +61,51 @@ const NAV_SECTIONS: NavSection[] = [
     category: 'SẢN XUẤT',
     items: [
       {
-        label: 'Kế hoạch',
-        path: '/plans',
+        label: 'Phân hệ Kế hoạch',
+        path: '/planning',
         icon: 'fe fe-calendar',
         roles: ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY'],
+        children: [
+          {
+            label: 'Danh mục',
+            children: [
+              { label: 'Khách hàng', path: '/planning/customers' },
+              { label: 'Mã hàng', path: '/planning/styles' },
+            ],
+          },
+          {
+            label: 'Đơn hàng',
+            children: [
+              { label: 'Đơn đặt hàng', path: '/planning/orders' },
+              { label: 'Purchase Order (PO)', path: '/planning/purchase-orders' },
+            ],
+          },
+          {
+            label: 'Kế hoạch sản xuất',
+            children: [
+              { label: 'Kế hoạch tổng', path: '/planning/plans/company' },
+              { label: 'Kế hoạch theo PO', path: '/planning/plans/by-po' },
+              { label: 'Kế hoạch chuyền may', path: '/planning/plans/factory' },
+              { label: 'Kế hoạch giao hàng', path: '/planning/delivery' },
+            ],
+          },
+          {
+            label: 'Theo dõi tiến độ',
+            children: [
+              { label: 'Tiến độ cắt', path: '/planning/progress/cutting' },
+              { label: 'Tiến độ may', path: '/planning/progress/sewing' },
+              { label: 'Tiến độ hoàn thiện', path: '/planning/progress/finishing' },
+              { label: 'Tiến độ xuất hàng', path: '/planning/progress/shipping' },
+            ],
+          },
+          { label: 'Báo cáo', path: '/planning/reports' },
+        ],
       },
       {
         label: 'Sản lượng',
         path: '/output',
         icon: 'fe fe-clipboard',
         roles: ['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY'],
-      },
-      {
-        label: 'Báo cáo',
-        path: '/reports',
-        icon: 'fe fe-bar-chart-2',
-        roles: ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER'],
       },
     ],
   },
@@ -87,44 +118,65 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ]
 
-function SubMenuNav({ item, onClose }: { item: NavItem; onClose: () => void }) {
+// Thu thập mọi path của các node lá nằm dưới một node (để xác định active/expand)
+function collectLeafPaths(node: NavSubItem): string[] {
+  if (node.children) return node.children.flatMap(collectLeafPaths)
+  return node.path ? [node.path] : []
+}
+
+// Render đệ quy: hỗ trợ menu nhiều cấp (Phân hệ Kế hoạch → nhóm → mục con)
+function NavNode({ node, depth, icon, onClose }: { node: NavSubItem; depth: number; icon?: string; onClose: () => void }) {
   const location = useLocation()
-  const isChildActive = item.children?.some((c) => location.pathname.startsWith(c.path)) ?? false
-  const [open, setOpen] = useState(isChildActive)
+  const isActive = collectLeafPaths(node).some((p) => location.pathname.startsWith(p))
+  const [open, setOpen] = useState(isActive)
 
-  // Tự mở khi một child đang active
   useEffect(() => {
-    if (isChildActive) setOpen(true)
-  }, [isChildActive])
+    if (isActive) setOpen(true)
+  }, [isActive])
 
+  // Node lá → link
+  if (!node.children) {
+    return (
+      <li>
+        <NavLink
+          to={node.path!}
+          className={({ isActive: a }) => `slide-item${a ? ' active' : ''}`}
+          onClick={onClose}
+          style={{ paddingLeft: 18 + depth * 12 }}
+        >
+          {node.label}
+        </NavLink>
+      </li>
+    )
+  }
+
+  // Node nhóm → mở/đóng
   return (
-    <li className={`slide has-sub${open || isChildActive ? ' is-expanded' : ''}`}>
+    <li className={`slide has-sub${open || isActive ? ' is-expanded' : ''}`}>
       <a
-        className={`side-menu__item${isChildActive ? ' active' : ''}`}
+        className={`side-menu__item${isActive ? ' active' : ''}`}
         href="javascript:void(0);"
         onClick={() => setOpen((v) => !v)}
+        style={depth > 0 ? { paddingLeft: 18 + (depth - 1) * 12 } : undefined}
       >
-        <i className={`side-menu__icon ${item.icon}`}></i>
-        <span className="side-menu__label">{item.label}</span>
-        <i className={`angle fe fe-chevron-right${open ? ' rotate-90' : ''}`}
+        {depth === 0 && icon && <i className={`side-menu__icon ${icon}`}></i>}
+        <span className="side-menu__label">{node.label}</span>
+        <i
+          className="angle fe fe-chevron-right"
           style={{ transition: 'transform 0.2s', transform: open ? 'rotate(90deg)' : 'rotate(0deg)' }}
         ></i>
       </a>
       <ul className="slide-menu" style={{ display: open ? 'block' : 'none' }}>
-        {item.children?.map((child) => (
-          <li key={child.path}>
-            <NavLink
-              to={child.path}
-              className={({ isActive }) => `slide-item${isActive ? ' active' : ''}`}
-              onClick={onClose}
-            >
-              {child.label}
-            </NavLink>
-          </li>
+        {node.children.map((child) => (
+          <NavNode key={child.label} node={child} depth={depth + 1} onClose={onClose} />
         ))}
       </ul>
     </li>
   )
+}
+
+function SubMenuNav({ item, onClose }: { item: NavItem; onClose: () => void }) {
+  return <NavNode node={item} depth={0} icon={item.icon} onClose={onClose} />
 }
 
 export function Sidebar() {

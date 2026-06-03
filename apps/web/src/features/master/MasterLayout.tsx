@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react'
 import { NavLink, Routes, Route, Navigate } from 'react-router-dom'
-import { Building2, Factory, GitBranch, Users, UserCheck, Tag, FileText } from 'lucide-react'
+import { Building2, Factory, GitBranch, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth.store'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
@@ -20,14 +20,13 @@ interface NavTab {
   roles?: string[]
 }
 
+// Khách hàng / Mã hàng / Purchase Orders đã chuyển sang "Phân hệ Kế hoạch".
+// Dữ liệu nền chỉ còn dữ liệu tổ chức/nhân sự.
 const TABS: NavTab[] = [
   { label: 'Công ty', path: 'company', icon: Building2, roles: ['ADMIN'] },
   { label: 'Xưởng', path: 'factories', icon: Factory },
   { label: 'Chuyền', path: 'lines', icon: GitBranch },
   { label: 'Nhân viên', path: 'employees', icon: Users },
-  { label: 'Khách hàng', path: 'customers', icon: UserCheck, roles: ['ADMIN', 'BOD', 'COMPANY_PLANNER'] },
-  { label: 'Mã hàng', path: 'styles', icon: Tag, roles: ['ADMIN', 'BOD', 'COMPANY_PLANNER'] },
-  { label: 'Purchase Orders', path: 'purchase-orders', icon: FileText, roles: ['ADMIN', 'BOD', 'COMPANY_PLANNER'] },
 ]
 
 export default function MasterLayout() {

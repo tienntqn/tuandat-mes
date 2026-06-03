@@ -11,6 +11,7 @@ const FactoryManagementLayout = lazy(() => import('@/features/factory-management
 const MasterLayout = lazy(() => import('@/features/master/MasterLayout'))
 const MachineLayout = lazy(() => import('@/features/machine/MachineLayout'))
 const PlanLayout = lazy(() => import('@/features/plan/PlanLayout'))
+const PlanningLayout = lazy(() => import('@/features/planning/PlanningLayout'))
 const OutputLayout = lazy(() => import('@/features/output/OutputLayout'))
 const ReportPage = lazy(() => import('@/features/report/ReportPage'))
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'))
@@ -61,6 +62,14 @@ export default function AppLayout() {
                   element={
                     <ProtectedRoute roles={['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY']}>
                       <PlanLayout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/planning/*"
+                  element={
+                    <ProtectedRoute roles={['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY']}>
+                      <PlanningLayout />
                     </ProtectedRoute>
                   }
                 />
