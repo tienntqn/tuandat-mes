@@ -30,7 +30,7 @@ export function LineFormDialog({ open, line, defaultFactoryId, factories: factor
   const [form, setForm] = useState<CreateLineDto>({
     factoryId: defaultFactoryId ?? 0,
     name: '',
-    capacity: 0,
+    workerCount: 10,
     status: 'ACTIVE',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -42,8 +42,8 @@ export function LineFormDialog({ open, line, defaultFactoryId, factories: factor
     if (open) {
       setForm(
         line
-          ? { factoryId: line.factoryId, name: line.name, capacity: line.capacity, status: line.status }
-          : { factoryId: defaultFactoryId ?? 0, name: '', capacity: 0, status: 'ACTIVE' },
+          ? { factoryId: line.factoryId, name: line.name, workerCount: line.workerCount, status: line.status }
+          : { factoryId: defaultFactoryId ?? 0, name: '', workerCount: 10, status: 'ACTIVE' },
       )
       setErrors({})
     }
@@ -117,13 +117,13 @@ export function LineFormDialog({ open, line, defaultFactoryId, factories: factor
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </FormField>
-          <FormField label="Năng lực (SP/ngày)">
+          <FormField label="Số công nhân">
             <input
               type="number"
               min={0}
               className="w-full rounded-lg border px-3 py-2 text-sm"
-              value={form.capacity ?? 0}
-              onChange={(e) => setForm({ ...form, capacity: +e.target.value })}
+              value={form.workerCount ?? 10}
+              onChange={(e) => setForm({ ...form, workerCount: +e.target.value })}
             />
           </FormField>
           <FormField label="Trạng thái">

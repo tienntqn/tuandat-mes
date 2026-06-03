@@ -81,9 +81,9 @@ async function main() {
   // ──────────────────────────────────────────
   const linesA = await Promise.all(
     [
-      { lineNumber: 1, name: 'Chuyền A1', capacity: 500 },
-      { lineNumber: 2, name: 'Chuyền A2', capacity: 480 },
-      { lineNumber: 3, name: 'Chuyền A3', capacity: 520 },
+      { lineNumber: 1, name: 'Chuyền A1', workerCount: 35 },
+      { lineNumber: 2, name: 'Chuyền A2', workerCount: 32 },
+      { lineNumber: 3, name: 'Chuyền A3', workerCount: 38 },
     ].map((l) =>
       prisma.productionLine.upsert({
         where: { factoryId_lineNumber: { factoryId: factory1.id, lineNumber: l.lineNumber } },
@@ -95,9 +95,9 @@ async function main() {
 
   const linesB = await Promise.all(
     [
-      { lineNumber: 1, name: 'Chuyền B1', capacity: 450 },
-      { lineNumber: 2, name: 'Chuyền B2', capacity: 460 },
-      { lineNumber: 3, name: 'Chuyền B3', capacity: 440 },
+      { lineNumber: 1, name: 'Chuyền B1', workerCount: 30 },
+      { lineNumber: 2, name: 'Chuyền B2', workerCount: 31 },
+      { lineNumber: 3, name: 'Chuyền B3', workerCount: 29 },
     ].map((l) =>
       prisma.productionLine.upsert({
         where: { factoryId_lineNumber: { factoryId: factory2.id, lineNumber: l.lineNumber } },

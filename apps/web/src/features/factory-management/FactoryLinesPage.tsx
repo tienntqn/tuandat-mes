@@ -63,7 +63,7 @@ export default function FactoryLinesPage() {
       'Tên chuyền': l.name,
       'Xưởng (Code)': l.factory?.code ?? '',
       'Tên xưởng': l.factory?.name ?? '',
-      'Năng lực (SP/ngày)': l.capacity,
+      'Số công nhân': l.workerCount,
       'Trạng thái': l.status === 'ACTIVE' ? 'Hoạt động' : 'Ngừng hoạt động',
     }))
     const ws = XLSX.utils.json_to_sheet(rows)
@@ -75,7 +75,7 @@ export default function FactoryLinesPage() {
   const handleDownloadTemplate = async () => {
     const XLSX = await import('xlsx')
     const rows = [
-      { 'Xưởng (Code)': 'X001', 'Tên chuyền': 'Chuyền May 1', 'Năng lực (SP/ngày)': 500, 'Trạng thái': 'Hoạt động' },
+      { 'Xưởng (Code)': 'X001', 'Tên chuyền': 'Chuyền May 1', 'Số công nhân': 10, 'Trạng thái': 'Hoạt động' },
     ]
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
@@ -107,7 +107,7 @@ export default function FactoryLinesPage() {
       for (const row of rows) {
         const factoryCode = String(row['Xưởng (Code)'] ?? '').trim().toLowerCase()
         const name = String(row['Tên chuyền'] ?? '').trim()
-        const capacity = Number(row['Năng lực (SP/ngày)'] ?? 0)
+        const workerCount = Number(row['Số công nhân'] ?? 10)
         const statusRaw = String(row['Trạng thái'] ?? '').trim()
         const status = statusRaw === 'Ngừng hoạt động' ? 'INACTIVE' : 'ACTIVE'
 
@@ -115,7 +115,7 @@ export default function FactoryLinesPage() {
         if (!factoryId || !name) { errorCount++; continue }
 
         try {
-          await createLine.mutateAsync({ factoryId, name, capacity, status })
+          await createLine.mutateAsync({ factoryId, name, workerCount, status })
           successCount++
         } catch {
           errorCount++
@@ -233,7 +233,7 @@ export default function FactoryLinesPage() {
                     <th style={{ width: 100 }}>Số chuyền</th>
                     <th>Tên chuyền</th>
                     <th>Xưởng may</th>
-                    <th style={{ width: 140 }}>Năng lực/ngày</th>
+                    <th style={{ width: 140 }}>Số công nhân</th>
                     <th style={{ width: 140 }}>Trạng thái</th>
                     {canWrite && <th className="text-end" style={{ width: 120 }}>Thao tác</th>}
                   </tr>
@@ -257,7 +257,7 @@ export default function FactoryLinesPage() {
                           : <span className="text-muted">—</span>}
                       </td>
                       <td className="text-muted">
-                        {line.capacity > 0 ? `${line.capacity.toLocaleString('vi-VN')} SP` : '—'}
+                        {line.workerCount > 0 ? `${line.workerCount.toLocaleString('vi-VN')} người` : '—'}
                       </td>
                       <td>
                         {line.deletedAt ? '—' : <StatusBadge status={line.status} />}

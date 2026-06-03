@@ -21,12 +21,12 @@ export class CreateProductionLineDto {
   @IsNotEmpty({ message: 'Tên chuyền không được để trống' })
   name: string
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ description: 'Số công nhân của chuyền (mặc định 10)' })
   @IsInt()
   @Min(0)
   @IsOptional()
   @Type(() => Number)
-  capacity?: number
+  workerCount?: number
 
   @ApiPropertyOptional({ enum: FactoryStatus })
   @IsEnum(FactoryStatus, { message: 'Trạng thái không hợp lệ' })

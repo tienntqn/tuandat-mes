@@ -130,7 +130,7 @@ model ProductionLine {
   factoryId  Int
   lineNumber Int
   name       String
-  capacity   Int           @default(0)
+  workerCount Int          @default(10)
   status     FactoryStatus @default(ACTIVE)
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt

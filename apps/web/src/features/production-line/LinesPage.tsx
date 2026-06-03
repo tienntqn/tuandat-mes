@@ -97,7 +97,7 @@ export default function LinesPage() {
                   <th>Số chuyền</th>
                   <th>Tên chuyền</th>
                   <th>Xưởng</th>
-                  <th>Năng lực/ngày</th>
+                  <th>Số công nhân</th>
                   <th>Trạng thái</th>
                   {canWrite && <th className="text-end">Thao tác</th>}
                 </tr>
@@ -115,7 +115,7 @@ export default function LinesPage() {
                       <td className="text-muted">
                         {line.factory ? `${line.factory.code} — ${line.factory.name}` : '—'}
                       </td>
-                      <td>{line.capacity > 0 ? `${line.capacity} SP` : '—'}</td>
+                      <td>{line.workerCount > 0 ? `${line.workerCount} người` : '—'}</td>
                       <td><StatusBadge status={line.status} /></td>
                       {canWrite && (
                         <td className="text-end">
