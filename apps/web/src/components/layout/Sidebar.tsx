@@ -170,7 +170,7 @@ function NavNode({
           to={node.path!}
           className={({ isActive: a }) => `slide-item${a ? ' active' : ''}`}
           onClick={onClose}
-          style={{ paddingLeft: 18 + depth * 12 }}
+          style={{ paddingLeft: 16 + (depth - 1) * 14, whiteSpace: 'nowrap' }}
         >
           {node.label}
         </NavLink>
@@ -188,7 +188,7 @@ function NavNode({
         className={`side-menu__item${isActive ? ' active' : ''}`}
         href="javascript:void(0);"
         onClick={() => setOpen((v) => !v)}
-        style={depth > 0 ? { paddingLeft: 18 + (depth - 1) * 12 } : undefined}
+        style={depth > 0 ? { paddingLeft: 16 + (depth - 1) * 14, whiteSpace: 'nowrap' } : undefined}
       >
         {depth === 0 && icon && <i className={`side-menu__icon ${icon}`}></i>}
         <span className="side-menu__label">{node.label}</span>
