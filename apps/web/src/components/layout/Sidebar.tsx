@@ -6,6 +6,7 @@ interface NavSubItem {
   label: string
   path?: string
   icon?: string
+  roles?: string[]
   children?: NavSubItem[]
 }
 
@@ -22,6 +23,13 @@ interface NavSection {
   category: string
   items: NavItem[]
 }
+
+// Nhóm role dùng cho RBAC từng mục con của "Phân hệ Kế hoạch"
+const R_COMPANY = ['ADMIN', 'BOD', 'COMPANY_PLANNER']
+const R_FACTORY_PLAN = ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY']
+const R_DELIVERY = ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_PLANNER']
+const R_PROGRESS = ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY']
+const R_REPORT = ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER']
 
 const NAV_SECTIONS: NavSection[] = [
   {
@@ -69,36 +77,36 @@ const NAV_SECTIONS: NavSection[] = [
           {
             label: 'Danh mục',
             children: [
-              { label: 'Khách hàng', path: '/planning/customers' },
-              { label: 'Mã hàng', path: '/planning/styles' },
+              { label: 'Khách hàng', path: '/planning/customers', roles: R_COMPANY },
+              { label: 'Mã hàng', path: '/planning/styles', roles: R_COMPANY },
             ],
           },
           {
             label: 'Đơn hàng',
             children: [
-              { label: 'Đơn đặt hàng', path: '/planning/orders' },
-              { label: 'Purchase Order (PO)', path: '/planning/purchase-orders' },
+              { label: 'Đơn đặt hàng', path: '/planning/orders', roles: R_COMPANY },
+              { label: 'Purchase Order (PO)', path: '/planning/purchase-orders', roles: R_COMPANY },
             ],
           },
           {
             label: 'Kế hoạch sản xuất',
             children: [
-              { label: 'Kế hoạch tổng', path: '/planning/plans/company' },
-              { label: 'Kế hoạch theo PO', path: '/planning/plans/by-po' },
-              { label: 'Kế hoạch chuyền may', path: '/planning/plans/factory' },
-              { label: 'Kế hoạch giao hàng', path: '/planning/delivery' },
+              { label: 'Kế hoạch tổng', path: '/planning/plans/company', roles: R_COMPANY },
+              { label: 'Kế hoạch theo PO', path: '/planning/plans/by-po', roles: R_COMPANY },
+              { label: 'Kế hoạch chuyền may', path: '/planning/plans/factory', roles: R_FACTORY_PLAN },
+              { label: 'Kế hoạch giao hàng', path: '/planning/delivery', roles: R_DELIVERY },
             ],
           },
           {
             label: 'Theo dõi tiến độ',
             children: [
-              { label: 'Tiến độ cắt', path: '/planning/progress/cutting' },
-              { label: 'Tiến độ may', path: '/planning/progress/sewing' },
-              { label: 'Tiến độ hoàn thiện', path: '/planning/progress/finishing' },
-              { label: 'Tiến độ xuất hàng', path: '/planning/progress/shipping' },
+              { label: 'Tiến độ cắt', path: '/planning/progress/cutting', roles: R_PROGRESS },
+              { label: 'Tiến độ may', path: '/planning/progress/sewing', roles: R_PROGRESS },
+              { label: 'Tiến độ hoàn thiện', path: '/planning/progress/finishing', roles: R_PROGRESS },
+              { label: 'Tiến độ xuất hàng', path: '/planning/progress/shipping', roles: R_PROGRESS },
             ],
           },
-          { label: 'Báo cáo', path: '/planning/reports' },
+          { label: 'Báo cáo', path: '/planning/reports', roles: R_REPORT },
         ],
       },
       {
@@ -124,8 +132,28 @@ function collectLeafPaths(node: NavSubItem): string[] {
   return node.path ? [node.path] : []
 }
 
+// RBAC: node lá hiển thị nếu không khai báo roles hoặc user có role phù hợp;
+// node nhóm hiển thị nếu có ít nhất 1 con hiển thị.
+function isNodeVisible(node: NavSubItem, isAdmin: () => boolean, hasRole: (r: string) => boolean): boolean {
+  if (node.children) return node.children.some((c) => isNodeVisible(c, isAdmin, hasRole))
+  if (!node.roles || node.roles.length === 0) return true
+  return isAdmin() || node.roles.some((r) => hasRole(r))
+}
+
 // Render đệ quy: hỗ trợ menu nhiều cấp (Phân hệ Kế hoạch → nhóm → mục con)
-function NavNode({ node, depth, icon, onClose }: { node: NavSubItem; depth: number; icon?: string; onClose: () => void }) {
+function NavNode({
+  node,
+  depth,
+  icon,
+  onClose,
+  isVisible,
+}: {
+  node: NavSubItem
+  depth: number
+  icon?: string
+  onClose: () => void
+  isVisible: (n: NavSubItem) => boolean
+}) {
   const location = useLocation()
   const isActive = collectLeafPaths(node).some((p) => location.pathname.startsWith(p))
   const [open, setOpen] = useState(isActive)
@@ -150,7 +178,10 @@ function NavNode({ node, depth, icon, onClose }: { node: NavSubItem; depth: numb
     )
   }
 
-  // Node nhóm → mở/đóng
+  // Node nhóm → lọc con theo RBAC; ẩn nhóm nếu không có con nào hiển thị
+  const visibleChildren = node.children.filter(isVisible)
+  if (visibleChildren.length === 0) return null
+
   return (
     <li className={`slide has-sub${open || isActive ? ' is-expanded' : ''}`}>
       <a
@@ -167,16 +198,16 @@ function NavNode({ node, depth, icon, onClose }: { node: NavSubItem; depth: numb
         ></i>
       </a>
       <ul className="slide-menu" style={{ display: open ? 'block' : 'none' }}>
-        {node.children.map((child) => (
-          <NavNode key={child.label} node={child} depth={depth + 1} onClose={onClose} />
+        {visibleChildren.map((child) => (
+          <NavNode key={child.label} node={child} depth={depth + 1} onClose={onClose} isVisible={isVisible} />
         ))}
       </ul>
     </li>
   )
 }
 
-function SubMenuNav({ item, onClose }: { item: NavItem; onClose: () => void }) {
-  return <NavNode node={item} depth={0} icon={item.icon} onClose={onClose} />
+function SubMenuNav({ item, onClose, isVisible }: { item: NavItem; onClose: () => void; isVisible: (n: NavSubItem) => boolean }) {
+  return <NavNode node={item} depth={0} icon={item.icon} onClose={onClose} isVisible={isVisible} />
 }
 
 export function Sidebar() {
@@ -205,6 +236,8 @@ export function Sidebar() {
       ? location.pathname === item.path || location.pathname === '/'
       : location.pathname.startsWith(item.path)
 
+  const isVisible = (node: NavSubItem) => isNodeVisible(node, isAdmin, hasRole)
+
   const renderItems = () => {
     const elements: React.ReactNode[] = []
 
@@ -221,7 +254,7 @@ export function Sidebar() {
       visibleItems.forEach((item) => {
         if (item.children) {
           elements.push(
-            <SubMenuNav key={item.path} item={item} onClose={closeMobileSidebar} />,
+            <SubMenuNav key={item.path} item={item} onClose={closeMobileSidebar} isVisible={isVisible} />,
           )
           return
         }

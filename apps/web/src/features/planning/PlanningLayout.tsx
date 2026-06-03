@@ -1,6 +1,8 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
+import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
+import { useAuthStore } from '@/stores/auth.store'
 
 // Danh mục
 const CustomersPage = lazy(() => import('@/features/customer/CustomersPage'))
@@ -21,29 +23,45 @@ const ShippingProgressPage = lazy(() => import('@/features/progress/ShippingProg
 // Báo cáo
 const ReportPage = lazy(() => import('@/features/report/ReportPage'))
 
+// RBAC theo từng mục con (đồng bộ với Sidebar)
+const R_COMPANY = ['ADMIN', 'BOD', 'COMPANY_PLANNER']
+const R_FACTORY_PLAN = ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY']
+const R_DELIVERY = ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_PLANNER']
+const R_PROGRESS = ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY']
+const R_REPORT = ['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER']
+
+const guard = (roles: string[], el: ReactNode) => <ProtectedRoute roles={roles}>{el}</ProtectedRoute>
+
+// Trang mặc định theo role: cấp công ty vào "Đơn đặt hàng", còn lại vào "Tiến độ may".
+function PlanningIndex() {
+  const { isAdmin, hasRole } = useAuthStore()
+  const company = isAdmin() || hasRole('BOD') || hasRole('COMPANY_PLANNER')
+  return <Navigate to={company ? 'orders' : 'progress/sewing'} replace />
+}
+
 export default function PlanningLayout() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
-        <Route index element={<Navigate to="orders" replace />} />
+        <Route index element={<PlanningIndex />} />
         {/* Danh mục */}
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="styles" element={<StylesPage />} />
+        <Route path="customers" element={guard(R_COMPANY, <CustomersPage />)} />
+        <Route path="styles" element={guard(R_COMPANY, <StylesPage />)} />
         {/* Đơn hàng */}
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="orders" element={guard(R_COMPANY, <OrdersPage />)} />
+        <Route path="purchase-orders" element={guard(R_COMPANY, <PurchaseOrdersPage />)} />
         {/* Kế hoạch sản xuất */}
-        <Route path="plans/company" element={<CompanyPlanPage />} />
-        <Route path="plans/by-po" element={<PlanByPoPage />} />
-        <Route path="plans/factory" element={<FactoryPlanPage />} />
-        <Route path="delivery" element={<DeliveryPlansPage />} />
+        <Route path="plans/company" element={guard(R_COMPANY, <CompanyPlanPage />)} />
+        <Route path="plans/by-po" element={guard(R_COMPANY, <PlanByPoPage />)} />
+        <Route path="plans/factory" element={guard(R_FACTORY_PLAN, <FactoryPlanPage />)} />
+        <Route path="delivery" element={guard(R_DELIVERY, <DeliveryPlansPage />)} />
         {/* Theo dõi tiến độ */}
-        <Route path="progress/cutting" element={<CuttingProgressPage />} />
-        <Route path="progress/sewing" element={<SewingProgressPage />} />
-        <Route path="progress/finishing" element={<FinishingProgressPage />} />
-        <Route path="progress/shipping" element={<ShippingProgressPage />} />
+        <Route path="progress/cutting" element={guard(R_PROGRESS, <CuttingProgressPage />)} />
+        <Route path="progress/sewing" element={guard(R_PROGRESS, <SewingProgressPage />)} />
+        <Route path="progress/finishing" element={guard(R_PROGRESS, <FinishingProgressPage />)} />
+        <Route path="progress/shipping" element={guard(R_PROGRESS, <ShippingProgressPage />)} />
         {/* Báo cáo */}
-        <Route path="reports" element={<ReportPage />} />
+        <Route path="reports" element={guard(R_REPORT, <ReportPage />)} />
       </Routes>
     </Suspense>
   )
