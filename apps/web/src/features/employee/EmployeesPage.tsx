@@ -4,9 +4,13 @@ import { EmployeeFormDialog } from './EmployeeFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { PageWrapper } from '@/components/layout/PageWrapper'
+import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
+import { cellStr } from '@/lib/excel'
 import { useFactories } from '@/features/factory/factory.hooks'
-import { POSITION_LABELS, type Employee, type CreateEmployeeDto } from './employee.api'
+import { employeeApi, POSITION_LABELS, type Employee, type CreateEmployeeDto } from './employee.api'
 import { useAuthStore } from '@/stores/auth.store'
+
+const POSITION_BY_LABEL = Object.fromEntries(Object.entries(POSITION_LABELS).map(([k, v]) => [v, k]))
 
 export default function EmployeesPage() {
   const [page, setPage] = useState(1)
@@ -44,6 +48,44 @@ export default function EmployeesPage() {
     }
   }
 
+  const exportRows = () => (data?.data ?? []).map((emp) => ({
+    'Mã NV': emp.code,
+    'Họ tên': emp.fullName,
+    'Chức vụ': POSITION_LABELS[emp.position] ?? emp.position,
+    'Mã xưởng': emp.factory?.code ?? '',
+    'SĐT': emp.phone ?? '',
+    'Email': emp.email ?? '',
+  }))
+
+  const templateRows = [
+    { 'Mã NV': '', 'Họ tên': 'Nguyễn Văn A', 'Chức vụ': 'GĐ Xưởng', 'Mã xưởng': 'XW001', 'SĐT': '0900000000', 'Email': '' },
+  ]
+
+  const handleImportRows = async (rows: Record<string, string | number>[]) => {
+    const factoryMap = new Map(factories.map((f) => [f.code.trim().toLowerCase(), f.id]))
+    let success = 0
+    let error = 0
+    for (const row of rows) {
+      const fullName = cellStr(row['Họ tên'])
+      const position = POSITION_BY_LABEL[cellStr(row['Chức vụ'])]
+      if (!fullName || !position) { error++; continue }
+      const factoryId = factoryMap.get(cellStr(row['Mã xưởng']).toLowerCase())
+      try {
+        await employeeApi.create({
+          code: cellStr(row['Mã NV']) || undefined,
+          fullName,
+          position,
+          factoryId: factoryId ?? undefined,
+          phone: cellStr(row['SĐT']) || undefined,
+          email: cellStr(row['Email']) || undefined,
+        })
+        success++
+      } catch { error++ }
+    }
+    refetch()
+    return { success, error }
+  }
+
   return (
     <PageWrapper
       title="Danh sách Nhân viên"
@@ -53,6 +95,15 @@ export default function EmployeesPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ExcelToolbar
+            sheetName="Nhân viên"
+            fileBase="nhan-vien"
+            exportRows={exportRows}
+            templateRows={templateRows}
+            onImport={canWrite ? handleImportRows : undefined}
+            canWrite={canWrite}
+            entityLabel="nhân viên"
+          />
           {canWrite && (
             <button
               onClick={() => { setEditTarget(null); setFormOpen(true) }}

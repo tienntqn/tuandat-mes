@@ -4,9 +4,14 @@ import { MachineFormDialog } from './MachineFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { PageWrapper } from '@/components/layout/PageWrapper'
+import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
+import { cellStr, cellDate } from '@/lib/excel'
 import type { Machine, CreateMachineDto, MachineType, MachineStatus } from './machine.api'
-import { MACHINE_TYPE_LABELS, MACHINE_STATUS_LABELS } from './machine.api'
+import { MACHINE_TYPE_LABELS, MACHINE_STATUS_LABELS, machineApi } from './machine.api'
 import { useAuthStore } from '@/stores/auth.store'
+
+const TYPE_BY_LABEL = Object.fromEntries(Object.entries(MACHINE_TYPE_LABELS).map(([k, v]) => [v, k]))
+const MACHINE_STATUS_BY_LABEL = Object.fromEntries(Object.entries(MACHINE_STATUS_LABELS).map(([k, v]) => [v, k]))
 import { factoryApi } from '@/features/factory/factory.api'
 import { useQuery } from '@tanstack/react-query'
 import { lineApi } from '@/features/production-line/line.api'
@@ -57,6 +62,51 @@ export default function MachinesPage() {
   const factoryList = factories?.data ?? []
   const lineList = (linesData?.data ?? []).map((l: any) => ({ id: l.id, name: l.name, lineNumber: l.lineNumber, factoryId: l.factoryId }))
 
+  const exportRows = () => (data?.data ?? []).map((m) => ({
+    'Mã máy': m.code,
+    'Tên máy': m.name,
+    'Loại': MACHINE_TYPE_LABELS[m.type] ?? m.type,
+    'Mã xưởng': m.factory?.code ?? '',
+    'Trạng thái': MACHINE_STATUS_LABELS[m.status] ?? m.status,
+    'Hãng': m.brand ?? '',
+    'Model': m.model ?? '',
+    'Ngày mua': m.purchaseDate ? m.purchaseDate.split('T')[0] : '',
+    'Ghi chú': m.note ?? '',
+  }))
+
+  const templateRows = [
+    { 'Mã máy': '', 'Tên máy': 'Máy may 1 kim', 'Loại': 'Máy may', 'Mã xưởng': 'XW001', 'Trạng thái': 'Chờ', 'Hãng': 'Juki', 'Model': 'DDL-8700', 'Ngày mua': '2025-01-15', 'Ghi chú': '' },
+  ]
+
+  const handleImportRows = async (rows: Record<string, string | number>[]) => {
+    const factoryMap = new Map(factoryList.map((f) => [f.code.trim().toLowerCase(), f.id]))
+    let success = 0
+    let error = 0
+    for (const row of rows) {
+      const name = cellStr(row['Tên máy'])
+      const type = TYPE_BY_LABEL[cellStr(row['Loại'])] as MachineType | undefined
+      const factoryId = factoryMap.get(cellStr(row['Mã xưởng']).toLowerCase())
+      if (!name || !type || !factoryId) { error++; continue }
+      const purchaseDate = cellDate(row['Ngày mua'])
+      try {
+        await machineApi.create({
+          code: cellStr(row['Mã máy']) || undefined,
+          name,
+          type,
+          factoryId,
+          status: (MACHINE_STATUS_BY_LABEL[cellStr(row['Trạng thái'])] as MachineStatus) || undefined,
+          brand: cellStr(row['Hãng']) || undefined,
+          model: cellStr(row['Model']) || undefined,
+          purchaseDate: purchaseDate || undefined,
+          note: cellStr(row['Ghi chú']) || undefined,
+        })
+        success++
+      } catch { error++ }
+    }
+    refetch()
+    return { success, error }
+  }
+
   return (
     <PageWrapper
       title="Danh sách Máy móc"
@@ -66,6 +116,15 @@ export default function MachinesPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ExcelToolbar
+            sheetName="Máy móc"
+            fileBase="may-moc"
+            exportRows={exportRows}
+            templateRows={templateRows}
+            onImport={canWrite ? handleImportRows : undefined}
+            canWrite={canWrite}
+            entityLabel="máy"
+          />
           {canWrite && (
             <button
               onClick={() => { setEditTarget(null); setFormOpen(true) }}
