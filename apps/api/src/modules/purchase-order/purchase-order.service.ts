@@ -33,6 +33,7 @@ export class PurchaseOrderService {
               customer: { select: { id: true, name: true } },
             },
           },
+          order: { select: { id: true, orderNumber: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),

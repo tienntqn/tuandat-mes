@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import type { PurchaseOrder, CreatePODto } from './po.api'
 import { PO_STATUS_LABELS } from './po.api'
 import { useStylesActive } from '@/features/style/style.hooks'
+import { useOrdersActive } from '@/features/order/order.hooks'
 
 interface Props {
   open: boolean
@@ -14,7 +15,8 @@ interface Props {
 
 export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) {
   const { data: styles = [] } = useStylesActive()
-  const [form, setForm] = useState<CreatePODto>({ poNumber: '', styleId: 0, totalQuantity: 0, deliveryDate: '', status: 'OPEN' })
+  const { data: orders = [] } = useOrdersActive()
+  const [form, setForm] = useState<CreatePODto>({ poNumber: '', styleId: 0, orderId: null, totalQuantity: 0, deliveryDate: '', status: 'OPEN' })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   // Reset form khi mở dialog/đổi PO. KHÔNG để `styles` trong deps để tránh reset form
@@ -23,8 +25,8 @@ export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) 
     if (open) {
       setForm(
         po
-          ? { poNumber: po.poNumber, styleId: po.styleId, totalQuantity: po.totalQuantity, deliveryDate: po.deliveryDate.split('T')[0], status: po.status }
-          : { poNumber: '', styleId: 0, totalQuantity: 0, deliveryDate: '', status: 'OPEN' },
+          ? { poNumber: po.poNumber, styleId: po.styleId, orderId: po.orderId, totalQuantity: po.totalQuantity, deliveryDate: po.deliveryDate.split('T')[0], status: po.status }
+          : { poNumber: '', styleId: 0, orderId: null, totalQuantity: 0, deliveryDate: '', status: 'OPEN' },
       )
       setErrors({})
     }
@@ -69,6 +71,12 @@ export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) 
             <select className="w-full rounded-lg border px-3 py-2 text-sm bg-background" value={form.styleId} onChange={(e) => setForm({ ...form, styleId: +e.target.value })}>
               <option value={0}>-- Chọn mã hàng --</option>
               {styles.map((s) => <option key={s.id} value={s.id}>{s.code} — {s.name} ({s.customer?.name})</option>)}
+            </select>
+          </Field>
+          <Field label="Đơn đặt hàng (tùy chọn)">
+            <select className="w-full rounded-lg border px-3 py-2 text-sm bg-background" value={form.orderId ?? 0} onChange={(e) => setForm({ ...form, orderId: +e.target.value || null })}>
+              <option value={0}>-- Không gắn đơn hàng --</option>
+              {orders.map((o) => <option key={o.id} value={o.id}>{o.orderNumber}</option>)}
             </select>
           </Field>
           <Field label="Số lượng *" error={errors.totalQuantity}>

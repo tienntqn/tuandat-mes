@@ -11,6 +11,7 @@ export interface PurchaseOrder {
   id: number
   poNumber: string
   styleId: number
+  orderId: number | null
   totalQuantity: number
   deliveryDate: string
   status: string
@@ -20,6 +21,7 @@ export interface PurchaseOrder {
     name: string
     customer?: { id: number; name: string }
   }
+  order?: { id: number; orderNumber: string } | null
   createdAt: string
   deletedAt: string | null
 }
@@ -35,6 +37,7 @@ export interface POListResult {
 export type CreatePODto = {
   poNumber: string
   styleId: number
+  orderId?: number | null
   totalQuantity: number
   deliveryDate: string
   status?: string

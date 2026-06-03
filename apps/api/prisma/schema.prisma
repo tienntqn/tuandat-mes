@@ -66,6 +66,19 @@ enum POStatus {
   CANCELLED
 }
 
+enum OrderStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  PENDING
+  PARTIAL
+  DELIVERED
+}
+
 enum ProductionStage {
   CUTTING
   SEWING
@@ -270,6 +283,7 @@ model Customer {
   deletedAt   DateTime?
 
   styles Style[]
+  orders Order[]
 
   @@index([deletedAt])
 }
@@ -301,6 +315,7 @@ model PurchaseOrder {
   id            Int       @id @default(autoincrement())
   poNumber      String    @unique
   styleId       Int
+  orderId       Int?
   totalQuantity Int
   deliveryDate  DateTime  @db.Date
   status        POStatus  @default(OPEN)
@@ -308,12 +323,59 @@ model PurchaseOrder {
   updatedAt     DateTime  @updatedAt
   deletedAt     DateTime?
 
-  style        Style         @relation(fields: [styleId], references: [id])
-  companyPlans CompanyPlan[]
+  style         Style          @relation(fields: [styleId], references: [id])
+  order         Order?         @relation(fields: [orderId], references: [id])
+  companyPlans  CompanyPlan[]
+  deliveryPlans DeliveryPlan[]
 
   @@index([styleId])
+  @@index([orderId])
   @@index([status])
   @@index([deliveryDate])
+  @@index([deletedAt])
+}
+
+// Đơn đặt hàng của khách (Order) — 1 Order gồm nhiều PO
+model Order {
+  id           Int         @id @default(autoincrement())
+  orderNumber  String      @unique
+  customerId   Int
+  orderDate    DateTime    @db.Date
+  deliveryDate DateTime?   @db.Date
+  status       OrderStatus @default(OPEN)
+  note         String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  deletedAt    DateTime?
+
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  purchaseOrders PurchaseOrder[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([orderDate])
+  @@index([deletedAt])
+}
+
+// Kế hoạch giao hàng theo PO (kế hoạch vs thực giao)
+model DeliveryPlan {
+  id              Int            @id @default(autoincrement())
+  poId            Int
+  plannedDate     DateTime       @db.Date
+  plannedQuantity Int
+  actualDate      DateTime?      @db.Date
+  actualQuantity  Int?
+  status          DeliveryStatus @default(PENDING)
+  note            String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  po PurchaseOrder @relation(fields: [poId], references: [id])
+
+  @@index([poId])
+  @@index([plannedDate])
+  @@index([status])
   @@index([deletedAt])
 }
 
