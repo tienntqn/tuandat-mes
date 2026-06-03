@@ -49,7 +49,7 @@ export default function CompanyPage() {
   return (
     <PageWrapper
       title="Thông tin Công ty"
-      breadcrumbs={[{ label: 'Dữ liệu nền' }, { label: 'Công ty' }]}
+      breadcrumbs={[{ label: 'Cài đặt' }, { label: 'Thông tin công ty' }]}
       actions={
         canEdit && !editing ? (
           <button onClick={startEdit} className="btn btn-outline-secondary btn-icon">

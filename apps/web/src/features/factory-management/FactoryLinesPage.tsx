@@ -134,7 +134,7 @@ export default function FactoryLinesPage() {
   return (
     <PageWrapper
       title="Quản lý Chuyền may"
-      breadcrumbs={[{ label: 'Quản lý nhà máy' }, { label: 'Chuyền may' }]}
+      breadcrumbs={[{ label: 'Quản lý nhà máy' }, { label: 'Quản lý chuyền may' }]}
       actions={
         <div className="d-flex gap-2">
           {canWrite && (

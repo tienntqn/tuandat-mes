@@ -48,7 +48,7 @@ export default function TransferPage() {
   return (
     <PageWrapper
       title="Điều chuyển máy"
-      breadcrumbs={[{ label: 'Máy móc' }, { label: 'Điều chuyển' }]}
+      breadcrumbs={[{ label: 'Quản lý máy móc' }, { label: 'Điều chuyển' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

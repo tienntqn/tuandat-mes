@@ -109,8 +109,8 @@ export default function FactoryPlanPage() {
 
   return (
     <PageWrapper
-      title="Kế hoạch Xưởng"
-      breadcrumbs={[{ label: 'Kế hoạch' }, { label: 'Xưởng' }]}
+      title="Kế hoạch chuyền may"
+      breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Kế hoạch sản xuất' }, { label: 'Kế hoạch chuyền may' }]}
       actions={
         <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
           <span><i className="fe fe-rotate-ccw"></i></span>
@@ -184,7 +184,7 @@ export default function FactoryPlanPage() {
                           <td>
                             <div className="fw-medium">{group.style?.code} — {group.style?.name}</div>
                             <small className="text-muted fw-normal">
-                              PO: {group.po?.poNumber} · Xưởng: {group.factory?.name}
+                              PO: {group.po?.poNumber} · <span className="fw-semibold text-dark">{group.factory?.name}</span>
                             </small>
                           </td>
                           <td className="text-end font-monospace fw-medium">
@@ -204,7 +204,7 @@ export default function FactoryPlanPage() {
                             <td className="ps-4 py-2">
                               <span className="d-inline-flex align-items-center gap-1 text-muted">
                                 <GitBranch size={14} className="text-primary" />
-                                Chuyền {fp.line?.lineNumber} — {fp.line?.name}
+                                {fp.line?.name}
                               </span>
                             </td>
                             <td className="text-end font-monospace py-2">

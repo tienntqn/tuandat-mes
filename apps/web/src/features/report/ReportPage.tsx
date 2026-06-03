@@ -84,7 +84,7 @@ export default function ReportPage() {
   return (
     <PageWrapper
       title="Báo cáo tiến độ sản xuất"
-      breadcrumbs={[{ label: 'Báo cáo' }, { label: 'Tiến độ' }]}
+      breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Báo cáo' }]}
       actions={
         <div className="d-flex gap-2 no-print">
           <button onClick={() => window.print()} className="btn btn-outline-secondary btn-icon">

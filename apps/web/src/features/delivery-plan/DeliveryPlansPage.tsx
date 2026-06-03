@@ -87,7 +87,7 @@ export default function DeliveryPlansPage() {
   return (
     <PageWrapper
       title="Kế hoạch giao hàng"
-      breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Kế hoạch giao hàng' }]}
+      breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Kế hoạch sản xuất' }, { label: 'Kế hoạch giao hàng' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

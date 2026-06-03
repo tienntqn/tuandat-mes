@@ -89,7 +89,7 @@ export default function EmployeesPage() {
   return (
     <PageWrapper
       title="Danh sách Nhân viên"
-      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Nhân viên' }]}
+      breadcrumbs={[{ label: 'Quản lý User' }, { label: 'Nhân viên' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

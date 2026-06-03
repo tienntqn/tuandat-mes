@@ -77,7 +77,7 @@ export default function FactoriesPage() {
   return (
     <PageWrapper
       title="Danh sách Xưởng"
-      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Xưởng' }]}
+      breadcrumbs={[{ label: 'Quản lý nhà máy' }, { label: 'Quản lý xưởng may' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

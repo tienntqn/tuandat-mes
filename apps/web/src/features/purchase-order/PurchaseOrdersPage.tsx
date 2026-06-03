@@ -88,7 +88,7 @@ export default function PurchaseOrdersPage() {
   return (
     <PageWrapper
       title="Purchase Orders"
-      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Purchase Orders' }]}
+      breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Đơn hàng' }, { label: 'Purchase Order (PO)' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

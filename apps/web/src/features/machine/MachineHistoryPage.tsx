@@ -30,7 +30,7 @@ export default function MachineHistoryPage() {
   return (
     <PageWrapper
       title="Lịch sử di chuyển máy"
-      breadcrumbs={[{ label: 'Máy móc' }, { label: 'Lịch sử di chuyển' }]}
+      breadcrumbs={[{ label: 'Quản lý máy móc' }, { label: 'Lịch sử di chuyển' }]}
     >
       {/* Chọn máy */}
       <div className="card mb-4">

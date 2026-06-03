@@ -67,7 +67,7 @@ export default function CustomersPage() {
   return (
     <PageWrapper
       title="Danh sách Khách hàng"
-      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Khách hàng' }]}
+      breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Danh mục' }, { label: 'Khách hàng' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

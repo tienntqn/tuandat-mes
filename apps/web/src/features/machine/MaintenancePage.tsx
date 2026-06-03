@@ -26,7 +26,7 @@ export default function MaintenancePage() {
   return (
     <PageWrapper
       title="Bảo dưỡng máy móc"
-      breadcrumbs={[{ label: 'Máy móc' }, { label: 'Bảo dưỡng' }]}
+      breadcrumbs={[{ label: 'Quản lý máy móc' }, { label: 'Bảo dưỡng' }]}
     >
       {/* Tabs */}
       <div className="nav nav-tabs mb-3">

@@ -110,7 +110,7 @@ export default function MachinesPage() {
   return (
     <PageWrapper
       title="Danh sách Máy móc"
-      breadcrumbs={[{ label: 'Máy móc' }, { label: 'Danh sách' }]}
+      breadcrumbs={[{ label: 'Quản lý máy móc' }, { label: 'Danh sách máy' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

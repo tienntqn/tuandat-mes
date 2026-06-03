@@ -132,7 +132,7 @@ export default function CompanyPlanPage() {
   return (
     <PageWrapper
       title="Kế hoạch Công ty"
-      breadcrumbs={[{ label: 'Kế hoạch' }, { label: 'Công ty' }]}
+      breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Kế hoạch sản xuất' }, { label: 'Kế hoạch tổng' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

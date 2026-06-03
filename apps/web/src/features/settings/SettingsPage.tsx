@@ -30,7 +30,7 @@ export default function SettingsPage() {
   return (
     <PageWrapper
       title="Cài đặt hệ thống"
-      breadcrumbs={[{ label: 'Hệ thống' }, { label: 'Cài đặt' }]}
+      breadcrumbs={[{ label: 'Cài đặt' }, { label: 'Cài đặt chung' }]}
     >
       <p className="text-muted mb-4">Quản lý các thông số vận hành</p>
 

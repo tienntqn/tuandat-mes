@@ -42,7 +42,7 @@ export default function LinesPage() {
   return (
     <PageWrapper
       title="Danh sách Chuyền"
-      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Chuyền may' }]}
+      breadcrumbs={[{ label: 'Quản lý nhà máy' }, { label: 'Quản lý chuyền may' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

@@ -78,7 +78,7 @@ export default function StylesPage() {
   return (
     <PageWrapper
       title="Danh sách Mã hàng"
-      breadcrumbs={[{ label: 'Danh mục' }, { label: 'Mã hàng' }]}
+      breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Danh mục' }, { label: 'Mã hàng' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">

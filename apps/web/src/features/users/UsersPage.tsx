@@ -41,7 +41,7 @@ export default function UsersPage() {
   return (
     <PageWrapper
       title="Quản lý Tài khoản"
-      breadcrumbs={[{ label: 'Hệ thống' }, { label: 'Tài khoản' }]}
+      breadcrumbs={[{ label: 'Quản lý User' }, { label: 'Tài khoản' }]}
       actions={
         <div className="d-flex gap-2">
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
