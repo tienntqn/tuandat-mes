@@ -13,7 +13,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private prisma: PrismaService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // Ưu tiên header Authorization; fallback token qua query (?token=) cho SSE/EventSource
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (req: any) => (typeof req?.query?.token === 'string' ? req.query.token : null),
+      ]),
       secretOrKey: config.getOrThrow('JWT_ACCESS_SECRET'),
     })
   }

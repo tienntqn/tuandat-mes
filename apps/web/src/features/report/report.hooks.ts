@@ -49,7 +49,8 @@ export function useKpiStream(onUpdate: (kpi: KpiResult) => void) {
 
   useEffect(() => {
     if (!token) return
-    const url = `${apiBase}/report/stream/kpi`
+    // EventSource không gửi được header Authorization → truyền token qua query param
+    const url = `${apiBase}/report/stream/kpi?token=${encodeURIComponent(token)}`
     const es = new EventSource(url, { withCredentials: false })
     esRef.current = es
 
