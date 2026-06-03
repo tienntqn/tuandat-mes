@@ -79,6 +79,35 @@ enum DeliveryStatus {
   DELIVERED
 }
 
+// ============================================================
+// MÀU & SIZE (catalog dùng chung)
+// ============================================================
+
+model Color {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  name      String
+  hex       String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([deletedAt])
+}
+
+model Size {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  name      String
+  sortOrder Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([sortOrder])
+  @@index([deletedAt])
+}
+
 enum ProductionStage {
   CUTTING
   SEWING

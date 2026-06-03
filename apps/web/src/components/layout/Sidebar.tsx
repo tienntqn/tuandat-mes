@@ -80,6 +80,8 @@ const NAV_SECTIONS: NavSection[] = [
             children: [
               { label: 'Khách hàng', path: '/planning/customers', roles: R_COMPANY },
               { label: 'Mã hàng', path: '/planning/styles', roles: R_COMPANY },
+              { label: 'Màu', path: '/planning/colors', roles: R_COMPANY },
+              { label: 'Size', path: '/planning/sizes', roles: R_COMPANY },
             ],
           },
           {

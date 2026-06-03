@@ -70,6 +70,8 @@ async function wipe() {
   await prisma.permission.deleteMany()
   await prisma.role.deleteMany()
   await prisma.style.deleteMany()
+  await prisma.color.deleteMany()
+  await prisma.size.deleteMany()
   await prisma.customer.deleteMany()
   await prisma.productionLine.deleteMany()
   await prisma.factory.deleteMany()
@@ -240,6 +242,31 @@ async function main() {
     styles.push(await prisma.style.create({ data: { code: s.code, name: s.name, customerId: customers[s.customerIdx].id, sam: s.sam, season: s.season } }))
   }
   console.log(`✓ Customer: 4 (SOHO, GLORIA JEANS, GS, SOCO) | Style: ${styles.length}`)
+
+  // ── 7b. MÀU & SIZE (catalog dùng chung) ──
+  await prisma.color.createMany({
+    data: [
+      { code: 'WHT', name: 'Trắng', hex: '#FFFFFF' },
+      { code: 'BLK', name: 'Đen', hex: '#000000' },
+      { code: 'NVY', name: 'Navy', hex: '#1F2A56' },
+      { code: 'RED', name: 'Đỏ', hex: '#D32F2F' },
+      { code: 'GRY', name: 'Xám', hex: '#9E9E9E' },
+      { code: 'BLU', name: 'Xanh dương', hex: '#1976D2' },
+      { code: 'GRN', name: 'Xanh lá', hex: '#388E3C' },
+      { code: 'BEI', name: 'Be', hex: '#D8C3A5' },
+    ],
+  })
+  await prisma.size.createMany({
+    data: [
+      { code: 'S', name: 'S', sortOrder: 1 },
+      { code: 'M', name: 'M', sortOrder: 2 },
+      { code: 'L', name: 'L', sortOrder: 3 },
+      { code: 'XL', name: 'XL', sortOrder: 4 },
+      { code: '2XL', name: '2XL', sortOrder: 5 },
+      { code: '3XL', name: '3XL', sortOrder: 6 },
+    ],
+  })
+  console.log(`✓ Color: 8 | Size: 6`)
 
   // ── 8. ORDERS (đơn đặt hàng) ──
   const orderData = [

@@ -10,6 +10,8 @@ import { FactoryModule } from './modules/factory/factory.module'
 import { ProductionLineModule } from './modules/production-line/production-line.module'
 import { EmployeeModule } from './modules/employee/employee.module'
 import { CustomerModule } from './modules/customer/customer.module'
+import { ColorModule } from './modules/color/color.module'
+import { SizeModule } from './modules/size/size.module'
 import { StyleModule } from './modules/style/style.module'
 import { PurchaseOrderModule } from './modules/purchase-order/purchase-order.module'
 import { OrderModule } from './modules/order/order.module'
@@ -35,6 +37,8 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter'
     ProductionLineModule,
     EmployeeModule,
     CustomerModule,
+    ColorModule,
+    SizeModule,
     StyleModule,
     PurchaseOrderModule,
     OrderModule,

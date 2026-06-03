@@ -7,6 +7,8 @@ import { useAuthStore } from '@/stores/auth.store'
 // Danh mục
 const CustomersPage = lazy(() => import('@/features/customer/CustomersPage'))
 const StylesPage = lazy(() => import('@/features/style/StylesPage'))
+const ColorsPage = lazy(() => import('@/features/color/ColorsPage'))
+const SizesPage = lazy(() => import('@/features/size/SizesPage'))
 // Đơn hàng
 const OrdersPage = lazy(() => import('@/features/order/OrdersPage'))
 const PurchaseOrdersPage = lazy(() => import('@/features/purchase-order/PurchaseOrdersPage'))
@@ -47,6 +49,8 @@ export default function PlanningLayout() {
         {/* Danh mục */}
         <Route path="customers" element={guard(R_COMPANY, <CustomersPage />)} />
         <Route path="styles" element={guard(R_COMPANY, <StylesPage />)} />
+        <Route path="colors" element={guard(R_COMPANY, <ColorsPage />)} />
+        <Route path="sizes" element={guard(R_COMPANY, <SizesPage />)} />
         {/* Đơn hàng */}
         <Route path="orders" element={guard(R_COMPANY, <OrdersPage />)} />
         <Route path="purchase-orders" element={guard(R_COMPANY, <PurchaseOrdersPage />)} />
