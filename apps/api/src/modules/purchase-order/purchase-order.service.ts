@@ -50,6 +50,7 @@ export class PurchaseOrderService {
         style: {
           include: { customer: { select: { id: true, code: true, name: true } } },
         },
+        items: { include: { color: true, size: true } },
       },
     })
     if (!po) throw new NotFoundException('PO không tồn tại')
@@ -67,7 +68,23 @@ export class PurchaseOrderService {
     })
     if (!style) throw new NotFoundException('Mã hàng không tồn tại')
 
-    return this.prisma.purchaseOrder.create({ data: dto })
+    const { items, ...poData } = dto
+    // Nếu có phân bổ ma trận màu×size: tổng SL PO = tổng các ô
+    if (items && items.length > 0) {
+      poData.totalQuantity = items.reduce((s, it) => s + (it.quantity || 0), 0)
+    }
+
+    const po = await this.prisma.purchaseOrder.create({ data: poData })
+    await this.syncItems(po.id, items)
+    return this.findOne(po.id)
+  }
+
+  // Đồng bộ phân bổ ma trận (xóa cũ, tạo các ô > 0)
+  private async syncItems(poId: number, items?: { colorId: number; sizeId: number; quantity: number }[]) {
+    if (!items) return
+    await this.prisma.poItem.deleteMany({ where: { poId } })
+    const rows = items.filter((it) => it.quantity > 0).map((it) => ({ poId, colorId: it.colorId, sizeId: it.sizeId, quantity: it.quantity }))
+    if (rows.length) await this.prisma.poItem.createMany({ data: rows, skipDuplicates: true })
   }
 
   async update(id: number, dto: UpdatePurchaseOrderDto) {
@@ -87,7 +104,13 @@ export class PurchaseOrderService {
       if (!style) throw new NotFoundException('Mã hàng không tồn tại')
     }
 
-    return this.prisma.purchaseOrder.update({ where: { id }, data: dto })
+    const { items, ...poData } = dto
+    if (items && items.length > 0) {
+      poData.totalQuantity = items.reduce((s, it) => s + (it.quantity || 0), 0)
+    }
+    await this.prisma.purchaseOrder.update({ where: { id }, data: poData })
+    await this.syncItems(id, items)
+    return this.findOne(id)
   }
 
   async softDelete(id: number) {

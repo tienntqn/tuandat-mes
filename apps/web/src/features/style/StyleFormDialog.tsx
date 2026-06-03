@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { Style, CreateStyleDto } from './style.api'
 import { useCustomersActive } from '@/features/customer/customer.hooks'
+import { useColorsActive } from '@/features/color/color.hooks'
+import { useSizesActive } from '@/features/size/size.hooks'
+
+const toggleId = (arr: number[] | undefined, id: number) => {
+  const set = new Set(arr ?? [])
+  set.has(id) ? set.delete(id) : set.add(id)
+  return Array.from(set)
+}
 
 interface Props {
   open: boolean
@@ -13,7 +21,9 @@ interface Props {
 
 export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: Props) {
   const { data: customers = [] } = useCustomersActive()
-  const [form, setForm] = useState<CreateStyleDto>({ name: '', customerId: 0, season: '', image: '', description: '', sam: undefined })
+  const { data: colors = [] } = useColorsActive()
+  const { data: sizes = [] } = useSizesActive()
+  const [form, setForm] = useState<CreateStyleDto>({ name: '', customerId: 0, season: '', image: '', description: '', sam: undefined, colorIds: [], sizeIds: [] })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   // Reset form khi mở dialog/đổi style. KHÔNG để `customers` trong deps để tránh
@@ -22,8 +32,12 @@ export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: P
     if (open) {
       setForm(
         style
-          ? { name: style.name, customerId: style.customerId, season: style.season ?? '', image: style.image ?? '', description: style.description ?? '', sam: style.sam ? +style.sam : undefined }
-          : { name: '', customerId: 0, season: '', image: '', description: '', sam: undefined },
+          ? {
+              name: style.name, customerId: style.customerId, season: style.season ?? '', image: style.image ?? '', description: style.description ?? '', sam: style.sam ? +style.sam : undefined,
+              colorIds: (style.styleColors ?? []).map((sc) => sc.colorId),
+              sizeIds: (style.styleSizes ?? []).map((ss) => ss.sizeId),
+            }
+          : { name: '', customerId: 0, season: '', image: '', description: '', sam: undefined, colorIds: [], sizeIds: [] },
       )
       setErrors({})
     }
@@ -86,6 +100,38 @@ export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: P
           <Field label="Mô tả">
             <textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
+
+          <Field label="Màu của mã hàng">
+            <div className="d-flex flex-wrap gap-2">
+              {colors.length === 0 && <span className="text-muted small">Chưa có màu trong danh mục</span>}
+              {colors.map((c) => {
+                const active = (form.colorIds ?? []).includes(c.id)
+                return (
+                  <button type="button" key={c.id} onClick={() => setForm({ ...form, colorIds: toggleId(form.colorIds, c.id) })}
+                    className={`btn btn-sm d-inline-flex align-items-center gap-1 ${active ? 'btn-primary text-white' : 'btn-outline-secondary'}`}>
+                    <span style={{ width: 12, height: 12, borderRadius: 3, border: '1px solid #ccc', background: c.hex ?? '#fff', display: 'inline-block' }} />
+                    {c.name}
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
+
+          <Field label="Size của mã hàng">
+            <div className="d-flex flex-wrap gap-2">
+              {sizes.length === 0 && <span className="text-muted small">Chưa có size trong danh mục</span>}
+              {sizes.map((s) => {
+                const active = (form.sizeIds ?? []).includes(s.id)
+                return (
+                  <button type="button" key={s.id} onClick={() => setForm({ ...form, sizeIds: toggleId(form.sizeIds, s.id) })}
+                    className={`btn btn-sm ${active ? 'btn-primary text-white' : 'btn-outline-secondary'}`}>
+                    {s.code}
+                  </button>
+                )
+              })}
+            </div>
+          </Field>
+
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-accent">Hủy</button>
             <button type="submit" disabled={isPending} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50">

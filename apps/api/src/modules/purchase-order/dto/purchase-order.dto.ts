@@ -1,7 +1,25 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsEnum, IsDateString, Min } from 'class-validator'
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsEnum, IsDateString, IsArray, ValidateNested, Min } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { POStatus } from '@prisma/client'
+
+export class PoItemInput {
+  @ApiProperty()
+  @IsInt()
+  @Type(() => Number)
+  colorId: number
+
+  @ApiProperty()
+  @IsInt()
+  @Type(() => Number)
+  sizeId: number
+
+  @ApiProperty()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  quantity: number
+}
 
 export class CreatePurchaseOrderDto {
   @ApiProperty()
@@ -34,6 +52,13 @@ export class CreatePurchaseOrderDto {
   @IsEnum(POStatus, { message: 'Trạng thái không hợp lệ' })
   @IsOptional()
   status?: POStatus
+
+  @ApiPropertyOptional({ description: 'Phân bổ ma trận màu × size', type: [PoItemInput] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PoItemInput)
+  @IsOptional()
+  items?: PoItemInput[]
 }
 
 export class UpdatePurchaseOrderDto extends PartialType(CreatePurchaseOrderDto) {}

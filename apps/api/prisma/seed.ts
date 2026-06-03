@@ -55,6 +55,9 @@ async function wipe() {
   await prisma.dailyOutputLog.deleteMany()
   await prisma.dailyOutput.deleteMany()
   await prisma.deliveryPlan.deleteMany()
+  await prisma.poItem.deleteMany()
+  await prisma.styleColor.deleteMany()
+  await prisma.styleSize.deleteMany()
   await prisma.factoryPlan.deleteMany()
   await prisma.companyPlan.deleteMany()
   await prisma.styleLine.deleteMany()
@@ -268,6 +271,21 @@ async function main() {
   })
   console.log(`✓ Color: 8 | Size: 6`)
 
+  // ── 7c. Gán màu/size cho mã hàng (mỗi mã: 3 màu xoay vòng + 5 size S..2XL) ──
+  const allColors = await prisma.color.findMany({ orderBy: { id: 'asc' } })
+  const allSizes = await prisma.size.findMany({ orderBy: { sortOrder: 'asc' } })
+  const styleColorIds: number[][] = []
+  const styleSizeIds: number[][] = []
+  for (let i = 0; i < styles.length; i++) {
+    const cs = [allColors[i % allColors.length].id, allColors[(i + 1) % allColors.length].id, allColors[(i + 2) % allColors.length].id]
+    const ss = allSizes.slice(0, 5).map((s) => s.id)
+    styleColorIds.push(cs)
+    styleSizeIds.push(ss)
+    await prisma.styleColor.createMany({ data: cs.map((colorId) => ({ styleId: styles[i].id, colorId })), skipDuplicates: true })
+    await prisma.styleSize.createMany({ data: ss.map((sizeId) => ({ styleId: styles[i].id, sizeId })), skipDuplicates: true })
+  }
+  console.log(`✓ Gán màu/size cho ${styles.length} mã hàng`)
+
   // ── 8. ORDERS (đơn đặt hàng) ──
   const orderData = [
     { number: 'ĐH-2026-001', customerIdx: 0, orderOff: -45, deliveryOff: 30, status: OrderStatus.IN_PROGRESS, note: 'Đơn hè SOHO' },
@@ -293,9 +311,25 @@ async function main() {
   ]
   const pos: { id: number }[] = []
   for (const p of poData) {
-    pos.push(await prisma.purchaseOrder.create({ data: { poNumber: p.number, styleId: styles[p.styleIdx].id, orderId: orders[p.orderIdx].id, totalQuantity: p.qty, deliveryDate: d(p.deliveryOff), status: p.status } }))
+    const po = await prisma.purchaseOrder.create({ data: { poNumber: p.number, styleId: styles[p.styleIdx].id, orderId: orders[p.orderIdx].id, totalQuantity: p.qty, deliveryDate: d(p.deliveryOff), status: p.status } })
+    pos.push(po)
+    // Phân bổ ma trận màu×size: chia đều qty cho các ô (Σ = qty)
+    const cs = styleColorIds[p.styleIdx]
+    const ss = styleSizeIds[p.styleIdx]
+    const cells = cs.length * ss.length
+    const base = Math.floor(p.qty / cells)
+    let rem = p.qty - base * cells
+    const poItems: { poId: number; colorId: number; sizeId: number; quantity: number }[] = []
+    for (const colorId of cs) {
+      for (const sizeId of ss) {
+        const quantity = base + (rem > 0 ? 1 : 0)
+        if (rem > 0) rem--
+        poItems.push({ poId: po.id, colorId, sizeId, quantity })
+      }
+    }
+    await prisma.poItem.createMany({ data: poItems })
   }
-  console.log(`✓ Order: ${orders.length} | PO: ${pos.length}`)
+  console.log(`✓ Order: ${orders.length} | PO: ${pos.length} (kèm phân bổ màu×size)`)
 
   // ── 10. KẾ HOẠCH 2 CẤP + SẢN LƯỢNG ──
   // Mỗi group = 1 (PO, xưởng) → 1 CompanyPlan; mỗi dòng → 1 FactoryPlan + sản lượng.

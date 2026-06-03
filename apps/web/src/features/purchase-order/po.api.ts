@@ -22,6 +22,14 @@ export interface PurchaseOrder {
     customer?: { id: number; name: string }
   }
   order?: { id: number; orderNumber: string } | null
+  items?: {
+    id: number
+    colorId: number
+    sizeId: number
+    quantity: number
+    color?: { id: number; code: string; name: string; hex: string | null }
+    size?: { id: number; code: string; name: string; sortOrder: number }
+  }[]
   createdAt: string
   deletedAt: string | null
 }
@@ -41,6 +49,7 @@ export type CreatePODto = {
   totalQuantity: number
   deliveryDate: string
   status?: string
+  items?: { colorId: number; sizeId: number; quantity: number }[]
 }
 export type UpdatePODto = Partial<CreatePODto>
 

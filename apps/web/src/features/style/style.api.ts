@@ -10,6 +10,8 @@ export interface Style {
   description: string | null
   sam: string | null
   customer?: { id: number; code: string; name: string }
+  styleColors?: { colorId: number; color?: { id: number; code: string; name: string; hex: string | null } }[]
+  styleSizes?: { sizeId: number; size?: { id: number; code: string; name: string; sortOrder: number } }[]
   createdAt: string
   deletedAt: string | null
 }
@@ -30,6 +32,8 @@ export type CreateStyleDto = {
   image?: string
   description?: string
   sam?: number
+  colorIds?: number[]
+  sizeIds?: number[]
 }
 export type UpdateStyleDto = Partial<CreateStyleDto>
 

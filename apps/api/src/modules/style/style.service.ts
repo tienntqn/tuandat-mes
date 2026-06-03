@@ -23,7 +23,11 @@ export class StyleService {
         where,
         skip,
         take: pageSize,
-        include: { customer: { select: { id: true, code: true, name: true } } },
+        include: {
+          customer: { select: { id: true, code: true, name: true } },
+          styleColors: { select: { colorId: true } },
+          styleSizes: { select: { sizeId: true } },
+        },
         orderBy: { code: 'asc' },
       }),
       this.prisma.style.count({ where }),
@@ -48,10 +52,36 @@ export class StyleService {
   async findOne(id: number) {
     const style = await this.prisma.style.findFirst({
       where: { id, deletedAt: null },
-      include: { customer: { select: { id: true, code: true, name: true } } },
+      include: {
+        customer: { select: { id: true, code: true, name: true } },
+        styleColors: { include: { color: true } },
+        styleSizes: { include: { size: true } },
+      },
     })
     if (!style) throw new NotFoundException('Mã hàng không tồn tại')
     return style
+  }
+
+  // Đồng bộ danh sách màu/size của mã hàng (xóa cũ, tạo mới)
+  private async syncColorsSizes(styleId: number, colorIds?: number[], sizeIds?: number[]) {
+    if (colorIds) {
+      await this.prisma.styleColor.deleteMany({ where: { styleId } })
+      if (colorIds.length) {
+        await this.prisma.styleColor.createMany({
+          data: colorIds.map((colorId) => ({ styleId, colorId })),
+          skipDuplicates: true,
+        })
+      }
+    }
+    if (sizeIds) {
+      await this.prisma.styleSize.deleteMany({ where: { styleId } })
+      if (sizeIds.length) {
+        await this.prisma.styleSize.createMany({
+          data: sizeIds.map((sizeId) => ({ styleId, sizeId })),
+          skipDuplicates: true,
+        })
+      }
+    }
   }
 
   private async generateStyleCode(): Promise<string> {
@@ -75,7 +105,10 @@ export class StyleService {
     })
     if (!customer) throw new NotFoundException('Khách hàng không tồn tại')
 
-    return this.prisma.style.create({ data: { ...dto, code } })
+    const { colorIds, sizeIds, ...styleData } = dto
+    const style = await this.prisma.style.create({ data: { ...styleData, code } })
+    await this.syncColorsSizes(style.id, colorIds, sizeIds)
+    return this.findOne(style.id)
   }
 
   async update(id: number, dto: UpdateStyleDto) {
@@ -92,7 +125,10 @@ export class StyleService {
       if (!customer) throw new NotFoundException('Khách hàng không tồn tại')
     }
 
-    return this.prisma.style.update({ where: { id }, data: dto })
+    const { colorIds, sizeIds, ...styleData } = dto
+    await this.prisma.style.update({ where: { id }, data: styleData })
+    await this.syncColorsSizes(id, colorIds, sizeIds)
+    return this.findOne(id)
   }
 
   async softDelete(id: number) {

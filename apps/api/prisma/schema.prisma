@@ -92,6 +92,9 @@ model Color {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  styleColors StyleColor[]
+  poItems     PoItem[]
+
   @@index([deletedAt])
 }
 
@@ -104,8 +107,56 @@ model Size {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  styleSizes StyleSize[]
+  poItems    PoItem[]
+
   @@index([sortOrder])
   @@index([deletedAt])
+}
+
+// Màu/size của một mã hàng (Style có những màu/size nào)
+model StyleColor {
+  id      Int @id @default(autoincrement())
+  styleId Int
+  colorId Int
+
+  style Style @relation(fields: [styleId], references: [id])
+  color Color @relation(fields: [colorId], references: [id])
+
+  @@unique([styleId, colorId])
+  @@index([styleId])
+  @@index([colorId])
+}
+
+model StyleSize {
+  id      Int @id @default(autoincrement())
+  styleId Int
+  sizeId  Int
+
+  style Style @relation(fields: [styleId], references: [id])
+  size  Size  @relation(fields: [sizeId], references: [id])
+
+  @@unique([styleId, sizeId])
+  @@index([styleId])
+  @@index([sizeId])
+}
+
+// Phân bổ PO theo ma trận màu × size (Σ quantity = PO.totalQuantity)
+model PoItem {
+  id       Int @id @default(autoincrement())
+  poId     Int
+  colorId  Int
+  sizeId   Int
+  quantity Int
+
+  po    PurchaseOrder @relation(fields: [poId], references: [id])
+  color Color         @relation(fields: [colorId], references: [id])
+  size  Size          @relation(fields: [sizeId], references: [id])
+
+  @@unique([poId, colorId, sizeId])
+  @@index([poId])
+  @@index([colorId])
+  @@index([sizeId])
 }
 
 enum ProductionStage {
@@ -335,6 +386,8 @@ model Style {
   companyPlans   CompanyPlan[]
   dailyOutputs   DailyOutput[]
   styleLines     StyleLine[]
+  styleColors    StyleColor[]
+  styleSizes     StyleSize[]
 
   @@index([customerId])
   @@index([deletedAt])
@@ -356,6 +409,7 @@ model PurchaseOrder {
   order         Order?         @relation(fields: [orderId], references: [id])
   companyPlans  CompanyPlan[]
   deliveryPlans DeliveryPlan[]
+  items         PoItem[]
 
   @@index([styleId])
   @@index([orderId])
