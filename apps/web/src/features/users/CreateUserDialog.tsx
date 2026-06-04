@@ -88,7 +88,7 @@ export function CreateUserDialog({ open, onClose }: Props) {
                     type="checkbox"
                     value={role.id}
                     {...register('roleIds')}
-                    className="rounded"
+                    className=""
                   />
                   {role.name}
                 </label>

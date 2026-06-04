@@ -88,7 +88,7 @@ function StyleMatrixCard({ style, outputs, isPastCutoff, isSaving, onSaveStage }
         </div>
 
         {/* Lưới màu × size */}
-        <div className="table-responsive border rounded">
+        <div className="table-responsive border" style={{ borderRadius: 4 }}>
           <table className="table table-sm table-bordered mb-0 text-center" style={{ minWidth: 320 }}>
             <thead className="thead-light">
               <tr>

@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth.store'
 
 function InfoBadge({ children }: { children: React.ReactNode }) {
   return (
-    <code className="bg-light px-2 py-0.5 rounded small">{children}</code>
+    <code className="bg-light px-2 py-0.5 small" style={{ borderRadius: 4 }}>{children}</code>
   )
 }
 

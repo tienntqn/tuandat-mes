@@ -192,7 +192,7 @@ export default function OutputHistoryPage() {
                     {dayOutputs.map((o) => (
                       <div
                         key={o.id}
-                        className="d-flex align-items-center justify-content-between rounded bg-light px-3 py-2 mb-2"
+                        className="d-flex align-items-center justify-content-between bg-light px-3 py-2 mb-2" style={{ borderRadius: 4 }}
                       >
                         <div className="d-flex align-items-center gap-2 flex-grow-1 overflow-hidden">
                           <span className={`badge flex-shrink-0 ${STAGE_COLORS[o.stage]}`}>
