@@ -78,3 +78,52 @@
 .page-header .breadcrumb .breadcrumb-item.active {
   color: #374151 !important;
 }
+
+/* Hàng tab cấp-3 (menu con cùng nhóm) dưới breadcrumb */
+.section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -6px 0 20px;
+}
+.section-tabs .section-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #ededf5;
+  color: #5c678f;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.section-tabs .section-tab i {
+  font-size: 15px;
+}
+.section-tabs .section-tab:hover {
+  background: #f5f6fb;
+  color: #6259ca;
+  border-color: #d8d9f2;
+}
+.section-tabs .section-tab.active {
+  background: #6259ca;
+  border-color: #6259ca;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(98, 89, 202, 0.25);
+}
+/* Mobile: cho cuộn ngang thay vì xuống dòng quá nhiều */
+@media (max-width: 575px) {
+  .section-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+}
+@media print {
+  .section-tabs { display: none !important; }
+}

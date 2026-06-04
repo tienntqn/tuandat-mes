@@ -1,4 +1,5 @@
 import React from 'react'
+import { SectionTabs } from './SectionTabs'
 
 interface Crumb {
   label: string
@@ -48,6 +49,9 @@ export function PageWrapper({ title, breadcrumbs = [], actions, children }: Page
           </div>
         )}
       </div>
+
+      {/* Hàng tab cấp-3 (menu con cùng nhóm) ngay dưới breadcrumb */}
+      <SectionTabs />
 
       {children}
     </div>
