@@ -3,6 +3,7 @@ import { AlertTriangle, TrendingDown, TrendingUp, Minus } from 'lucide-react'
 import { useProgressReport } from './report.hooks'
 import { type ProgressRow } from './report.api'
 import { PageWrapper } from '@/components/layout/PageWrapper'
+import { ColorSizeReportView } from './ColorSizeReportView'
 
 const STAGE_LABELS: Record<string, string> = {
   CUTTING: 'Cắt',
@@ -71,6 +72,7 @@ function PctBadge({ pct, isLate }: { pct: number; isLate: boolean }) {
 }
 
 export default function ReportPage() {
+  const [view, setView] = useState<'progress' | 'color-size'>('progress')
   const [stageFilter, setStageFilter] = useState('')
 
   const params = useMemo(
@@ -86,20 +88,36 @@ export default function ReportPage() {
       title="Báo cáo tiến độ sản xuất"
       breadcrumbs={[{ label: 'Phân hệ Kế hoạch' }, { label: 'Báo cáo' }]}
       actions={
-        <div className="d-flex gap-2 no-print">
-          <button onClick={() => window.print()} className="btn btn-outline-secondary btn-icon">
-            <span><i className="fe fe-printer"></i></span> In / PDF
-          </button>
-          <button
-            onClick={() => exportCsv(rows)}
-            disabled={rows.length === 0}
-            className="btn btn-outline-secondary btn-icon"
-          >
-            <span><i className="fe fe-download"></i></span> Xuất Excel
-          </button>
-        </div>
+        view === 'progress' ? (
+          <div className="d-flex gap-2 no-print">
+            <button onClick={() => window.print()} className="btn btn-outline-secondary btn-icon">
+              <span><i className="fe fe-printer"></i></span> In / PDF
+            </button>
+            <button
+              onClick={() => exportCsv(rows)}
+              disabled={rows.length === 0}
+              className="btn btn-outline-secondary btn-icon"
+            >
+              <span><i className="fe fe-download"></i></span> Xuất Excel
+            </button>
+          </div>
+        ) : undefined
       }
     >
+      {/* Chuyển chế độ xem: tiến độ tổng vs bóc tách màu×size */}
+      <ul className="nav nav-tabs mb-3 no-print">
+        <li className="nav-item">
+          <button className={`nav-link ${view === 'progress' ? 'active' : ''}`} onClick={() => setView('progress')}>Tiến độ tổng</button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${view === 'color-size' ? 'active' : ''}`} onClick={() => setView('color-size')}>Theo Màu × Size</button>
+        </li>
+      </ul>
+
+      {view === 'color-size' ? (
+        <ColorSizeReportView />
+      ) : (
+      <>
       <p className="text-muted mb-3">
         So sánh kế hoạch vs thực tế theo chuyền / mã hàng / công đoạn
       </p>
@@ -241,6 +259,8 @@ export default function ReportPage() {
           td, th { border: 1px solid #ddd; padding: 4px 8px; }
         }
       `}</style>
+      </>
+      )}
     </PageWrapper>
   )
 }

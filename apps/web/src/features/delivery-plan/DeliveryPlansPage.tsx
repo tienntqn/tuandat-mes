@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDeliveryPlans, useCreateDeliveryPlan, useUpdateDeliveryPlan, useDeleteDeliveryPlan, useRestoreDeliveryPlan } from './delivery.hooks'
 import { DeliveryPlanFormDialog } from './DeliveryPlanFormDialog'
+import { PackingListDialog } from './PackingListDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -19,6 +20,7 @@ export default function DeliveryPlansPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<DeliveryPlan | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<DeliveryPlan | null>(null)
+  const [packingTarget, setPackingTarget] = useState<DeliveryPlan | null>(null)
 
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('COMPANY_PLANNER') || hasRole('FACTORY_PLANNER')
@@ -135,7 +137,7 @@ export default function DeliveryPlansPage() {
                   <th>Ngày giao thực tế</th>
                   <th className="text-end">SL thực giao</th>
                   <th>Trạng thái</th>
-                  {canWrite && <th className="text-end">Thao tác</th>}
+                  <th className="text-end">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -153,26 +155,27 @@ export default function DeliveryPlansPage() {
                       <td>{formatDate(p.actualDate)}</td>
                       <td className="text-end">{p.actualQuantity != null ? p.actualQuantity.toLocaleString() : '—'}</td>
                       <td><StatusBadge status={p.status} /></td>
-                      {canWrite && (
-                        <td className="text-end">
-                          <div className="d-flex justify-content-end gap-1">
-                            {p.deletedAt ? (
-                              <button onClick={() => restorePlan.mutate(p.id)} className="btn btn-sm btn-outline-secondary">
-                                <i className="fe fe-rotate-ccw"></i>
+                      <td className="text-end">
+                        <div className="d-flex justify-content-end gap-1">
+                          <button onClick={() => setPackingTarget(p)} className="btn btn-sm btn-outline-info" title="Phiếu đóng gói">
+                            <i className="fe fe-package"></i>
+                          </button>
+                          {canWrite && (p.deletedAt ? (
+                            <button onClick={() => restorePlan.mutate(p.id)} className="btn btn-sm btn-outline-secondary">
+                              <i className="fe fe-rotate-ccw"></i>
+                            </button>
+                          ) : (
+                            <>
+                              <button onClick={() => { setEditTarget(p); setFormOpen(true) }} className="btn btn-sm btn-outline-secondary">
+                                <i className="fe fe-edit-2"></i>
                               </button>
-                            ) : (
-                              <>
-                                <button onClick={() => { setEditTarget(p); setFormOpen(true) }} className="btn btn-sm btn-outline-secondary">
-                                  <i className="fe fe-edit-2"></i>
-                                </button>
-                                <button onClick={() => setDeleteTarget(p)} className="btn btn-sm btn-outline-danger">
-                                  <i className="fe fe-trash-2"></i>
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      )}
+                              <button onClick={() => setDeleteTarget(p)} className="btn btn-sm btn-outline-danger">
+                                <i className="fe fe-trash-2"></i>
+                              </button>
+                            </>
+                          ))}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -185,6 +188,8 @@ export default function DeliveryPlansPage() {
       {data && <Pagination page={page} totalPages={data.totalPages} total={data.total} pageSize={data.pageSize} onPageChange={setPage} />}
 
       <DeliveryPlanFormDialog open={formOpen} plan={editTarget} onClose={() => { setFormOpen(false); setEditTarget(null) }} onSubmit={handleSubmit} isPending={createPlan.isPending || updatePlan.isPending} />
+
+      <PackingListDialog open={!!packingTarget} planId={packingTarget?.id ?? null} onClose={() => setPackingTarget(null)} />
 
       <ConfirmDialog
         open={!!deleteTarget}

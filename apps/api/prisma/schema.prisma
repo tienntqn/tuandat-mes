@@ -92,9 +92,10 @@ model Color {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  styleColors  StyleColor[]
-  poItems      PoItem[]
-  dailyOutputs DailyOutput[]
+  styleColors   StyleColor[]
+  poItems       PoItem[]
+  dailyOutputs  DailyOutput[]
+  deliveryItems DeliveryItem[]
 
   @@index([deletedAt])
 }
@@ -108,9 +109,10 @@ model Size {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  styleSizes   StyleSize[]
-  poItems      PoItem[]
-  dailyOutputs DailyOutput[]
+  styleSizes    StyleSize[]
+  poItems       PoItem[]
+  dailyOutputs  DailyOutput[]
+  deliveryItems DeliveryItem[]
 
   @@index([sortOrder])
   @@index([deletedAt])
@@ -456,12 +458,32 @@ model DeliveryPlan {
   updatedAt       DateTime       @updatedAt
   deletedAt       DateTime?
 
-  po PurchaseOrder @relation(fields: [poId], references: [id])
+  po    PurchaseOrder  @relation(fields: [poId], references: [id])
+  items DeliveryItem[]
 
   @@index([poId])
   @@index([plannedDate])
   @@index([status])
   @@index([deletedAt])
+}
+
+// Phân bổ một lần giao hàng theo ma trận màu × size (packing list)
+// Σ quantity = DeliveryPlan.actualQuantity (giao thực tế)
+model DeliveryItem {
+  id             Int @id @default(autoincrement())
+  deliveryPlanId Int
+  colorId        Int
+  sizeId         Int
+  quantity       Int
+
+  deliveryPlan DeliveryPlan @relation(fields: [deliveryPlanId], references: [id])
+  color        Color        @relation(fields: [colorId], references: [id])
+  size         Size         @relation(fields: [sizeId], references: [id])
+
+  @@unique([deliveryPlanId, colorId, sizeId])
+  @@index([deliveryPlanId])
+  @@index([colorId])
+  @@index([sizeId])
 }
 
 // ============================================================

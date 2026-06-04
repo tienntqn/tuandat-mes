@@ -35,6 +35,20 @@ export class ReportController {
     )
   }
 
+  // Báo cáo tiến độ bóc tách theo Màu × Size (filter: styleId, stage)
+  @Get('color-size')
+  getColorSize(
+    @CurrentUser() user: RequestUser,
+    @Query('styleId') styleId?: string,
+    @Query('stage') stage?: string,
+  ) {
+    return this.reportService.getColorSizeReport(
+      user,
+      styleId ? parseInt(styleId) : undefined,
+      stage,
+    )
+  }
+
   // KPI tổng hợp cho Dashboard BGĐ
   @Get('kpi')
   getKpi(@CurrentUser() user: RequestUser) {

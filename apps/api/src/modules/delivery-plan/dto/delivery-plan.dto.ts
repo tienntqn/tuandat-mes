@@ -1,7 +1,26 @@
-import { IsString, IsOptional, IsInt, IsEnum, IsDateString, Min } from 'class-validator'
+import { IsString, IsOptional, IsInt, IsEnum, IsDateString, Min, ValidateNested, IsArray } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { DeliveryStatus } from '@prisma/client'
+
+// Một ô màu × size trong phiếu đóng gói của lần giao
+export class DeliveryItemInput {
+  @ApiProperty()
+  @IsInt()
+  @Type(() => Number)
+  colorId: number
+
+  @ApiProperty()
+  @IsInt()
+  @Type(() => Number)
+  sizeId: number
+
+  @ApiProperty()
+  @IsInt()
+  @Min(0)
+  @Type(() => Number)
+  quantity: number
+}
 
 export class CreateDeliveryPlanDto {
   @ApiProperty()
@@ -40,6 +59,14 @@ export class CreateDeliveryPlanDto {
   @IsString()
   @IsOptional()
   note?: string
+
+  // Phân bổ giao hàng theo màu × size (tùy chọn). Nếu có, actualQuantity = Σ items.
+  @ApiPropertyOptional({ type: [DeliveryItemInput] })
+  @IsArray()
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => DeliveryItemInput)
+  items?: DeliveryItemInput[]
 }
 
 export class UpdateDeliveryPlanDto extends PartialType(CreateDeliveryPlanDto) {}

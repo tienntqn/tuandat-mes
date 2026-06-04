@@ -54,6 +54,7 @@ async function wipe() {
   // Xóa theo thứ tự FK (con trước, cha sau)
   await prisma.dailyOutputLog.deleteMany()
   await prisma.dailyOutput.deleteMany()
+  await prisma.deliveryItem.deleteMany()
   await prisma.deliveryPlan.deleteMany()
   await prisma.poItem.deleteMany()
   await prisma.styleColor.deleteMany()
@@ -432,9 +433,27 @@ async function main() {
     { poIdx: 3, plannedOff: -2, qty: 6000, actualOff: null, actualQty: null, status: DeliveryStatus.PENDING, note: 'Quá hạn — chờ xử lý' },
   ]
   for (const dp of deliveries) {
-    await prisma.deliveryPlan.create({
+    const plan = await prisma.deliveryPlan.create({
       data: { poId: pos[dp.poIdx].id, plannedDate: d(dp.plannedOff), plannedQuantity: dp.qty, actualDate: dp.actualOff != null ? d(dp.actualOff) : null, actualQuantity: dp.actualQty, status: dp.status, note: dp.note || null },
     })
+    // Lần đã giao → tạo phiếu đóng gói (màu×size), chia đều SL thực giao theo ma trận
+    if (dp.actualQty != null) {
+      const sIdx = poData[dp.poIdx].styleIdx
+      const cs = styleColorIds[sIdx]
+      const ss = styleSizeIds[sIdx]
+      const cells = cs.length * ss.length
+      const base = Math.floor(dp.actualQty / cells)
+      let rem = dp.actualQty - base * cells
+      const items: { deliveryPlanId: number; colorId: number; sizeId: number; quantity: number }[] = []
+      for (const colorId of cs) {
+        for (const sizeId of ss) {
+          const quantity = base + (rem > 0 ? 1 : 0)
+          if (rem > 0) rem--
+          if (quantity > 0) items.push({ deliveryPlanId: plan.id, colorId, sizeId, quantity })
+        }
+      }
+      if (items.length > 0) await prisma.deliveryItem.createMany({ data: items })
+    }
   }
   console.log(`✓ DeliveryPlan: ${deliveries.length} (đã giao/giao trễ/một phần/chờ/quá hạn)`)
 

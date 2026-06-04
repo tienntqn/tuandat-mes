@@ -6,6 +6,15 @@ export const DELIVERY_STATUS_LABELS: Record<string, string> = {
   DELIVERED: 'Đã giao',
 }
 
+export interface DeliveryItem {
+  id: number
+  colorId: number
+  sizeId: number
+  quantity: number
+  color?: { id: number; code: string; name: string; hex: string | null }
+  size?: { id: number; code: string; name: string; sortOrder: number }
+}
+
 export interface DeliveryPlan {
   id: number
   poId: number
@@ -19,8 +28,10 @@ export interface DeliveryPlan {
     id: number
     poNumber: string
     totalQuantity: number
+    styleId?: number
     style?: { id: number; code: string; name: string }
   }
+  items?: DeliveryItem[]
   createdAt: string
   deletedAt: string | null
 }
@@ -41,6 +52,7 @@ export type CreateDeliveryPlanDto = {
   actualQuantity?: number
   status?: string
   note?: string
+  items?: { colorId: number; sizeId: number; quantity: number }[]
 }
 export type UpdateDeliveryPlanDto = Partial<CreateDeliveryPlanDto>
 

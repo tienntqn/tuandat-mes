@@ -72,6 +72,25 @@ export interface LineEfficiency {
   outputToday: number
 }
 
+// Báo cáo tiến độ bóc tách theo Màu × Size (1 mã hàng = 1 ma trận)
+export interface ColorSizeCell {
+  colorId: number
+  sizeId: number
+  ordered: number // SL đã đặt (PoItem)
+  produced: number // SL đã sản xuất ở công đoạn được chọn
+}
+
+export interface ColorSizeStyle {
+  styleId: number
+  styleCode: string
+  styleName: string
+  colors: { id: number; name: string; hex: string | null }[]
+  sizes: { id: number; code: string }[]
+  cells: ColorSizeCell[]
+  totalOrdered: number
+  totalProduced: number
+}
+
 export interface AlertItem {
   type: 'LATE_ORDER' | 'MACHINE_MAINTENANCE' | 'TRANSFER_PENDING' | 'SLOW_PROGRESS'
   severity: 'HIGH' | 'MEDIUM' | 'LOW'
@@ -209,6 +228,93 @@ export class ReportService {
     }
 
     return rows
+  }
+
+  // Báo cáo tiến độ bóc tách theo Màu × Size cho từng mã hàng.
+  // ordered = tổng PoItem theo màu/size; produced = tổng DailyOutput theo màu/size ở 1 công đoạn.
+  async getColorSizeReport(
+    user: RequestUser,
+    styleId?: number,
+    stage = 'SEWING',
+  ): Promise<ColorSizeStyle[]> {
+    // Phạm vi sản xuất: lọc theo xưởng/chuyền của người dùng (ordered là theo PO, không lọc đơn vị)
+    const producedScope: any = {}
+    if (user.dataScope.type === 'FACTORY') producedScope.line = { factoryId: user.dataScope.factoryId }
+    else if (user.dataScope.type === 'LINE') producedScope.lineId = user.lineId
+
+    const styles = await this.prisma.style.findMany({
+      where: { deletedAt: null, ...(styleId ? { id: styleId } : {}) },
+      include: {
+        styleColors: { include: { color: true } },
+        styleSizes: { include: { size: true } },
+      },
+      orderBy: { code: 'asc' },
+    })
+
+    const result: ColorSizeStyle[] = []
+
+    for (const st of styles) {
+      const colors = st.styleColors.map((sc) => sc.color)
+      const sizes = st.styleSizes
+        .map((ss) => ss.size)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+      // Mã hàng chưa khai báo đủ màu/size → bỏ qua khỏi báo cáo ma trận
+      if (colors.length === 0 || sizes.length === 0) continue
+
+      // SL đã đặt theo màu/size (gộp mọi PO của mã hàng)
+      const orderedGroups = await this.prisma.poItem.groupBy({
+        by: ['colorId', 'sizeId'],
+        where: { po: { styleId: st.id, deletedAt: null } },
+        _sum: { quantity: true },
+      })
+      // SL đã sản xuất theo màu/size ở công đoạn được chọn (bỏ qua bản ghi không gắn màu/size)
+      const producedGroups = await this.prisma.dailyOutput.groupBy({
+        by: ['colorId', 'sizeId'],
+        where: {
+          styleId: st.id,
+          stage: stage as any,
+          colorId: { not: null },
+          sizeId: { not: null },
+          ...producedScope,
+        },
+        _sum: { quantity: true },
+      })
+
+      const orderedMap = new Map<string, number>()
+      for (const g of orderedGroups) orderedMap.set(`${g.colorId}:${g.sizeId}`, g._sum.quantity ?? 0)
+      const producedMap = new Map<string, number>()
+      for (const g of producedGroups) producedMap.set(`${g.colorId}:${g.sizeId}`, g._sum.quantity ?? 0)
+
+      const cells: ColorSizeCell[] = []
+      let totalOrdered = 0
+      let totalProduced = 0
+      for (const c of colors) {
+        for (const s of sizes) {
+          const key = `${c.id}:${s.id}`
+          const ordered = orderedMap.get(key) ?? 0
+          const produced = producedMap.get(key) ?? 0
+          totalOrdered += ordered
+          totalProduced += produced
+          cells.push({ colorId: c.id, sizeId: s.id, ordered, produced })
+        }
+      }
+
+      // Chỉ hiển thị mã hàng có dữ liệu (đã đặt hoặc đã sản xuất)
+      if (totalOrdered === 0 && totalProduced === 0) continue
+
+      result.push({
+        styleId: st.id,
+        styleCode: st.code,
+        styleName: st.name,
+        colors: colors.map((c) => ({ id: c.id, name: c.name, hex: c.hex })),
+        sizes: sizes.map((s) => ({ id: s.id, code: s.code })),
+        cells,
+        totalOrdered,
+        totalProduced,
+      })
+    }
+
+    return result
   }
 
   // KPI tổng hợp cho Dashboard BGĐ

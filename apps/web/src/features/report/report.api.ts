@@ -82,6 +82,24 @@ export interface ReportSettings {
   alertSlowPct: number
 }
 
+export interface ColorSizeCell {
+  colorId: number
+  sizeId: number
+  ordered: number
+  produced: number
+}
+
+export interface ColorSizeStyle {
+  styleId: number
+  styleCode: string
+  styleName: string
+  colors: { id: number; name: string; hex: string | null }[]
+  sizes: { id: number; code: string }[]
+  cells: ColorSizeCell[]
+  totalOrdered: number
+  totalProduced: number
+}
+
 // ============================================================
 // API FUNCTIONS
 // ============================================================
@@ -89,6 +107,9 @@ export interface ReportSettings {
 export const reportApi = {
   getProgress: (params?: { factoryId?: number; styleId?: number; stage?: string }) =>
     api.get<ProgressRow[]>('/report/progress', { params }).then((r) => r.data),
+
+  getColorSize: (params?: { styleId?: number; stage?: string }) =>
+    api.get<ColorSizeStyle[]>('/report/color-size', { params }).then((r) => r.data),
 
   getKpi: () => api.get<KpiResult>('/report/kpi').then((r) => r.data),
 

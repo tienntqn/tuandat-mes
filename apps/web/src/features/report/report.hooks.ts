@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth.store'
 
 export const reportKeys = {
   progress: (params?: object) => ['report', 'progress', params] as const,
+  colorSize: (params?: object) => ['report', 'color-size', params] as const,
   kpi: ['report', 'kpi'] as const,
   alerts: ['report', 'alerts'] as const,
   settings: ['report', 'settings'] as const,
@@ -14,6 +15,13 @@ export function useProgressReport(params?: { factoryId?: number; styleId?: numbe
   return useQuery({
     queryKey: reportKeys.progress(params),
     queryFn: () => reportApi.getProgress(params),
+  })
+}
+
+export function useColorSizeReport(params?: { styleId?: number; stage?: string }) {
+  return useQuery({
+    queryKey: reportKeys.colorSize(params),
+    queryFn: () => reportApi.getColorSize(params),
   })
 }
 
