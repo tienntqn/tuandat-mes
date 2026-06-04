@@ -74,6 +74,8 @@ function PctBadge({ pct, isLate }: { pct: number; isLate: boolean }) {
 export default function ReportPage() {
   const [view, setView] = useState<'progress' | 'color-size'>('progress')
   const [stageFilter, setStageFilter] = useState('')
+  const [factoryFilter, setFactoryFilter] = useState('')
+  const [styleFilter, setStyleFilter] = useState('')
 
   const params = useMemo(
     () => ({ stage: stageFilter || undefined }),
@@ -81,7 +83,30 @@ export default function ReportPage() {
   )
   const { data: rows = [], isLoading } = useProgressReport(params)
 
-  const lateCount = rows.filter((r) => r.isLate).length
+  // Danh sách xưởng duy nhất từ kết quả
+  const factories = useMemo(() => {
+    const map = new Map<number, string>()
+    rows.forEach((r) => map.set(r.factoryId, r.factoryName))
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]))
+  }, [rows])
+
+  // Danh sách mã hàng theo xưởng đang chọn
+  const stylesInFilter = useMemo(() => {
+    const base = factoryFilter ? rows.filter((r) => String(r.factoryId) === factoryFilter) : rows
+    const map = new Map<number, { code: string; name: string }>()
+    base.forEach((r) => map.set(r.styleId, { code: r.styleCode, name: r.styleName }))
+    return Array.from(map.entries()).sort((a, b) => a[1].code.localeCompare(b[1].code))
+  }, [rows, factoryFilter])
+
+  // Lọc hiển thị theo xưởng + mã hàng
+  const displayRows = useMemo(() => {
+    let result = rows
+    if (factoryFilter) result = result.filter((r) => String(r.factoryId) === factoryFilter)
+    if (styleFilter) result = result.filter((r) => String(r.styleId) === styleFilter)
+    return result
+  }, [rows, factoryFilter, styleFilter])
+
+  const lateCount = displayRows.filter((r) => r.isLate).length
 
   return (
     <PageWrapper
@@ -94,8 +119,8 @@ export default function ReportPage() {
               <span><i className="fe fe-printer"></i></span> In / PDF
             </button>
             <button
-              onClick={() => exportCsv(rows)}
-              disabled={rows.length === 0}
+              onClick={() => exportCsv(displayRows)}
+              disabled={displayRows.length === 0}
               className="btn btn-outline-secondary btn-icon"
             >
               <span><i className="fe fe-download"></i></span> Xuất Excel
@@ -127,6 +152,30 @@ export default function ReportPage() {
         <div className="col-auto">
           <select
             className="form-select"
+            value={factoryFilter}
+            onChange={(e) => { setFactoryFilter(e.target.value); setStyleFilter('') }}
+          >
+            <option value="">Tất cả xưởng</option>
+            {factories.map(([id, name]) => (
+              <option key={id} value={String(id)}>{name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="col-auto">
+          <select
+            className="form-select"
+            value={styleFilter}
+            onChange={(e) => setStyleFilter(e.target.value)}
+          >
+            <option value="">Tất cả mã hàng</option>
+            {stylesInFilter.map(([id, s]) => (
+              <option key={id} value={String(id)}>{s.code} — {s.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="col-auto">
+          <select
+            className="form-select"
             value={stageFilter}
             onChange={(e) => setStageFilter(e.target.value)}
           >
@@ -147,7 +196,7 @@ export default function ReportPage() {
         )}
         {!isLoading && (
           <div className="col-auto ms-auto">
-            <small className="text-muted">{rows.length} dòng</small>
+            <small className="text-muted">{displayRows.length} dòng</small>
           </div>
         )}
       </div>
@@ -175,14 +224,14 @@ export default function ReportPage() {
                       ))}
                     </tr>
                   ))
-                ) : rows.length === 0 ? (
+                ) : displayRows.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="text-center py-5 text-muted">
                       Chưa có dữ liệu
                     </td>
                   </tr>
                 ) : (
-                  rows.map((row, i) => (
+                  displayRows.map((row, i) => (
                     <tr
                       key={i}
                       className={row.isLate ? 'table-danger' : ''}
