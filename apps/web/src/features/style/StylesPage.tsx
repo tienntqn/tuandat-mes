@@ -5,8 +5,10 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
-import { cellStr, cellNum } from '@/lib/excel'
+import { cellStr, cellNum, cellList } from '@/lib/excel'
 import { useCustomersActive } from '@/features/customer/customer.hooks'
+import { useColorsActive } from '@/features/color/color.hooks'
+import { useSizesActive } from '@/features/size/size.hooks'
 import { styleApi, type Style, type CreateStyleDto } from './style.api'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -22,6 +24,8 @@ export default function StylesPage() {
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('COMPANY_PLANNER')
 
   const { data: customers = [] } = useCustomersActive()
+  const { data: colors = [] } = useColorsActive()
+  const { data: sizes = [] } = useSizesActive()
   const { data, isLoading, refetch } = useStyles({ search: search || undefined, customerId: filterCustomerId, page, pageSize: 20 })
   const createStyle = useCreateStyle()
   const updateStyle = useUpdateStyle()
@@ -36,6 +40,12 @@ export default function StylesPage() {
     }
   }
 
+  // Map mã màu/size → id và id → mã (để xuất/nhập cột Màu, Size)
+  const colorCodeById = new Map(colors.map((c) => [c.id, c.code]))
+  const sizeCodeById = new Map(sizes.map((s) => [s.id, s.code]))
+  const colorIdByCode = new Map(colors.map((c) => [c.code.trim().toLowerCase(), c.id]))
+  const sizeIdByCode = new Map(sizes.map((s) => [s.code.trim().toLowerCase(), s.id]))
+
   const exportRows = () => (data?.data ?? []).map((s) => ({
     'Mã hàng': s.code,
     'Tên': s.name,
@@ -43,11 +53,14 @@ export default function StylesPage() {
     'Khách hàng': s.customer?.name ?? '',
     'Mùa vụ': s.season ?? '',
     'SAM (phút)': s.sam ?? '',
+    // Màu/Size dạng danh sách mã, ngăn cách dấu phẩy
+    'Màu': (s.styleColors ?? []).map((sc) => colorCodeById.get(sc.colorId) ?? '').filter(Boolean).join(', '),
+    'Size': (s.styleSizes ?? []).map((ss) => sizeCodeById.get(ss.sizeId) ?? '').filter(Boolean).join(', '),
     'Mô tả': s.description ?? '',
   }))
 
   const templateRows = [
-    { 'Mã hàng': '', 'Tên': 'Áo thun cơ bản', 'Mã KH': 'KH001', 'Mùa vụ': 'SS25', 'SAM (phút)': 12.5, 'Mô tả': '' },
+    { 'Mã hàng': '', 'Tên': 'Áo thun cơ bản', 'Mã KH': 'KH001', 'Mùa vụ': 'SS25', 'SAM (phút)': 12.5, 'Màu': 'TRANG, DEN', 'Size': 'S, M, L, XL', 'Mô tả': '' },
   ]
 
   const handleImportRows = async (rows: Record<string, string | number>[]) => {
@@ -59,6 +72,9 @@ export default function StylesPage() {
       const customerId = customerMap.get(cellStr(row['Mã KH']).toLowerCase())
       if (!name || !customerId) { error++; continue }
       const samRaw = cellStr(row['SAM (phút)'])
+      // Tách cột Màu/Size (danh sách mã) → mảng id (bỏ qua mã không khớp catalog)
+      const colorIds = cellList(row['Màu']).map((code) => colorIdByCode.get(code.toLowerCase())).filter((v): v is number => !!v)
+      const sizeIds = cellList(row['Size']).map((code) => sizeIdByCode.get(code.toLowerCase())).filter((v): v is number => !!v)
       try {
         await styleApi.create({
           code: cellStr(row['Mã hàng']) || undefined,
@@ -67,6 +83,8 @@ export default function StylesPage() {
           season: cellStr(row['Mùa vụ']) || undefined,
           description: cellStr(row['Mô tả']) || undefined,
           sam: samRaw ? cellNum(samRaw) : undefined,
+          colorIds: colorIds.length ? colorIds : undefined,
+          sizeIds: sizeIds.length ? sizeIds : undefined,
         })
         success++
       } catch { error++ }

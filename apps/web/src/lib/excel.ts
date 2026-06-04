@@ -27,6 +27,12 @@ export const cellNum = (v: unknown, fallback = 0): number => {
   const n = Number(v)
   return Number.isFinite(n) ? n : fallback
 }
+// Tách ô danh sách (vd "ĐỎ, XANH; TRẮNG") thành mảng mã đã trim, bỏ rỗng.
+export const cellList = (v: unknown): string[] =>
+  String(v ?? '')
+    .split(/[,;|]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
 // Trả về 'YYYY-MM-DD' từ ô ngày (Date của Excel hoặc chuỗi). Rỗng nếu không hợp lệ.
 export const cellDate = (v: unknown): string => {
   if (v instanceof Date && !isNaN(v.getTime())) return v.toISOString().slice(0, 10)

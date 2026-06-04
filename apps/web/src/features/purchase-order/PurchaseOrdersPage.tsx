@@ -9,6 +9,8 @@ import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
 import { cellStr, cellNum, cellDate } from '@/lib/excel'
 import { useStylesActive } from '@/features/style/style.hooks'
 import { useOrdersActive } from '@/features/order/order.hooks'
+import { useColorsActive } from '@/features/color/color.hooks'
+import { useSizesActive } from '@/features/size/size.hooks'
 import { poApi, PO_STATUS_LABELS, type PurchaseOrder, type CreatePODto } from './po.api'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -27,6 +29,8 @@ export default function PurchaseOrdersPage() {
 
   const { data: styles = [] } = useStylesActive()
   const { data: orders = [] } = useOrdersActive()
+  const { data: colors = [] } = useColorsActive()
+  const { data: sizes = [] } = useSizesActive()
   const { data, isLoading, refetch } = usePurchaseOrders({ search: search || undefined, status: filterStatus || undefined, page, pageSize: 20 })
   const createPO = useCreatePO()
   const updatePO = useUpdatePO()
@@ -43,40 +47,84 @@ export default function PurchaseOrdersPage() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('vi-VN')
 
-  const exportRows = () => (data?.data ?? []).map((po) => ({
-    'Số PO': po.poNumber,
-    'Mã hàng': po.style?.code ?? '',
-    'Khách hàng': po.style?.customer?.name ?? '',
-    'Số lượng': po.totalQuantity,
-    'Ngày giao': po.deliveryDate ? po.deliveryDate.split('T')[0] : '',
-    'Trạng thái': PO_STATUS_LABELS[po.status] ?? po.status,
-    'Đơn hàng': po.order?.orderNumber ?? '',
-  }))
+  const colorIdByCode = new Map(colors.map((c) => [c.code.trim().toLowerCase(), c.id]))
+  const sizeIdByCode = new Map(sizes.map((s) => [s.code.trim().toLowerCase(), s.id]))
+
+  // Xuất định dạng "long": mỗi ô Màu × Size là 1 dòng (tải chi tiết PO để lấy items).
+  // PO chưa khai báo màu/size → 1 dòng với cột Màu/Size trống, Số lượng = tổng PO.
+  const exportRows = async () => {
+    const list = data?.data ?? []
+    const details = await Promise.all(list.map((po) => poApi.get(po.id)))
+    const out: Record<string, string | number>[] = []
+    for (const po of details) {
+      const deliveryDate = po.deliveryDate ? po.deliveryDate.split('T')[0] : ''
+      const statusLabel = PO_STATUS_LABELS[po.status] ?? po.status
+      const orderNo = po.order?.orderNumber ?? ''
+      const mk = (color: string, size: string, qty: number) => ({
+        'Số PO': po.poNumber,
+        'Mã hàng': po.style?.code ?? '',
+        'Khách hàng': po.style?.customer?.name ?? '',
+        'Màu': color,
+        'Size': size,
+        'Số lượng': qty,
+        'Ngày giao': deliveryDate,
+        'Trạng thái': statusLabel,
+        'Đơn hàng': orderNo,
+      })
+      if (po.items && po.items.length > 0) {
+        for (const it of po.items) out.push(mk(it.color?.code ?? '', it.size?.code ?? '', it.quantity))
+      } else {
+        out.push(mk('', '', po.totalQuantity))
+      }
+    }
+    return out
+  }
 
   const templateRows = [
-    { 'Số PO': 'PO-2026-001', 'Mã hàng': 'MH001', 'Số lượng': 1000, 'Ngày giao': '2026-08-01', 'Trạng thái': 'Mở', 'Đơn hàng': '' },
+    { 'Số PO': 'PO-2026-001', 'Mã hàng': 'MH001', 'Khách hàng': '', 'Màu': 'TRANG', 'Size': 'M', 'Số lượng': 500, 'Ngày giao': '2026-08-01', 'Trạng thái': 'Mở', 'Đơn hàng': '' },
+    { 'Số PO': 'PO-2026-001', 'Mã hàng': 'MH001', 'Khách hàng': '', 'Màu': 'TRANG', 'Size': 'L', 'Số lượng': 500, 'Ngày giao': '2026-08-01', 'Trạng thái': 'Mở', 'Đơn hàng': '' },
   ]
 
+  // Nhập theo nhóm: gộp các dòng cùng "Số PO" → 1 PO kèm ma trận items.
   const handleImportRows = async (rows: Record<string, string | number>[]) => {
     const styleMap = new Map(styles.map((s) => [s.code.trim().toLowerCase(), s.id]))
     const orderMap = new Map(orders.map((o) => [o.orderNumber.trim().toLowerCase(), o.id]))
+
+    const groups = new Map<string, Record<string, string | number>[]>()
+    for (const row of rows) {
+      const po = cellStr(row['Số PO'])
+      if (!po) continue
+      if (!groups.has(po)) groups.set(po, [])
+      groups.get(po)!.push(row)
+    }
+
     let success = 0
     let error = 0
-    for (const row of rows) {
-      const poNumber = cellStr(row['Số PO'])
-      const styleId = styleMap.get(cellStr(row['Mã hàng']).toLowerCase())
-      const totalQuantity = cellNum(row['Số lượng'])
-      const deliveryDate = cellDate(row['Ngày giao'])
-      if (!poNumber || !styleId || totalQuantity < 1 || !deliveryDate) { error++; continue }
-      const orderId = orderMap.get(cellStr(row['Đơn hàng']).toLowerCase()) ?? null
+    for (const [poNumber, grp] of groups) {
+      const first = grp[0]
+      const styleId = styleMap.get(cellStr(first['Mã hàng']).toLowerCase())
+      const deliveryDate = cellDate(first['Ngày giao'])
+      if (!styleId || !deliveryDate) { error++; continue }
+      const orderId = orderMap.get(cellStr(first['Đơn hàng']).toLowerCase()) ?? null
+      // Gom các ô màu×size có đủ Màu + Size + Số lượng > 0
+      const items: { colorId: number; sizeId: number; quantity: number }[] = []
+      for (const r of grp) {
+        const colorId = colorIdByCode.get(cellStr(r['Màu']).toLowerCase())
+        const sizeId = sizeIdByCode.get(cellStr(r['Size']).toLowerCase())
+        const qty = cellNum(r['Số lượng'])
+        if (colorId && sizeId && qty > 0) items.push({ colorId, sizeId, quantity: qty })
+      }
+      const totalQuantity = items.length ? items.reduce((s, i) => s + i.quantity, 0) : cellNum(first['Số lượng'])
+      if (totalQuantity < 1) { error++; continue }
       try {
         await poApi.create({
           poNumber,
           styleId,
           totalQuantity,
           deliveryDate,
-          status: PO_STATUS_BY_LABEL[cellStr(row['Trạng thái'])] ?? undefined,
+          status: PO_STATUS_BY_LABEL[cellStr(first['Trạng thái'])] ?? undefined,
           orderId,
+          items: items.length ? items : undefined,
         })
         success++
       } catch { error++ }

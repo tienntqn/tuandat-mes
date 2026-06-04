@@ -7,8 +7,8 @@ interface ExcelToolbarProps {
   sheetName: string
   /** Tên file cơ sở: export = `${fileBase}.xlsx`, template = `template-${fileBase}.xlsx` */
   fileBase: string
-  /** Hàm trả về dữ liệu hiện tại đã map sang cột để xuất */
-  exportRows: () => ExcelRow[]
+  /** Hàm trả về dữ liệu hiện tại đã map sang cột để xuất (có thể bất đồng bộ nếu cần tải thêm chi tiết) */
+  exportRows: () => ExcelRow[] | Promise<ExcelRow[]>
   /** Một/nhiều dòng mẫu cho file template */
   templateRows: ExcelRow[]
   /** Xử lý import: nhận các dòng đã đọc, trả về số thành công/lỗi. Bỏ trống nếu không cho import. */
@@ -22,6 +22,23 @@ interface ExcelToolbarProps {
 export function ExcelToolbar({ sheetName, fileBase, exportRows, templateRows, onImport, canWrite = true, entityLabel = 'dòng' }: ExcelToolbarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const rows = await exportRows()
+      if (rows.length === 0) {
+        toast.error('Không có dữ liệu để xuất')
+        return
+      }
+      await exportToExcel(rows, sheetName, `${fileBase}.xlsx`)
+    } catch {
+      toast.error('Không thể xuất Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -71,10 +88,13 @@ export function ExcelToolbar({ sheetName, fileBase, exportRows, templateRows, on
       )}
       <button
         className="btn btn-outline-primary"
-        onClick={() => exportToExcel(exportRows(), sheetName, `${fileBase}.xlsx`)}
+        onClick={handleExport}
+        disabled={exporting}
         title="Xuất ra Excel"
       >
-        <i className="fe fe-file-text me-1"></i> Xuất Excel
+        {exporting
+          ? <><span className="spinner-border spinner-border-sm me-1"></span>Đang xuất...</>
+          : <><i className="fe fe-file-text me-1"></i> Xuất Excel</>}
       </button>
       <input
         ref={fileInputRef}

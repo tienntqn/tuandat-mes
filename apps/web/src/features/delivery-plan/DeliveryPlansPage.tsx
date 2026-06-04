@@ -9,6 +9,8 @@ import { PageWrapper } from '@/components/layout/PageWrapper'
 import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
 import { cellStr, cellNum, cellDate } from '@/lib/excel'
 import { usePurchaseOrders } from '@/features/purchase-order/po.hooks'
+import { useColorsActive } from '@/features/color/color.hooks'
+import { useSizesActive } from '@/features/size/size.hooks'
 import { deliveryApi, DELIVERY_STATUS_LABELS, type DeliveryPlan, type CreateDeliveryPlanDto } from './delivery.api'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -27,6 +29,8 @@ export default function DeliveryPlansPage() {
 
   const { data: poData } = usePurchaseOrders({ pageSize: 200 })
   const pos = poData?.data ?? []
+  const { data: colors = [] } = useColorsActive()
+  const { data: sizes = [] } = useSizesActive()
   const { data, isLoading, refetch } = useDeliveryPlans({ status: filterStatus || undefined, page, pageSize: 20 })
   const createPlan = useCreateDeliveryPlan()
   const updatePlan = useUpdateDeliveryPlan()
@@ -43,41 +47,86 @@ export default function DeliveryPlansPage() {
 
   const formatDate = (d: string | null) => (d ? new Date(d).toLocaleDateString('vi-VN') : '—')
 
-  const exportRows = () => (data?.data ?? []).map((p) => ({
-    'PO': p.po?.poNumber ?? '',
-    'Mã hàng': p.po?.style?.code ?? '',
-    'Ngày giao dự kiến': p.plannedDate ? p.plannedDate.split('T')[0] : '',
-    'SL dự kiến': p.plannedQuantity,
-    'Ngày giao thực tế': p.actualDate ? p.actualDate.split('T')[0] : '',
-    'SL thực giao': p.actualQuantity ?? '',
-    'Trạng thái': DELIVERY_STATUS_LABELS[p.status] ?? p.status,
-    'Ghi chú': p.note ?? '',
-  }))
+  const colorIdByCode = new Map(colors.map((c) => [c.code.trim().toLowerCase(), c.id]))
+  const sizeIdByCode = new Map(sizes.map((s) => [s.code.trim().toLowerCase(), s.id]))
+
+  // Xuất định dạng "long": mỗi ô Màu × Size của phiếu đóng gói là 1 dòng (tải chi tiết để lấy items).
+  const exportRows = async () => {
+    const list = data?.data ?? []
+    const details = await Promise.all(list.map((p) => deliveryApi.get(p.id)))
+    const out: Record<string, string | number>[] = []
+    for (const p of details) {
+      const plannedDate = p.plannedDate ? p.plannedDate.split('T')[0] : ''
+      const actualDate = p.actualDate ? p.actualDate.split('T')[0] : ''
+      const statusLabel = DELIVERY_STATUS_LABELS[p.status] ?? p.status
+      const mk = (color: string, size: string, qty: number | string) => ({
+        'PO': p.po?.poNumber ?? '',
+        'Mã hàng': p.po?.style?.code ?? '',
+        'Ngày giao dự kiến': plannedDate,
+        'SL dự kiến': p.plannedQuantity,
+        'Ngày giao thực tế': actualDate,
+        'Màu': color,
+        'Size': size,
+        'SL thực giao': qty,
+        'Trạng thái': statusLabel,
+        'Ghi chú': p.note ?? '',
+      })
+      if (p.items && p.items.length > 0) {
+        for (const it of p.items) out.push(mk(it.color?.code ?? '', it.size?.code ?? '', it.quantity))
+      } else {
+        out.push(mk('', '', p.actualQuantity ?? ''))
+      }
+    }
+    return out
+  }
 
   const templateRows = [
-    { 'PO': 'PO-2026-001', 'Ngày giao dự kiến': '2026-08-01', 'SL dự kiến': 500, 'Ngày giao thực tế': '', 'SL thực giao': '', 'Trạng thái': 'Chờ giao', 'Ghi chú': '' },
+    { 'PO': 'PO-2026-001', 'Mã hàng': 'MH001', 'Ngày giao dự kiến': '2026-08-01', 'SL dự kiến': 1000, 'Ngày giao thực tế': '2026-08-01', 'Màu': 'TRANG', 'Size': 'M', 'SL thực giao': 500, 'Trạng thái': 'Đã giao', 'Ghi chú': '' },
+    { 'PO': 'PO-2026-001', 'Mã hàng': 'MH001', 'Ngày giao dự kiến': '2026-08-01', 'SL dự kiến': 1000, 'Ngày giao thực tế': '2026-08-01', 'Màu': 'TRANG', 'Size': 'L', 'SL thực giao': 500, 'Trạng thái': 'Đã giao', 'Ghi chú': '' },
   ]
 
+  // Nhập theo nhóm: gộp các dòng cùng (PO + Ngày giao dự kiến) → 1 lần giao kèm phiếu đóng gói màu×size.
   const handleImportRows = async (rows: Record<string, string | number>[]) => {
     const poMap = new Map(pos.map((p) => [p.poNumber.trim().toLowerCase(), p.id]))
+
+    const groups = new Map<string, Record<string, string | number>[]>()
+    for (const row of rows) {
+      const po = cellStr(row['PO'])
+      const plannedDate = cellDate(row['Ngày giao dự kiến'])
+      if (!po || !plannedDate) continue
+      const key = `${po.toLowerCase()}__${plannedDate}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(row)
+    }
+
     let success = 0
     let error = 0
-    for (const row of rows) {
-      const poId = poMap.get(cellStr(row['PO']).toLowerCase())
-      const plannedDate = cellDate(row['Ngày giao dự kiến'])
-      const plannedQuantity = cellNum(row['SL dự kiến'])
+    for (const grp of groups.values()) {
+      const first = grp[0]
+      const poId = poMap.get(cellStr(first['PO']).toLowerCase())
+      const plannedDate = cellDate(first['Ngày giao dự kiến'])
+      const plannedQuantity = cellNum(first['SL dự kiến'])
       if (!poId || !plannedDate || plannedQuantity < 1) { error++; continue }
-      const actualDate = cellDate(row['Ngày giao thực tế'])
-      const actualQtyRaw = cellStr(row['SL thực giao'])
+      const actualDate = cellDate(first['Ngày giao thực tế'])
+      // Gom các ô màu×size có đủ Màu + Size + SL thực giao > 0
+      const items: { colorId: number; sizeId: number; quantity: number }[] = []
+      for (const r of grp) {
+        const colorId = colorIdByCode.get(cellStr(r['Màu']).toLowerCase())
+        const sizeId = sizeIdByCode.get(cellStr(r['Size']).toLowerCase())
+        const qty = cellNum(r['SL thực giao'])
+        if (colorId && sizeId && qty > 0) items.push({ colorId, sizeId, quantity: qty })
+      }
+      const actualRaw = cellStr(first['SL thực giao'])
       try {
         await deliveryApi.create({
           poId,
           plannedDate,
           plannedQuantity,
           actualDate: actualDate || undefined,
-          actualQuantity: actualQtyRaw ? cellNum(actualQtyRaw) : undefined,
-          status: DELIVERY_STATUS_BY_LABEL[cellStr(row['Trạng thái'])] ?? undefined,
-          note: cellStr(row['Ghi chú']) || undefined,
+          actualQuantity: items.length ? undefined : (actualRaw ? cellNum(actualRaw) : undefined),
+          status: DELIVERY_STATUS_BY_LABEL[cellStr(first['Trạng thái'])] ?? undefined,
+          note: cellStr(first['Ghi chú']) || undefined,
+          items: items.length ? items : undefined,
         })
         success++
       } catch { error++ }
