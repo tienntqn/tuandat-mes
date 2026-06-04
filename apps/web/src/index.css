@@ -83,15 +83,15 @@
 .section-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 4px;
   margin: -6px 0 20px;
 }
 .section-tabs .section-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 14px;
-  border-radius: 8px;
+  padding: 7px 13px;
+  border-radius: 4px;
   background: #fff;
   border: 1px solid #ededf5;
   color: #5c678f;
@@ -114,8 +114,34 @@
   background: #6259ca;
   border-color: #6259ca;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(98, 89, 202, 0.25);
+  box-shadow: 0 3px 8px rgba(98, 89, 202, 0.22);
 }
+
+/* Icon nhiều màu cho từng mục (tab active → icon trắng cho dễ đọc) */
+.section-tabs .section-tab i.fe-home { color: #6259ca; }
+.section-tabs .section-tab i.fe-git-branch { color: #f7b731; }
+.section-tabs .section-tab i.fe-hard-drive { color: #6259ca; }
+.section-tabs .section-tab i.fe-tool { color: #f7b731; }
+.section-tabs .section-tab i.fe-repeat { color: #2d9cdb; }
+.section-tabs .section-tab i.fe-clock { color: #828282; }
+.section-tabs .section-tab i.fe-users { color: #2d9cdb; }
+.section-tabs .section-tab i.fe-user { color: #2d9cdb; }
+.section-tabs .section-tab i.fe-tag { color: #eb5757; }
+.section-tabs .section-tab i.fe-droplet { color: #00b8d4; }
+.section-tabs .section-tab i.fe-maximize-2 { color: #9b51e0; }
+.section-tabs .section-tab i.fe-file-text { color: #2d9cdb; }
+.section-tabs .section-tab i.fe-shopping-cart { color: #27ae60; }
+.section-tabs .section-tab i.fe-calendar { color: #6259ca; }
+.section-tabs .section-tab i.fe-list { color: #f2994a; }
+.section-tabs .section-tab i.fe-truck { color: #eb5757; }
+.section-tabs .section-tab i.fe-scissors { color: #eb5757; }
+.section-tabs .section-tab i.fe-feather { color: #2d9cdb; }
+.section-tabs .section-tab i.fe-check-circle { color: #27ae60; }
+.section-tabs .section-tab i.fe-package { color: #f2994a; }
+.section-tabs .section-tab i.fe-bar-chart-2 { color: #27ae60; }
+.section-tabs .section-tab i.fe-sliders { color: #9b51e0; }
+.section-tabs .section-tab i.fe-briefcase { color: #f2994a; }
+.section-tabs .section-tab.active i { color: #fff !important; }
 /* Mobile: cho cuộn ngang thay vì xuống dòng quá nhiều */
 @media (max-width: 575px) {
   .section-tabs {
