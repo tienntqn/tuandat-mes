@@ -15,6 +15,7 @@ import { PageWrapper } from '@/components/layout/PageWrapper'
 import { useAuthStore } from '@/stores/auth.store'
 import { factoryApi } from '@/features/factory/factory.api'
 import { poApi } from '@/features/purchase-order/po.api'
+import { companyPlanApi } from './plan.api'
 import type { CompanyPlan, CreateCompanyPlanDto, UpdateCompanyPlanDto } from './plan.api'
 
 // Thanh tiến trình hiển thị đã phân bổ / còn lại
@@ -102,6 +103,13 @@ export default function CompanyPlanPage() {
   const { data: factories } = useQuery({ queryKey: ['factories-all'], queryFn: () => factoryApi.list({ pageSize: 100 }) })
   const { data: posData } = useQuery({ queryKey: ['pos-all'], queryFn: () => poApi.list({ pageSize: 200 }) })
 
+  // Khi đã chọn xưởng: lấy toàn bộ kế hoạch của xưởng đó để rút ra danh sách PO mà xưởng đang làm
+  const { data: plansForFactory } = useQuery({
+    queryKey: ['company-plans-by-factory', filterFactoryId],
+    queryFn: () => companyPlanApi.list({ factoryId: Number(filterFactoryId), pageSize: 500 }),
+    enabled: !!filterFactoryId,
+  })
+
   const createPlan = useCreateCompanyPlan()
   const updatePlan = useUpdateCompanyPlan()
   const deletePlan = useDeleteCompanyPlan()
@@ -126,8 +134,18 @@ export default function CompanyPlanPage() {
   }
 
   const factoryList = factories?.data ?? []
-  const poList = posData?.data ?? []
   const plans = data?.data ?? []
+
+  // Danh sách PO cho dropdown: nếu đã chọn xưởng → chỉ các PO mà xưởng đó đang làm; ngược lại → tất cả PO
+  const poList = filterFactoryId
+    ? Array.from(
+        new Map(
+          (plansForFactory?.data ?? [])
+            .filter((p) => p.po)
+            .map((p) => [p.po!.id, p.po!]),
+        ).values(),
+      ).sort((a, b) => a.poNumber.localeCompare(b.poNumber))
+    : posData?.data ?? []
 
   return (
     <PageWrapper
@@ -158,7 +176,7 @@ export default function CompanyPlanPage() {
         <div className="col-auto">
           <select
             value={filterFactoryId}
-            onChange={(e) => { setFilterFactoryId(e.target.value); setPage(1) }}
+            onChange={(e) => { setFilterFactoryId(e.target.value); setFilterPoId(''); setPage(1) }}
             className="form-select"
           >
             <option value="">Tất cả xưởng</option>
