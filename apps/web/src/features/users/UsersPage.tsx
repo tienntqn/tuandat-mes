@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useUsers, useRoles, useUpdateUser, useResetPassword } from './users.hooks'
+import { KeyRound, Shield, Lock, Unlock } from 'lucide-react'
+import { useUsers, useUpdateUser, useResetPassword } from './users.hooks'
 import { CreateUserDialog } from './CreateUserDialog'
 import { EditRolesDialog } from './EditRolesDialog'
 import { PageWrapper } from '@/components/layout/PageWrapper'
@@ -120,23 +121,23 @@ export default function UsersPage() {
                           <button
                             onClick={() => setEditRolesUser(user)}
                             title="Phân quyền"
-                            className="btn btn-sm btn-outline-secondary"
+                            className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center"
                           >
-                            <i className="fe fe-shield"></i>
+                            <Shield size={15} />
                           </button>
                           <button
                             onClick={() => { setResetUser(user); setNewPw('') }}
                             title="Đặt lại mật khẩu"
-                            className="btn btn-sm btn-outline-secondary"
+                            className="btn btn-sm btn-outline-secondary d-inline-flex align-items-center"
                           >
-                            <i className="fe fe-key"></i>
+                            <KeyRound size={15} />
                           </button>
                           <button
                             onClick={() => toggleActive(user)}
                             title={user.isActive ? 'Khóa tài khoản' : 'Mở khóa'}
-                            className={`btn btn-sm ${user.isActive ? 'btn-outline-success' : 'btn-outline-secondary'}`}
+                            className={`btn btn-sm d-inline-flex align-items-center ${user.isActive ? 'btn-outline-success' : 'btn-outline-secondary'}`}
                           >
-                            <i className={`fe ${user.isActive ? 'fe-toggle-right' : 'fe-toggle-left'}`}></i>
+                            {user.isActive ? <Unlock size={15} /> : <Lock size={15} />}
                           </button>
                         </div>
                       </td>

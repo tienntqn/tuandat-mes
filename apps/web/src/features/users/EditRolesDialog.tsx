@@ -34,7 +34,7 @@ export function EditRolesDialog({ user, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-card border shadow-xl flex flex-col" style={{ maxHeight: '90vh' }}>
+      <div className="w-full max-w-2xl rounded-xl bg-card border shadow-xl flex flex-col" style={{ maxHeight: '90vh' }}>
         {/* Header cố định */}
         <div className="flex items-center justify-between px-5 py-4 border-b shrink-0">
           <h2 className="font-bold text-lg">Phân quyền</h2>
@@ -48,24 +48,27 @@ export function EditRolesDialog({ user, onClose }: Props) {
           <p className="text-sm text-muted-foreground mb-3">
             Tài khoản: <strong>{user.username}</strong> — {user.employee.fullName}
           </p>
-          <div className="space-y-2">
-            {roles?.map((role) => (
-              <label
-                key={role.id}
-                className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/50"
-              >
-                <input
-                  type="checkbox"
-                  checked={selected.includes(role.id)}
-                  onChange={() => toggle(role.id)}
-                  className="mt-0.5"
-                />
-                <div>
-                  <p className="text-sm font-medium">{role.name}</p>
-                  <p className="text-xs text-muted-foreground">{role.description}</p>
-                </div>
-              </label>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {roles?.map((role) => {
+              const checked = selected.includes(role.id)
+              return (
+                <label
+                  key={role.id}
+                  className={`flex items-start gap-2 rounded-lg border p-3 cursor-pointer transition-colors h-full ${checked ? 'border-primary bg-primary/5' : 'hover:bg-accent/50'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggle(role.id)}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium break-words">{role.name}</p>
+                    <p className="text-xs text-muted-foreground break-words">{role.description}</p>
+                  </div>
+                </label>
+              )
+            })}
           </div>
         </div>
 
