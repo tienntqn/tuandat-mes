@@ -8,7 +8,11 @@ import { ExcelToolbar } from '@/components/shared/ExcelToolbar'
 import { cellStr } from '@/lib/excel'
 import { useFactories } from '@/features/factory/factory.hooks'
 import { employeeApi, POSITION_LABELS, type Employee, type CreateEmployeeDto } from './employee.api'
+import { useRoles, useCreateUser } from '@/features/users/users.hooks'
+import { toast } from '@/lib/toast'
 import { useAuthStore } from '@/stores/auth.store'
+
+const DEFAULT_USER_PASSWORD = '123456@'
 
 const POSITION_BY_LABEL = Object.fromEntries(Object.entries(POSITION_LABELS).map(([k, v]) => [v, k]))
 
@@ -23,6 +27,22 @@ export default function EmployeesPage() {
 
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD')
+  const canCreateUser = isAdmin()
+
+  const { data: roles } = useRoles()
+  const createUser = useCreateUser()
+
+  // Tạo nhanh tài khoản cho nhân viên: username = mã NV (viết thường), mật khẩu mặc định, vai trò trùng chức danh
+  const handleCreateUser = (emp: Employee) => {
+    const role = roles?.find((r) => r.name === emp.position)
+    createUser.mutate(
+      { employeeId: emp.id, username: emp.code.toLowerCase(), password: DEFAULT_USER_PASSWORD, roleIds: role ? [role.id] : [] },
+      {
+        onSuccess: () => { toast.success(`Đã tạo tài khoản "${emp.code.toLowerCase()}" — mật khẩu ${DEFAULT_USER_PASSWORD}`); refetch() },
+        onError: (e: any) => toast.error(e?.response?.data?.message || 'Không thể tạo tài khoản'),
+      },
+    )
+  }
 
   const { data: factoriesData } = useFactories({ pageSize: 200 })
   const factories = factoriesData?.data ?? []
@@ -210,6 +230,16 @@ export default function EmployeesPage() {
                               </button>
                             ) : (
                               <>
+                                {canCreateUser && !emp.user && (
+                                  <button
+                                    onClick={() => handleCreateUser(emp)}
+                                    disabled={createUser.isPending}
+                                    title={`Tạo tài khoản (mật khẩu ${DEFAULT_USER_PASSWORD})`}
+                                    className="btn btn-sm btn-outline-primary"
+                                  >
+                                    <i className="fe fe-user-plus"></i>
+                                  </button>
+                                )}
                                 <button onClick={() => { setEditTarget(emp); setFormOpen(true) }} className="btn btn-sm btn-outline-secondary">
                                   <i className="fe fe-edit-2"></i>
                                 </button>

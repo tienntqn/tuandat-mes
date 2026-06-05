@@ -59,6 +59,7 @@ export class EmployeeService {
         include: {
           factory: { select: { id: true, code: true, name: true } },
           line: { select: { id: true, lineNumber: true, name: true } },
+          user: { select: { id: true, username: true, isActive: true } },
         },
         orderBy: { code: 'asc' },
       }),
