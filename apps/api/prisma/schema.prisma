@@ -229,6 +229,7 @@ model Factory {
   transfersTo     MachineTransfer[] @relation("TransferTo")
   factorySectionOutputs FactorySectionOutput[]
   finishingOutputs      FinishingOutput[]
+  repairProposals       RepairProposal[]
 
   @@index([companyId])
   @@index([status])
@@ -296,24 +297,38 @@ model Machine {
   factoryId    Int
   lineId       Int?
   status       MachineStatus @default(IDLE)
-  brand        String?
+  brand        String? // tên hãng dạng text (giữ tương thích) — ưu tiên brandId
+  brandId      Int?
+  categoryId   Int? // chủng loại/chức năng
   model        String?
+  serialNo     String?
+  manufactureYear Int? // năm sản xuất
   purchaseDate DateTime?     @db.Date
+  warrantyExpiry DateTime?   @db.Date // hạn bảo hành
   note         String?
+  liquidatedAt DateTime? // đã thanh lý (ẩn khỏi danh sách)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   deletedAt    DateTime?
 
-  factory      Factory            @relation(fields: [factoryId], references: [id])
-  line         ProductionLine?    @relation(fields: [lineId], references: [id])
-  maintenances MachineMaintenance[]
-  transfers    MachineTransfer[]
+  factory         Factory             @relation(fields: [factoryId], references: [id])
+  line            ProductionLine?     @relation(fields: [lineId], references: [id])
+  brandRef        MachineBrand?       @relation(fields: [brandId], references: [id])
+  category        MachineCategory?    @relation(fields: [categoryId], references: [id])
+  maintenances    MachineMaintenance[]
+  transfers       MachineTransfer[]
+  images          MachineImage[]
+  liquidation     MachineLiquidation?
+  repairProposals RepairProposal[]
 
   @@index([factoryId])
   @@index([lineId])
+  @@index([brandId])
+  @@index([categoryId])
   @@index([status])
   @@index([type])
   @@index([deletedAt])
+  @@index([liquidatedAt])
 }
 
 model MachineMaintenance {
@@ -772,4 +787,167 @@ model StyleLine {
 
   @@id([lineId, styleId])
   @@index([styleId])
+}
+
+// ============================================================
+// QUẢN LÝ MÁY MÓC — DANH MỤC & MỞ RỘNG
+// ============================================================
+
+enum RepairProposalType {
+  REPAIR // sửa chữa
+  REPLACEMENT // thay thế
+}
+
+enum RepairProposalStatus {
+  DRAFT // nháp
+  PENDING // chờ duyệt
+  APPROVED // đã duyệt
+  REJECTED // từ chối
+  DONE // hoàn thành
+}
+
+enum AttachmentType {
+  IMAGE
+  VIDEO
+}
+
+// Hãng sản xuất (Juki, Brother, Eastman...)
+model MachineBrand {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  name      String
+  country   String?
+  note      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  machines Machine[]
+
+  @@index([deletedAt])
+}
+
+// Chủng loại / chức năng máy (1 kim, 2 kim, ép keo, trải vải...)
+model MachineCategory {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  machines   Machine[]
+  spareParts SparePart[]
+
+  @@index([deletedAt])
+}
+
+// Phụ tùng máy (bo mạch, dây cua roa, motor, màn hình...)
+model SparePart {
+  id         Int       @id @default(autoincrement())
+  code       String    @unique
+  name       String
+  unit       String? // đơn vị: cái, bộ, mét...
+  categoryId Int? // nhóm theo chủng loại máy (tùy chọn)
+  note       String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  category    MachineCategory?     @relation(fields: [categoryId], references: [id])
+  repairItems RepairProposalItem[]
+
+  @@index([categoryId])
+  @@index([deletedAt])
+}
+
+// Hình ảnh của máy (nhiều ảnh / 1 máy)
+model MachineImage {
+  id        Int      @id @default(autoincrement())
+  machineId Int
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  machine Machine @relation(fields: [machineId], references: [id])
+
+  @@index([machineId])
+}
+
+// Lịch sử thanh lý máy (1-1 với máy đã thanh lý)
+model MachineLiquidation {
+  id              Int      @id @default(autoincrement())
+  machineId       Int      @unique
+  liquidationDate DateTime @db.Date
+  reason          String
+  decisionNo      String?
+  salvageValue    Decimal? @db.Decimal(15, 2)
+  approvedBy      String?
+  note            String?
+  createdAt       DateTime @default(now())
+
+  machine Machine @relation(fields: [machineId], references: [id])
+
+  @@index([machineId])
+}
+
+// Đề xuất sửa chữa / thay thế máy (3 bước: Nháp → Chờ → Duyệt/Từ chối → Hoàn thành)
+model RepairProposal {
+  id            Int                  @id @default(autoincrement())
+  proposalNo    String               @unique
+  machineId     Int
+  factoryId     Int
+  type          RepairProposalType   @default(REPAIR)
+  status        RepairProposalStatus @default(DRAFT)
+  title         String
+  description   String?
+  estimatedCost Decimal?             @db.Decimal(15, 2)
+  requestedBy   Int // employeeId người đề xuất
+  approvedBy    Int? // employeeId người duyệt
+  approvedAt    DateTime?
+  rejectReason  String?
+  completedAt   DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  machine     Machine                     @relation(fields: [machineId], references: [id])
+  factory     Factory                     @relation(fields: [factoryId], references: [id])
+  items       RepairProposalItem[]
+  attachments RepairProposalAttachment[]
+
+  @@index([machineId])
+  @@index([factoryId])
+  @@index([status])
+}
+
+// Dòng phụ tùng/hạng mục trong 1 đề xuất
+model RepairProposalItem {
+  id          Int     @id @default(autoincrement())
+  proposalId  Int
+  sparePartId Int?
+  name        String // tên hạng mục/phụ tùng (cho phép nhập tự do)
+  quantity    Int     @default(1)
+  unit        String?
+  note        String?
+
+  proposal  RepairProposal @relation(fields: [proposalId], references: [id])
+  sparePart SparePart?     @relation(fields: [sparePartId], references: [id])
+
+  @@index([proposalId])
+  @@index([sparePartId])
+}
+
+// Tệp đính kèm (ảnh/video) của đề xuất
+model RepairProposalAttachment {
+  id         Int            @id @default(autoincrement())
+  proposalId Int
+  type       AttachmentType
+  url        String
+  filename   String?
+  createdAt  DateTime       @default(now())
+
+  proposal RepairProposal @relation(fields: [proposalId], references: [id])
+
+  @@index([proposalId])
 }

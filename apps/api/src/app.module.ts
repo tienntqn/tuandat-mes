@@ -22,6 +22,9 @@ import { OutputModule } from './modules/output/output.module'
 import { ReportModule } from './modules/report/report.module'
 import { SettingsModule } from './modules/settings/settings.module'
 import { UploadsModule } from './modules/uploads/uploads.module'
+import { MachineBrandModule } from './modules/machine-brand/machine-brand.module'
+import { MachineCategoryModule } from './modules/machine-category/machine-category.module'
+import { SparePartModule } from './modules/spare-part/spare-part.module'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { RolesGuard } from './common/guards/roles.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
@@ -51,6 +54,9 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter'
     ReportModule,
     SettingsModule,
     UploadsModule,
+    MachineBrandModule,
+    MachineCategoryModule,
+    SparePartModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
