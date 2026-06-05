@@ -9,6 +9,7 @@ import { cellStr } from '@/lib/excel'
 import { useFactories } from '@/features/factory/factory.hooks'
 import { employeeApi, POSITION_LABELS, type Employee, type CreateEmployeeDto } from './employee.api'
 import { useRoles, useCreateUser } from '@/features/users/users.hooks'
+import { suggestUsername } from '@/features/users/username'
 import { toast } from '@/lib/toast'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -35,10 +36,11 @@ export default function EmployeesPage() {
   // Tạo nhanh tài khoản cho nhân viên: username = mã NV (viết thường), mật khẩu mặc định, vai trò trùng chức danh
   const handleCreateUser = (emp: Employee) => {
     const role = roles?.find((r) => r.name === emp.position)
+    const username = suggestUsername(emp)
     createUser.mutate(
-      { employeeId: emp.id, username: emp.code.toLowerCase(), password: DEFAULT_USER_PASSWORD, roleIds: role ? [role.id] : [] },
+      { employeeId: emp.id, username, password: DEFAULT_USER_PASSWORD, roleIds: role ? [role.id] : [] },
       {
-        onSuccess: () => { toast.success(`Đã tạo tài khoản "${emp.code.toLowerCase()}" — mật khẩu ${DEFAULT_USER_PASSWORD}`); refetch() },
+        onSuccess: () => { toast.success(`Đã tạo tài khoản "${username}" — mật khẩu ${DEFAULT_USER_PASSWORD}`); refetch() },
         onError: (e: any) => toast.error(e?.response?.data?.message || 'Không thể tạo tài khoản'),
       },
     )

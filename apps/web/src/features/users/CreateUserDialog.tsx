@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import { useCreateUser, useRoles } from './users.hooks'
 import { useEmployees } from '@/features/employee/employee.hooks'
 import { POSITION_LABELS } from '@/features/employee/employee.api'
+import { suggestUsername } from './username'
 import { toast } from '@/lib/toast'
 
 interface Props {
@@ -45,7 +46,7 @@ export function CreateUserDialog({ open, onClose }: Props) {
     if (!id) return
     const emp = employees.find((e) => e.id === id)
     if (!emp) return
-    setUsername(emp.code.toLowerCase())
+    setUsername(suggestUsername(emp))
     const matchRole = roles?.find((r) => r.name === emp.position)
     setRoleIds(matchRole ? [matchRole.id] : [])
   }
