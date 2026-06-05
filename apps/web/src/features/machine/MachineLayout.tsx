@@ -11,6 +11,7 @@ const LiquidationPage = lazy(() => import('./LiquidationPage'))
 const BrandsPage = lazy(() => import('./BrandsPage'))
 const CategoriesPage = lazy(() => import('./CategoriesPage'))
 const SparePartsPage = lazy(() => import('./SparePartsPage'))
+const RepairProposalsPage = lazy(() => import('./RepairProposalsPage'))
 
 // Các trang con được điều hướng từ menu "Quản lý máy móc" ở sidebar.
 export default function MachineLayout() {
@@ -23,6 +24,7 @@ export default function MachineLayout() {
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="transfers" element={<TransferPage />} />
             <Route path="history" element={<MachineHistoryPage />} />
+            <Route path="repairs" element={<RepairProposalsPage />} />
             <Route path="liquidation" element={<LiquidationPage />} />
             <Route path="brands" element={<BrandsPage />} />
             <Route path="categories" element={<CategoriesPage />} />

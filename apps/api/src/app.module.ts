@@ -25,6 +25,7 @@ import { UploadsModule } from './modules/uploads/uploads.module'
 import { MachineBrandModule } from './modules/machine-brand/machine-brand.module'
 import { MachineCategoryModule } from './modules/machine-category/machine-category.module'
 import { SparePartModule } from './modules/spare-part/spare-part.module'
+import { RepairProposalModule } from './modules/repair-proposal/repair-proposal.module'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { RolesGuard } from './common/guards/roles.guard'
 import { PermissionsGuard } from './common/guards/permissions.guard'
@@ -57,6 +58,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter'
     MachineBrandModule,
     MachineCategoryModule,
     SparePartModule,
+    RepairProposalModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
