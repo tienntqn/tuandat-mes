@@ -163,12 +163,16 @@ async function main() {
   const leaderEmpByFactory: { id: number }[] = []
   const cuttingEmpByFactory: { id: number }[] = []
   const finishingEmpByFactory: { id: number }[] = []
+  const directorEmpByFactory: { id: number }[] = []
+  const mechanicEmpByFactory: { id: number }[] = []
   for (let fi = 0; fi < factories.length; fi++) {
     const f = factories[fi]
     const n = fi + 1
-    await prisma.employee.create({ data: { code: `NV-${n}01`, fullName: `Giám đốc Xưởng ${n}`, position: EmployeePosition.FACTORY_DIRECTOR, factoryId: f.id } })
+    const director = await prisma.employee.create({ data: { code: `NV-${n}01`, fullName: `Giám đốc Xưởng ${n}`, position: EmployeePosition.FACTORY_DIRECTOR, factoryId: f.id } })
+    directorEmpByFactory.push(director)
     await prisma.employee.create({ data: { code: `NV-${n}02`, fullName: `Kế hoạch Xưởng ${n}`, position: EmployeePosition.FACTORY_PLANNER, factoryId: f.id } })
-    await prisma.employee.create({ data: { code: `NV-${n}03`, fullName: `Cơ điện Xưởng ${n}`, position: EmployeePosition.MECHANIC, factoryId: f.id } })
+    const mechanic = await prisma.employee.create({ data: { code: `NV-${n}03`, fullName: `Cơ điện Xưởng ${n}`, position: EmployeePosition.MECHANIC, factoryId: f.id } })
+    mechanicEmpByFactory.push(mechanic)
     const leader = await prisma.employee.create({ data: { code: `NV-${n}11`, fullName: `Tổ trưởng X${n}-C1`, position: EmployeePosition.LINE_LEADER, factoryId: f.id, lineId: linesByFactory[fi][0].id } })
     leaderEmpByFactory.push(leader)
     const cutting = await prisma.employee.create({ data: { code: `NV-${n}21`, fullName: `Tổ trưởng Cắt X${n}`, position: EmployeePosition.CUTTING_LEADER, factoryId: f.id } })
@@ -244,14 +248,20 @@ async function main() {
   const leaderHash = await bcrypt.hash('Leader@123', 10)
   const adminUser = await prisma.user.create({ data: { employeeId: empCreated['NV-001'].id, username: 'admin', passwordHash: adminHash, isActive: true } })
   await prisma.userRole.create({ data: { userId: adminUser.id, roleId: roles['ADMIN'].id } })
-  const leaderUser = await prisma.user.create({ data: { employeeId: leaderEmpByFactory[0].id, username: 'tto_x1', passwordHash: leaderHash, isActive: true } })
+  // Tổ trưởng Xưởng 1 - Chuyền 1 (quy ước: tt.x{xưởng}c{chuyền})
+  const leaderUser = await prisma.user.create({ data: { employeeId: leaderEmpByFactory[0].id, username: 'tt.x1c1', passwordHash: leaderHash, isActive: true } })
   await prisma.userRole.create({ data: { userId: leaderUser.id, roleId: roles['LINE_LEADER'].id } })
-  // Tổ Cắt & Tổ Hoàn thành cho mỗi xưởng (cat_x1, ht_x1, ...) — mật khẩu Leader@123
+  // GĐ xưởng, Cơ điện, Tổ Cắt & Tổ Hoàn thành cho mỗi xưởng — mật khẩu Leader@123
+  // Quy ước: gdx.x{n} · cd.x{n} · cat.x{n} · ht.x{n}
   for (let fi = 0; fi < factories.length; fi++) {
     const n = fi + 1
-    const cutUser = await prisma.user.create({ data: { employeeId: cuttingEmpByFactory[fi].id, username: `cat_x${n}`, passwordHash: leaderHash, isActive: true } })
+    const gdxUser = await prisma.user.create({ data: { employeeId: directorEmpByFactory[fi].id, username: `gdx.x${n}`, passwordHash: leaderHash, isActive: true } })
+    await prisma.userRole.create({ data: { userId: gdxUser.id, roleId: roles['FACTORY_DIRECTOR'].id } })
+    const cdUser = await prisma.user.create({ data: { employeeId: mechanicEmpByFactory[fi].id, username: `cd.x${n}`, passwordHash: leaderHash, isActive: true } })
+    await prisma.userRole.create({ data: { userId: cdUser.id, roleId: roles['MECHANIC'].id } })
+    const cutUser = await prisma.user.create({ data: { employeeId: cuttingEmpByFactory[fi].id, username: `cat.x${n}`, passwordHash: leaderHash, isActive: true } })
     await prisma.userRole.create({ data: { userId: cutUser.id, roleId: roles['CUTTING_LEADER'].id } })
-    const htUser = await prisma.user.create({ data: { employeeId: finishingEmpByFactory[fi].id, username: `ht_x${n}`, passwordHash: leaderHash, isActive: true } })
+    const htUser = await prisma.user.create({ data: { employeeId: finishingEmpByFactory[fi].id, username: `ht.x${n}`, passwordHash: leaderHash, isActive: true } })
     await prisma.userRole.create({ data: { userId: htUser.id, roleId: roles['FINISHING_LEADER'].id } })
   }
   // Cấu hình mặc định: KCS chưa tham gia báo cáo sản lượng
@@ -617,8 +627,12 @@ async function main() {
 ║  Sản xuất: đúng hạn / trễ / vượt / hoàn thành            ║
 ║  Giao hàng: đã giao · trễ · một phần · chờ · quá hạn     ║
 ╠══════════════════════════════════════════════════════════╣
-║  🔑 admin   / Admin@123   (ADMIN)                         ║
-║  🔑 tto_x1  / Leader@123  (Tổ trưởng Xưởng 1 - Chuyền 1)  ║
+║  🔑 admin    / Admin@123   (ADMIN)                        ║
+║  🔑 gdx.x1   / Leader@123  (Giám đốc Xưởng 1)             ║
+║  🔑 cd.x1    / Leader@123  (Cơ điện Xưởng 1)              ║
+║  🔑 tt.x1c1  / Leader@123  (Tổ trưởng X1 - Chuyền 1)      ║
+║  🔑 cat.x1   / Leader@123  (Tổ Cắt Xưởng 1)              ║
+║  🔑 ht.x1    / Leader@123  (Tổ Hoàn thành Xưởng 1)        ║
 ╚══════════════════════════════════════════════════════════╝
   `)
 }
