@@ -5,6 +5,24 @@ export type MachineStatus = 'RUNNING' | 'IDLE' | 'MAINTENANCE' | 'BROKEN' | 'STO
 export type MaintenanceType = 'PERIODIC' | 'REPAIR'
 export type TransferStatus = 'PENDING' | 'SENDER_CONFIRMED' | 'COMPLETED' | 'REJECTED'
 
+export interface MachineImage {
+  id: number
+  machineId: number
+  url: string
+  caption: string | null
+}
+
+export interface MachineLiquidation {
+  id: number
+  machineId: number
+  liquidationDate: string
+  reason: string
+  decisionNo: string | null
+  salvageValue: number | null
+  approvedBy: string | null
+  note: string | null
+}
+
 export interface Machine {
   id: number
   code: string
@@ -14,12 +32,23 @@ export interface Machine {
   factoryId: number
   lineId: number | null
   brand: string | null
+  brandId: number | null
+  categoryId: number | null
   model: string | null
+  serialNo: string | null
+  manufactureYear: number | null
   purchaseDate: string | null
+  warrantyExpiry: string | null
   note: string | null
+  liquidatedAt: string | null
   factory?: { id: number; name: string; code: string }
   line?: { id: number; name: string; lineNumber: number } | null
+  brandRef?: { id: number; name: string } | null
+  category?: { id: number; name: string } | null
+  images?: MachineImage[]
+  liquidation?: MachineLiquidation | null
   maintenances?: MachineMaintenance[]
+  transfers?: MachineTransfer[]
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -102,11 +131,26 @@ export type CreateMachineDto = {
   lineId?: number | null
   status?: MachineStatus
   brand?: string
+  brandId?: number
+  categoryId?: number
   model?: string
+  serialNo?: string
+  manufactureYear?: number
   purchaseDate?: string
+  warrantyExpiry?: string
   note?: string
+  images?: { url: string; caption?: string }[]
 }
 export type UpdateMachineDto = Partial<CreateMachineDto>
+
+export type LiquidateMachineDto = {
+  liquidationDate: string
+  reason: string
+  decisionNo?: string
+  salvageValue?: number
+  approvedBy?: string
+  note?: string
+}
 
 export type CreateMaintenanceDto = {
   machineId: number
@@ -164,6 +208,10 @@ export const machineApi = {
   delete: (id: number) => api.delete(`/machines/${id}`).then((r) => r.data),
   maintenanceDue: (daysAhead?: number) =>
     api.get<Machine[]>('/machines/maintenance-due', { params: { daysAhead } }).then((r) => r.data),
+  liquidate: (id: number, dto: LiquidateMachineDto) =>
+    api.post(`/machines/${id}/liquidate`, dto).then((r) => r.data),
+  listLiquidated: (params?: { page?: number; pageSize?: number }) =>
+    api.get<MachineListResult>('/machines/liquidations', { params }).then((r) => r.data),
 }
 
 export const maintenanceApi = {

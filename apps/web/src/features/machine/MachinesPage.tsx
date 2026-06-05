@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMachines, useCreateMachine, useUpdateMachine, useDeleteMachine } from './machine.hooks'
 import { MachineFormDialog } from './MachineFormDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
@@ -217,8 +218,8 @@ export default function MachinesPage() {
                     const isOverdue = nextDue && new Date(nextDue) < new Date()
                     return (
                       <tr key={machine.id}>
-                        <td><code>{machine.code}</code></td>
-                        <td className="fw-medium">{machine.name}</td>
+                        <td><Link to={`/machines/${machine.id}`} className="text-decoration-none"><code>{machine.code}</code></Link></td>
+                        <td className="fw-medium"><Link to={`/machines/${machine.id}`} className="text-reset text-decoration-none">{machine.name}</Link></td>
                         <td className="text-muted">{MACHINE_TYPE_LABELS[machine.type]}</td>
                         <td>{machine.factory?.name ?? '—'}</td>
                         <td className="text-muted">

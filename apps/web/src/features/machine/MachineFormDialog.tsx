@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
 import type { Machine, CreateMachineDto, MachineType, MachineStatus } from './machine.api'
 import { MACHINE_TYPE_LABELS, MACHINE_STATUS_LABELS } from './machine.api'
+import { useBrandsActive, useCategoriesActive } from './catalog.hooks'
+import { FileUpload, type UploadedFile } from '@/components/shared/FileUpload'
 
 interface Props {
   open: boolean
@@ -19,15 +21,22 @@ const EMPTY: CreateMachineDto = {
   factoryId: 0,
   lineId: null,
   status: 'IDLE',
-  brand: '',
+  brandId: undefined,
+  categoryId: undefined,
   model: '',
+  serialNo: '',
+  manufactureYear: undefined,
   purchaseDate: '',
+  warrantyExpiry: '',
   note: '',
 }
 
 export function MachineFormDialog({ open, machine, factories, lines, onClose, onSubmit, isPending }: Props) {
   const [form, setForm] = useState<CreateMachineDto>(EMPTY)
+  const [images, setImages] = useState<UploadedFile[]>([])
   const [errors, setErrors] = useState<Partial<Record<keyof CreateMachineDto, string>>>({})
+  const { data: brands = [] } = useBrandsActive()
+  const { data: categories = [] } = useCategoriesActive()
 
   useEffect(() => {
     if (open) {
@@ -39,13 +48,18 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
               factoryId: machine.factoryId,
               lineId: machine.lineId,
               status: machine.status,
-              brand: machine.brand ?? '',
+              brandId: machine.brandId ?? undefined,
+              categoryId: machine.categoryId ?? undefined,
               model: machine.model ?? '',
+              serialNo: machine.serialNo ?? '',
+              manufactureYear: machine.manufactureYear ?? undefined,
               purchaseDate: machine.purchaseDate ? machine.purchaseDate.substring(0, 10) : '',
+              warrantyExpiry: machine.warrantyExpiry ? machine.warrantyExpiry.substring(0, 10) : '',
               note: machine.note ?? '',
             }
           : EMPTY,
       )
+      setImages((machine?.images ?? []).map((im) => ({ url: im.url, type: 'IMAGE' as const, filename: im.caption ?? undefined })))
       setErrors({})
     }
   }, [open, machine])
@@ -66,10 +80,12 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
       onSubmit({
         ...form,
         lineId: form.lineId || null,
-        brand: form.brand || undefined,
         model: form.model || undefined,
+        serialNo: form.serialNo || undefined,
         purchaseDate: form.purchaseDate || undefined,
+        warrantyExpiry: form.warrantyExpiry || undefined,
         note: form.note || undefined,
+        images: images.map((im) => ({ url: im.url })),
       })
     }
   }
@@ -157,20 +173,45 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
 
           <div className="grid grid-cols-2 gap-4">
             <FormField label="Hãng sản xuất">
-              <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="VD: Juki" value={form.brand ?? ''} onChange={(e) => setForm({ ...form, brand: e.target.value })} />
+              <select className="w-full rounded-lg border px-3 py-2 text-sm bg-background" value={form.brandId ?? ''} onChange={(e) => setForm({ ...form, brandId: e.target.value ? Number(e.target.value) : undefined })}>
+                <option value="">— Chọn hãng —</option>
+                {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
             </FormField>
-            <FormField label="Model">
-              <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="VD: DDL-8700" value={form.model ?? ''} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+            <FormField label="Chủng loại">
+              <select className="w-full rounded-lg border px-3 py-2 text-sm bg-background" value={form.categoryId ?? ''} onChange={(e) => setForm({ ...form, categoryId: e.target.value ? Number(e.target.value) : undefined })}>
+                <option value="">— Chọn chủng loại —</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </FormField>
           </div>
 
-          <FormField label="Ngày mua">
-            <input type="date" className="w-full rounded-lg border px-3 py-2 text-sm" value={form.purchaseDate ?? ''} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} />
-          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Model">
+              <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="VD: DDL-8700" value={form.model ?? ''} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+            </FormField>
+            <FormField label="Số serial">
+              <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.serialNo ?? ''} onChange={(e) => setForm({ ...form, serialNo: e.target.value })} />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <FormField label="Năm SX">
+              <input type="number" min={1900} className="w-full rounded-lg border px-3 py-2 text-sm" value={form.manufactureYear ?? ''} onChange={(e) => setForm({ ...form, manufactureYear: e.target.value ? Number(e.target.value) : undefined })} />
+            </FormField>
+            <FormField label="Ngày mua">
+              <input type="date" className="w-full rounded-lg border px-3 py-2 text-sm" value={form.purchaseDate ?? ''} onChange={(e) => setForm({ ...form, purchaseDate: e.target.value })} />
+            </FormField>
+            <FormField label="Hạn bảo hành">
+              <input type="date" className="w-full rounded-lg border px-3 py-2 text-sm" value={form.warrantyExpiry ?? ''} onChange={(e) => setForm({ ...form, warrantyExpiry: e.target.value })} />
+            </FormField>
+          </div>
 
           <FormField label="Ghi chú">
             <textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} value={form.note ?? ''} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </FormField>
+
+          <FileUpload label="Hình ảnh máy" value={images} onChange={setImages} accept="image" max={8} />
 
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-accent">Hủy</button>

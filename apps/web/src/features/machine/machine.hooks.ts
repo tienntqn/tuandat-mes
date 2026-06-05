@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   machineApi, maintenanceApi, transferApi,
   type MachineParams, type CreateMachineDto, type UpdateMachineDto,
-  type CreateMaintenanceDto, type CreateTransferDto,
+  type CreateMaintenanceDto, type CreateTransferDto, type LiquidateMachineDto,
 } from './machine.api'
 import { toast } from '@/lib/toast'
 
@@ -58,6 +58,21 @@ export function useDeleteMachine() {
   return useMutation({
     mutationFn: (id: number) => machineApi.delete(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: [MACHINE_KEY] }); toast.success('Đã xóa máy') },
+  })
+}
+
+export function useLiquidatedMachines(params?: { page?: number; pageSize?: number }) {
+  return useQuery({
+    queryKey: [MACHINE_KEY, 'liquidated', params],
+    queryFn: () => machineApi.listLiquidated(params),
+  })
+}
+
+export function useLiquidateMachine() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, dto }: { id: number; dto: LiquidateMachineDto }) => machineApi.liquidate(id, dto),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: [MACHINE_KEY] }); toast.success('Đã thanh lý máy') },
   })
 }
 

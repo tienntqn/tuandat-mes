@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { MachineService } from './machine.service'
-import { CreateMachineDto, UpdateMachineDto, AssignLineDto } from './dto/machine.dto'
+import { CreateMachineDto, UpdateMachineDto, AssignLineDto, LiquidateMachineDto } from './dto/machine.dto'
 import { Roles } from '../../common/decorators/roles.decorator'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
 import type { RequestUser } from '../../common/types/request-user.type'
@@ -47,6 +47,18 @@ export class MachineController {
     return this.machineService.getMaintenanceDue(user, daysAhead)
   }
 
+  @Get('liquidations')
+  @ApiOperation({ summary: 'Danh sách máy đã thanh lý (lịch sử)' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'pageSize', required: false, type: Number })
+  findLiquidated(
+    @CurrentUser() user: RequestUser,
+    @Query('page', new ParseIntPipe({ optional: true })) page?: number,
+    @Query('pageSize', new ParseIntPipe({ optional: true })) pageSize?: number,
+  ) {
+    return this.machineService.findLiquidated(user, page, pageSize)
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết máy' })
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -72,6 +84,17 @@ export class MachineController {
   @ApiOperation({ summary: 'Gán/gỡ máy khỏi chuyền' })
   assignLine(@Param('id', ParseIntPipe) id: number, @Body() dto: AssignLineDto) {
     return this.machineService.assignLine(id, dto)
+  }
+
+  @Post(':id/liquidate')
+  @Roles('ADMIN', 'BOD', 'FACTORY_DIRECTOR')
+  @ApiOperation({ summary: 'Thanh lý máy' })
+  liquidate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: LiquidateMachineDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.machineService.liquidate(id, dto, user)
   }
 
   @Delete(':id')
