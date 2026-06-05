@@ -52,6 +52,11 @@ function spread(total: number, nDays: number): number[] {
 
 async function wipe() {
   // Xóa theo thứ tự FK (con trước, cha sau)
+  await prisma.factorySectionOutputLog.deleteMany()
+  await prisma.factorySectionOutput.deleteMany()
+  await prisma.finishingOutputLog.deleteMany()
+  await prisma.finishingOutput.deleteMany()
+  await prisma.appSetting.deleteMany()
   await prisma.dailyOutputLog.deleteMany()
   await prisma.dailyOutput.deleteMany()
   await prisma.deliveryItem.deleteMany()
@@ -146,8 +151,10 @@ async function main() {
   for (const e of companyEmps) {
     empCreated[e.code] = await prisma.employee.create({ data: { ...e, factoryId: null, lineId: null } })
   }
-  // Mỗi xưởng: 1 GĐ, 1 KH, 1 cơ điện + tổ trưởng chuyền 1
+  // Mỗi xưởng: 1 GĐ, 1 KH, 1 cơ điện + tổ trưởng chuyền 1 + tổ Cắt + tổ Hoàn thành
   const leaderEmpByFactory: { id: number }[] = []
+  const cuttingEmpByFactory: { id: number }[] = []
+  const finishingEmpByFactory: { id: number }[] = []
   for (let fi = 0; fi < factories.length; fi++) {
     const f = factories[fi]
     const n = fi + 1
@@ -156,8 +163,12 @@ async function main() {
     await prisma.employee.create({ data: { code: `NV-${n}03`, fullName: `Cơ điện Xưởng ${n}`, position: EmployeePosition.MECHANIC, factoryId: f.id } })
     const leader = await prisma.employee.create({ data: { code: `NV-${n}11`, fullName: `Tổ trưởng X${n}-C1`, position: EmployeePosition.LINE_LEADER, factoryId: f.id, lineId: linesByFactory[fi][0].id } })
     leaderEmpByFactory.push(leader)
+    const cutting = await prisma.employee.create({ data: { code: `NV-${n}21`, fullName: `Tổ trưởng Cắt X${n}`, position: EmployeePosition.CUTTING_LEADER, factoryId: f.id } })
+    cuttingEmpByFactory.push(cutting)
+    const finishing = await prisma.employee.create({ data: { code: `NV-${n}22`, fullName: `Tổ trưởng Hoàn thành X${n}`, position: EmployeePosition.FINISHING_LEADER, factoryId: f.id } })
+    finishingEmpByFactory.push(finishing)
   }
-  console.log(`✓ Employee: ${3 + factories.length * 4} nhân viên`)
+  console.log(`✓ Employee: ${3 + factories.length * 6} nhân viên`)
 
   // ── 4. ROLES & PERMISSIONS ──
   const resources = ['company', 'factory', 'line', 'employee', 'machine', 'maintenance', 'transfer', 'customer', 'style', 'order', 'purchase_order', 'company_plan', 'factory_plan', 'delivery_plan', 'daily_output', 'report', 'user', 'role']
@@ -197,6 +208,9 @@ async function main() {
     { name: 'LINE_LEADER', description: 'Tổ trưởng', rules: [{ resource: 'daily_output', actions: RW }, { resource: 'factory_plan', actions: [PermissionAction.READ] }] },
     { name: 'LINE_DEPUTY', description: 'Tổ phó', rules: [{ resource: 'daily_output', actions: RW }, { resource: 'factory_plan', actions: [PermissionAction.READ] }] },
     { name: 'MECHANIC', description: 'Cơ điện', rules: [{ resource: 'machine', actions: [PermissionAction.READ, PermissionAction.UPDATE] }, { resource: 'maintenance', actions: RW }] },
+    { name: 'CUTTING_LEADER', description: 'Tổ trưởng Cắt', rules: [{ resource: 'daily_output', actions: RW }] },
+    { name: 'FINISHING_LEADER', description: 'Tổ trưởng Hoàn thành', rules: [{ resource: 'daily_output', actions: RW }] },
+    { name: 'QC_LEADER', description: 'Tổ trưởng KCS', rules: [{ resource: 'daily_output', actions: RW }] },
   ]
   const roles: Record<string, { id: number }> = {}
   for (const def of roleDefs) {
@@ -218,6 +232,16 @@ async function main() {
   await prisma.userRole.create({ data: { userId: adminUser.id, roleId: roles['ADMIN'].id } })
   const leaderUser = await prisma.user.create({ data: { employeeId: leaderEmpByFactory[0].id, username: 'tto_x1', passwordHash: leaderHash, isActive: true } })
   await prisma.userRole.create({ data: { userId: leaderUser.id, roleId: roles['LINE_LEADER'].id } })
+  // Tổ Cắt & Tổ Hoàn thành cho mỗi xưởng (cat_x1, ht_x1, ...) — mật khẩu Leader@123
+  for (let fi = 0; fi < factories.length; fi++) {
+    const n = fi + 1
+    const cutUser = await prisma.user.create({ data: { employeeId: cuttingEmpByFactory[fi].id, username: `cat_x${n}`, passwordHash: leaderHash, isActive: true } })
+    await prisma.userRole.create({ data: { userId: cutUser.id, roleId: roles['CUTTING_LEADER'].id } })
+    const htUser = await prisma.user.create({ data: { employeeId: finishingEmpByFactory[fi].id, username: `ht_x${n}`, passwordHash: leaderHash, isActive: true } })
+    await prisma.userRole.create({ data: { userId: htUser.id, roleId: roles['FINISHING_LEADER'].id } })
+  }
+  // Cấu hình mặc định: KCS chưa tham gia báo cáo sản lượng
+  await prisma.appSetting.create({ data: { key: 'QC_REPORTING_ENABLED', value: 'false' } })
   const enteredBy = adminUser.id
 
   // ── 6. CUSTOMERS ──
@@ -351,20 +375,30 @@ async function main() {
     { poIdx: 7, styleIdx: 7, fIdx: 1, startOff: -52, finishOff: -6, lines: [{ lineIdx: 2, qty: 3700, progress: 1.0 }, { lineIdx: 3, qty: 3700, progress: 1.0 }, { lineIdx: 4, qty: 3600, progress: 1.0 }] },
   ]
 
+  // May (SEWING) ở cấp chuyền → DailyOutput. Cắt/KCS ở cấp xưởng → FactorySectionOutput.
+  // Đóng gói + nhận từ chuyền ở cấp xưởng → FinishingOutput (theo PO).
   const outputRows: { lineId: number; styleId: number; colorId: number; sizeId: number; stage: ProductionStage; outputDate: Date; quantity: number; enteredBy: number; isLocked: boolean }[] = []
+  // Gộp cấp xưởng: key = factory|section|style|color|size|time
+  const sectionMap = new Map<string, { factoryId: number; section: 'CUTTING' | 'QC'; styleId: number; colorId: number; sizeId: number; outputDate: Date; quantity: number; isLocked: boolean }>()
+  // Gộp hoàn thành theo PO: key = factory|po|time
+  const finishingMap = new Map<string, { factoryId: number; poId: number; outputDate: Date; received: number; packed: number; isLocked: boolean }>()
   let cpCount = 0
   let fpCount = 0
   for (const g of groups) {
     const styleId = styles[g.styleIdx].id
+    const factoryId = factories[g.fIdx].id
+    const poId = pos[g.poIdx].id
     const total = sum(g.lines.map((l) => l.qty))
     const companyPlan = await prisma.companyPlan.create({
-      data: { styleId, poId: pos[g.poIdx].id, factoryId: factories[g.fIdx].id, plannedQuantity: total, startDate: d(g.startOff), expectedFinishDate: d(g.finishOff) },
+      data: { styleId, poId, factoryId, plannedQuantity: total, startDate: d(g.startOff), expectedFinishDate: d(g.finishOff) },
     })
     cpCount++
 
     const endDay = g.finishOff < 0 ? d(g.finishOff) : today
     const startDate = d(g.startOff)
     const nDays = clamp(Math.round((endDay.getTime() - startDate.getTime()) / dayMs), 1, 9)
+    const cs = styleColorIds[g.styleIdx]
+    const ss = styleSizeIds[g.styleIdx]
 
     for (const ln of g.lines) {
       const line = linesByFactory[g.fIdx][ln.lineIdx]
@@ -372,37 +406,56 @@ async function main() {
       fpCount++
       await prisma.styleLine.create({ data: { lineId: line.id, styleId } })
 
-      // Sản lượng tích lũy theo công đoạn: cắt > may > KCS > đóng gói
       const sewCum = Math.round(ln.progress * ln.qty)
-      const stageCum: [ProductionStage, number][] = [
-        [ProductionStage.CUTTING, Math.min(ln.qty, Math.round(sewCum * 1.12))],
-        [ProductionStage.SEWING, sewCum],
-        [ProductionStage.QC, Math.round(sewCum * 0.85)],
-        [ProductionStage.PACKING, Math.round(sewCum * 0.7)],
-      ]
-      // Màu/size của mã hàng để chia sản lượng theo ma trận
-      const cs = styleColorIds[g.styleIdx]
-      const ss = styleSizeIds[g.styleIdx]
-      for (const [stage, cum] of stageCum) {
-        const parts = spread(cum, nDays)
-        parts.forEach((dayQty, k) => {
-          if (dayQty <= 0) return
-          const outputDate = new Date(endDay.getTime() - (nDays - 1 - k) * dayMs)
-          const isLocked = outputDate.getTime() < today.getTime()
-          // Thực tế: mỗi ngày chuyền chạy 1 màu (xoay vòng), chia SL theo các size
-          const colorId = cs[k % cs.length]
-          const sizeParts = spread(dayQty, ss.length)
-          ss.forEach((sizeId, si) => {
-            const q = sizeParts[si]
-            if (q <= 0) return
-            outputRows.push({ lineId: line.id, styleId, colorId, sizeId, stage, outputDate, quantity: q, enteredBy, isLocked })
-          })
+      const cutCum = Math.min(ln.qty, Math.round(sewCum * 1.12))
+      const qcCum = Math.round(sewCum * 0.85)
+      const packCum = Math.round(sewCum * 0.7)
+
+      const sewParts = spread(sewCum, nDays)
+      const cutParts = spread(cutCum, nDays)
+      const qcParts = spread(qcCum, nDays)
+      const packParts = spread(packCum, nDays)
+
+      for (let k = 0; k < nDays; k++) {
+        const outputDate = new Date(endDay.getTime() - (nDays - 1 - k) * dayMs)
+        const isLocked = outputDate.getTime() < today.getTime()
+        const colorId = cs[k % cs.length]
+        const t = outputDate.getTime()
+
+        // SEWING → DailyOutput (cấp chuyền), chia theo size
+        const sewSize = spread(sewParts[k], ss.length)
+        ss.forEach((sizeId, si) => {
+          const q = sewSize[si]
+          if (q > 0) outputRows.push({ lineId: line.id, styleId, colorId, sizeId, stage: ProductionStage.SEWING, outputDate, quantity: q, enteredBy, isLocked })
         })
+
+        // CUTTING & QC → gộp cấp xưởng theo màu×size
+        for (const [section, parts] of [['CUTTING', cutParts] as const, ['QC', qcParts] as const]) {
+          const secSize = spread(parts[k], ss.length)
+          ss.forEach((sizeId, si) => {
+            const q = secSize[si]
+            if (q <= 0) return
+            const key = `${factoryId}|${section}|${styleId}|${colorId}|${sizeId}|${t}`
+            const ex = sectionMap.get(key)
+            if (ex) ex.quantity += q
+            else sectionMap.set(key, { factoryId, section, styleId, colorId, sizeId, outputDate, quantity: q, isLocked })
+          })
+        }
+
+        // PACKING + received (= sewing) → gộp hoàn thành theo PO
+        const fkey = `${factoryId}|${poId}|${t}`
+        const fx = finishingMap.get(fkey)
+        if (fx) { fx.received += sewParts[k]; fx.packed += packParts[k] }
+        else finishingMap.set(fkey, { factoryId, poId, outputDate, received: sewParts[k], packed: packParts[k], isLocked })
       }
     }
   }
   await prisma.dailyOutput.createMany({ data: outputRows, skipDuplicates: true })
-  console.log(`✓ CompanyPlan: ${cpCount} | FactoryPlan: ${fpCount} | DailyOutput: ${outputRows.length} bản ghi`)
+  const sectionRows = Array.from(sectionMap.values()).filter((r) => r.quantity > 0).map((r) => ({ factoryId: r.factoryId, section: r.section as any, styleId: r.styleId, colorId: r.colorId, sizeId: r.sizeId, outputDate: r.outputDate, quantity: r.quantity, enteredBy, isLocked: r.isLocked }))
+  await prisma.factorySectionOutput.createMany({ data: sectionRows, skipDuplicates: true })
+  const finishingRows = Array.from(finishingMap.values()).filter((r) => r.received > 0 || r.packed > 0).map((r) => ({ factoryId: r.factoryId, poId: r.poId, outputDate: r.outputDate, receivedQuantity: r.received, packedQuantity: r.packed, enteredBy, isLocked: r.isLocked }))
+  await prisma.finishingOutput.createMany({ data: finishingRows, skipDuplicates: true })
+  console.log(`✓ CompanyPlan: ${cpCount} | FactoryPlan: ${fpCount} | DailyOutput(May): ${outputRows.length} | TổCắt/KCS: ${sectionRows.length} | HoànThành: ${finishingRows.length}`)
 
   // Audit log mẫu: mô phỏng tổ trưởng nhập lại sản lượng SEWING hôm nay (lấy lần cuối)
   const todaySew = await prisma.dailyOutput.findFirst({ where: { stage: ProductionStage.SEWING, outputDate: today }, orderBy: { id: 'asc' } })

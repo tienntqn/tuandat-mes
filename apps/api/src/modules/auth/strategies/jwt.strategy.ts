@@ -49,7 +49,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     let dataScope: RequestUser['dataScope']
 
     const lineScoped = ['LINE_LEADER', 'LINE_DEPUTY']
-    const factoryScoped = ['FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'MECHANIC']
+    const factoryScoped = [
+      'FACTORY_DIRECTOR',
+      'FACTORY_PLANNER',
+      'MECHANIC',
+      'CUTTING_LEADER',
+      'FINISHING_LEADER',
+      'QC_LEADER',
+    ]
 
     if (lineScoped.includes(position)) {
       dataScope = { type: 'LINE', lineId: user.employee.lineId! }

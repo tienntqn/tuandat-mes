@@ -4,15 +4,28 @@ import {
   ForbiddenException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { FactorySection } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
-import { CreateDailyOutputDto } from './dto/output.dto'
+import {
+  CreateDailyOutputDto,
+  CreateSectionOutputDto,
+  CreateFinishingDto,
+} from './dto/output.dto'
+import { SettingsService, SETTING_KEYS } from '../settings/settings.service'
 import type { RequestUser } from '../../common/types/request-user.type'
+
+// Map vị trí (position) → tổ cấp xưởng nhập theo màu × size
+const POSITION_SECTION: Record<string, FactorySection> = {
+  CUTTING_LEADER: FactorySection.CUTTING,
+  QC_LEADER: FactorySection.QC,
+}
 
 @Injectable()
 export class OutputService {
   constructor(
     private prisma: PrismaService,
     private config: ConfigService,
+    private settings: SettingsService,
   ) {}
 
   // Giờ cutoff từ env, mặc định 19
@@ -102,6 +115,13 @@ export class OutputService {
     const lineId = user.lineId
     if (!lineId) {
       throw new ForbiddenException('Tài khoản chưa được gán chuyền')
+    }
+
+    // Chuyền chỉ nhập công đoạn May (Cắt/KCS/Đóng gói do tổ cấp xưởng đảm nhận)
+    if (dto.stage !== 'SEWING') {
+      throw new BadRequestException(
+        'Chuyền chỉ được nhập công đoạn May. Cắt/KCS/Đóng gói do tổ cấp xưởng nhập.',
+      )
     }
 
     // Parse ngày
@@ -243,6 +263,296 @@ export class OutputService {
       },
       include: { style: true },
       orderBy: [{ outputDate: 'asc' }, { stage: 'asc' }],
+    })
+  }
+
+  // ==========================================================
+  // TỔ CẤP XƯỞNG (Cắt / KCS) — nhập theo màu × size
+  // ==========================================================
+
+  // Suy ra section từ position; ném lỗi nếu vị trí không phải tổ section
+  private sectionForPosition(position: string): FactorySection {
+    const section = POSITION_SECTION[position]
+    if (!section) {
+      throw new ForbiddenException('Tài khoản không thuộc tổ Cắt/KCS')
+    }
+    return section
+  }
+
+  // Chặn nếu là tổ KCS nhưng cấu hình KCS đang tắt
+  private async assertSectionEnabled(section: FactorySection) {
+    if (section === FactorySection.QC) {
+      const enabled = await this.settings.getBool(
+        SETTING_KEYS.QC_REPORTING_ENABLED,
+        false,
+      )
+      if (!enabled) {
+        throw new BadRequestException('Bộ phận KCS chưa được bật báo cáo sản lượng')
+      }
+    }
+  }
+
+  // Danh sách mã hàng xưởng đang sản xuất (qua StyleLine của các chuyền thuộc xưởng)
+  async getFactoryStyles(factoryId: number) {
+    const styleLines = await this.prisma.styleLine.findMany({
+      where: { line: { factoryId } },
+      include: {
+        style: {
+          include: {
+            customer: true,
+            styleColors: { include: { color: true } },
+            styleSizes: { include: { size: true } },
+          },
+        },
+      },
+    })
+    // Khử trùng lặp (1 mã hàng có thể ở nhiều chuyền của xưởng)
+    const map = new Map<number, (typeof styleLines)[number]['style']>()
+    for (const sl of styleLines) map.set(sl.styleId, sl.style)
+    return Array.from(map.values()).sort((a, b) => a.code.localeCompare(b.code))
+  }
+
+  // Sản lượng hôm nay của 1 tổ section trong xưởng
+  async getSectionToday(factoryId: number, section: FactorySection) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const outputs = await this.prisma.factorySectionOutput.findMany({
+      where: { factoryId, section, outputDate: today },
+      include: { style: true, color: true, size: true },
+      orderBy: { enteredAt: 'desc' },
+    })
+
+    return {
+      date: today,
+      isPastCutoff: this.isPastCutoff(today),
+      cutoffHour: this.cutoffHour,
+      section,
+      outputs,
+    }
+  }
+
+  // UPSERT sản lượng tổ cấp xưởng (lấy lần cuối + audit log)
+  async upsertSectionOutput(user: RequestUser, dto: CreateSectionOutputDto) {
+    const factoryId = user.factoryId
+    if (!factoryId) {
+      throw new ForbiddenException('Tài khoản chưa được gán xưởng')
+    }
+
+    // Section phải khớp vị trí của user
+    const expected = this.sectionForPosition(user.position)
+    if (dto.section !== expected) {
+      throw new ForbiddenException('Bạn không có quyền nhập cho tổ này')
+    }
+    await this.assertSectionEnabled(dto.section)
+
+    const outputDate = dto.outputDate ? new Date(dto.outputDate) : new Date()
+    outputDate.setHours(0, 0, 0, 0)
+
+    if (this.isPastCutoff(outputDate)) {
+      throw new BadRequestException(
+        `Đã qua giờ khóa sản lượng (${this.cutoffHour}:00). Không thể nhập/sửa ngày này.`,
+      )
+    }
+
+    // Mã hàng phải thuộc xưởng (đang sản xuất qua StyleLine)
+    const styleInFactory = await this.prisma.styleLine.findFirst({
+      where: { styleId: dto.styleId, line: { factoryId } },
+    })
+    if (!styleInFactory) {
+      throw new BadRequestException('Mã hàng không thuộc xưởng của bạn')
+    }
+
+    // Trần hợp lý: 1 ô màu×size không vượt tổng đã đặt của mã hàng (nếu đã khai báo PoItem)
+    const ordered = await this.prisma.poItem.aggregate({
+      where: {
+        colorId: dto.colorId,
+        sizeId: dto.sizeId,
+        po: { styleId: dto.styleId, deletedAt: null },
+      },
+      _sum: { quantity: true },
+    })
+    const orderedQty = ordered._sum.quantity ?? 0
+    if (orderedQty > 0 && dto.quantity > orderedQty) {
+      throw new BadRequestException(
+        `Số lượng (${dto.quantity}) vượt tổng đã đặt (${orderedQty}) của màu/size này`,
+      )
+    }
+
+    const existing = await this.prisma.factorySectionOutput.findFirst({
+      where: {
+        factoryId,
+        section: dto.section,
+        styleId: dto.styleId,
+        colorId: dto.colorId,
+        sizeId: dto.sizeId,
+        outputDate,
+      },
+    })
+
+    let output: { id: number }
+    if (existing) {
+      output = await this.prisma.factorySectionOutput.update({
+        where: { id: existing.id },
+        data: { quantity: dto.quantity, enteredBy: user.employeeId, enteredAt: new Date() },
+      })
+    } else {
+      output = await this.prisma.factorySectionOutput.create({
+        data: {
+          factoryId,
+          section: dto.section,
+          styleId: dto.styleId,
+          colorId: dto.colorId,
+          sizeId: dto.sizeId,
+          outputDate,
+          quantity: dto.quantity,
+          enteredBy: user.employeeId,
+          enteredAt: new Date(),
+        },
+      })
+    }
+
+    // Audit log
+    await this.prisma.factorySectionOutputLog.create({
+      data: {
+        factorySectionOutputId: output.id,
+        quantity: dto.quantity,
+        enteredBy: user.employeeId,
+        enteredAt: new Date(),
+      },
+    })
+
+    return this.prisma.factorySectionOutput.findUnique({
+      where: { id: output.id },
+      include: { style: true, color: true, size: true },
+    })
+  }
+
+  // ==========================================================
+  // TỔ HOÀN THÀNH — nhập theo PO (nhận từ chuyền + đóng thùng)
+  // ==========================================================
+
+  // Danh sách PO xưởng đang làm (PO của các mã hàng có StyleLine ở chuyền thuộc xưởng)
+  async getFinishingPos(factoryId: number) {
+    const styleLines = await this.prisma.styleLine.findMany({
+      where: { line: { factoryId } },
+      select: { styleId: true },
+    })
+    const styleIds = [...new Set(styleLines.map((s) => s.styleId))]
+    if (styleIds.length === 0) return []
+
+    return this.prisma.purchaseOrder.findMany({
+      where: { styleId: { in: styleIds }, deletedAt: null },
+      include: { style: true },
+      orderBy: { poNumber: 'asc' },
+    })
+  }
+
+  // Sản lượng hoàn thành hôm nay của xưởng
+  async getFinishingToday(factoryId: number) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const outputs = await this.prisma.finishingOutput.findMany({
+      where: { factoryId, outputDate: today },
+      include: { po: { include: { style: true } } },
+      orderBy: { enteredAt: 'desc' },
+    })
+
+    return {
+      date: today,
+      isPastCutoff: this.isPastCutoff(today),
+      cutoffHour: this.cutoffHour,
+      outputs,
+    }
+  }
+
+  // UPSERT sản lượng tổ hoàn thành (lấy lần cuối + audit log)
+  async upsertFinishing(user: RequestUser, dto: CreateFinishingDto) {
+    const factoryId = user.factoryId
+    if (!factoryId) {
+      throw new ForbiddenException('Tài khoản chưa được gán xưởng')
+    }
+    if (user.position !== 'FINISHING_LEADER') {
+      throw new ForbiddenException('Bạn không có quyền nhập cho tổ Hoàn thành')
+    }
+
+    // packed ≤ received
+    if (dto.packedQuantity > dto.receivedQuantity) {
+      throw new BadRequestException(
+        'Số lượng đã đóng thùng không thể lớn hơn số lượng đã nhận',
+      )
+    }
+
+    const outputDate = dto.outputDate ? new Date(dto.outputDate) : new Date()
+    outputDate.setHours(0, 0, 0, 0)
+
+    if (this.isPastCutoff(outputDate)) {
+      throw new BadRequestException(
+        `Đã qua giờ khóa sản lượng (${this.cutoffHour}:00). Không thể nhập/sửa ngày này.`,
+      )
+    }
+
+    // PO phải thuộc xưởng (mã hàng đang sản xuất ở chuyền thuộc xưởng)
+    const po = await this.prisma.purchaseOrder.findFirst({
+      where: { id: dto.poId, deletedAt: null },
+    })
+    if (!po) throw new BadRequestException('Không tìm thấy PO')
+    const styleInFactory = await this.prisma.styleLine.findFirst({
+      where: { styleId: po.styleId, line: { factoryId } },
+    })
+    if (!styleInFactory) {
+      throw new BadRequestException('PO không thuộc xưởng của bạn')
+    }
+    // Trần hợp lý: không vượt tổng SL của PO
+    if (dto.receivedQuantity > po.totalQuantity) {
+      throw new BadRequestException(
+        `Số lượng nhận (${dto.receivedQuantity}) vượt tổng PO (${po.totalQuantity})`,
+      )
+    }
+
+    const existing = await this.prisma.finishingOutput.findFirst({
+      where: { factoryId, poId: dto.poId, outputDate },
+    })
+
+    let output: { id: number }
+    if (existing) {
+      output = await this.prisma.finishingOutput.update({
+        where: { id: existing.id },
+        data: {
+          receivedQuantity: dto.receivedQuantity,
+          packedQuantity: dto.packedQuantity,
+          enteredBy: user.employeeId,
+          enteredAt: new Date(),
+        },
+      })
+    } else {
+      output = await this.prisma.finishingOutput.create({
+        data: {
+          factoryId,
+          poId: dto.poId,
+          outputDate,
+          receivedQuantity: dto.receivedQuantity,
+          packedQuantity: dto.packedQuantity,
+          enteredBy: user.employeeId,
+          enteredAt: new Date(),
+        },
+      })
+    }
+
+    await this.prisma.finishingOutputLog.create({
+      data: {
+        finishingOutputId: output.id,
+        receivedQuantity: dto.receivedQuantity,
+        packedQuantity: dto.packedQuantity,
+        enteredBy: user.employeeId,
+        enteredAt: new Date(),
+      },
+    })
+
+    return this.prisma.finishingOutput.findUnique({
+      where: { id: output.id },
+      include: { po: { include: { style: true } } },
     })
   }
 }

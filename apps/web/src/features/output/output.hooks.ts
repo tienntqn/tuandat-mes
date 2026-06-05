@@ -1,5 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { outputApi, type CreateOutputPayload } from './output.api'
+import {
+  outputApi,
+  type CreateOutputPayload,
+  type CreateSectionPayload,
+  type CreateFinishingPayload,
+  type FactorySection,
+} from './output.api'
 import { useToast } from '@/components/ui/use-toast'
 import { syncOfflineQueue } from './lib/offline-store'
 
@@ -9,6 +15,10 @@ export const outputKeys = {
   today: ['output', 'today'] as const,
   history: (days: number) => ['output', 'history', days] as const,
   logs: (id: number) => ['output', 'logs', id] as const,
+  factoryStyles: ['output', 'factory-styles'] as const,
+  sectionToday: (section: FactorySection) => ['output', 'section-today', section] as const,
+  finishingPos: ['output', 'finishing-pos'] as const,
+  finishingToday: ['output', 'finishing-today'] as const,
 }
 
 export function useOutputSettings() {
@@ -87,6 +97,78 @@ export function useUpsertOutput() {
           variant: 'destructive',
         })
       }
+    },
+  })
+}
+
+// ===== Tổ cấp xưởng (Cắt / KCS) =====
+export function useFactoryStyles() {
+  return useQuery({
+    queryKey: outputKeys.factoryStyles,
+    queryFn: outputApi.getFactoryStyles,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+export function useSectionToday(section: FactorySection) {
+  return useQuery({
+    queryKey: outputKeys.sectionToday(section),
+    queryFn: () => outputApi.getSectionToday(section),
+    refetchInterval: 60 * 1000,
+  })
+}
+
+export function useUpsertSection(section: FactorySection) {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  return useMutation({
+    mutationFn: (payload: CreateSectionPayload) => outputApi.upsertSection(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: outputKeys.sectionToday(section) })
+      toast({ title: 'Đã lưu sản lượng thành công' })
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Lỗi',
+        description: err?.response?.data?.message || err?.message || 'Không thể lưu sản lượng',
+        variant: 'destructive',
+      })
+    },
+  })
+}
+
+// ===== Tổ Hoàn thành =====
+export function useFinishingPos() {
+  return useQuery({
+    queryKey: outputKeys.finishingPos,
+    queryFn: outputApi.getFinishingPos,
+    staleTime: 2 * 60 * 1000,
+  })
+}
+
+export function useFinishingToday() {
+  return useQuery({
+    queryKey: outputKeys.finishingToday,
+    queryFn: outputApi.getFinishingToday,
+    refetchInterval: 60 * 1000,
+  })
+}
+
+export function useUpsertFinishing() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  return useMutation({
+    mutationFn: (payload: CreateFinishingPayload) => outputApi.upsertFinishing(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: outputKeys.finishingToday })
+      toast({ title: 'Đã lưu sản lượng thành công' })
+    },
+    onError: (err: any) => {
+      toast({
+        title: 'Lỗi',
+        description: err?.response?.data?.message || err?.message || 'Không thể lưu sản lượng',
+        variant: 'destructive',
+      })
     },
   })
 }

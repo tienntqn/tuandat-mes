@@ -1,5 +1,6 @@
 import React from 'react'
 import { useReportSettings } from '@/features/report/report.hooks'
+import { useAppSettings, useUpdateAppSettings } from './settings.hooks'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { useAuthStore } from '@/stores/auth.store'
 
@@ -15,9 +16,12 @@ function InfoBadge({ children }: { children: React.ReactNode }) {
 
 export default function SettingsPage() {
   const { data: settings, isLoading } = useReportSettings()
+  const { data: appSettings } = useAppSettings()
+  const updateSettings = useUpdateAppSettings()
   const { user } = useAuthStore()
 
   const isAdmin = user?.roles.includes('ADMIN') ?? false
+  const qcEnabled = appSettings?.qcReportingEnabled ?? false
 
   if (!isAdmin) {
     return (
@@ -110,6 +114,35 @@ export default function SettingsPage() {
                 thì hệ thống hiển thị cảnh báo đỏ. Cập nhật biến{' '}
                 <InfoBadge>ALERT_SLOW_PCT</InfoBadge> trong file <InfoBadge>.env</InfoBadge>.
               </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Bộ phận KCS tham gia báo cáo (ghi được vào DB) */}
+        <div className="card mb-4">
+          <div className="card-header">
+            <div className="d-flex align-items-center gap-2">
+              <i className="fe fe-check-circle text-success"></i>
+              <h6 className="card-title mb-0">Bộ phận KCS tham gia báo cáo sản lượng</h6>
+            </div>
+            <p className="text-muted small mb-0 mt-1">
+              Khi bật, tổ KCS cấp xưởng sẽ nhập sản lượng theo Màu × Size (giống tổ Cắt). Khi tắt, KCS không tham gia.
+            </p>
+          </div>
+          <div className="card-body">
+            <div className="form-check form-switch">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="qcToggle"
+                checked={qcEnabled}
+                disabled={updateSettings.isPending}
+                onChange={(e) => updateSettings.mutate({ qcReportingEnabled: e.target.checked })}
+              />
+              <label className="form-check-label" htmlFor="qcToggle">
+                {qcEnabled ? 'Đang BẬT — KCS có báo cáo sản lượng' : 'Đang TẮT — KCS chưa báo cáo sản lượng'}
+              </label>
             </div>
           </div>
         </div>

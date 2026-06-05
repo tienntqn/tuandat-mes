@@ -10,6 +10,12 @@ export type Position =
   | 'LINE_LEADER'
   | 'LINE_DEPUTY'
   | 'MECHANIC'
+  | 'CUTTING_LEADER'
+  | 'FINISHING_LEADER'
+  | 'QC_LEADER'
+
+// Bộ phận nhập sản lượng tương ứng với vị trí (dùng để rẽ nhánh màn nhập)
+export type ProductionSection = 'LINE' | 'CUTTING' | 'FINISHING' | 'QC' | null
 
 export interface AuthUser {
   id: number
@@ -39,6 +45,10 @@ interface AuthState {
   isCompanyLevel: () => boolean
   isFactoryLevel: () => boolean
   isLineLevel: () => boolean
+  // Bộ phận nhập sản lượng của user (LINE/CUTTING/FINISHING/QC) hoặc null
+  productionSection: () => ProductionSection
+  // Là user "shop-floor" (chỉ thấy màn nhập sản lượng): tổ trưởng chuyền hoặc tổ cấp xưởng
+  isShopFloor: () => boolean
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -84,6 +94,26 @@ export const useAuthStore = create<AuthState>()(
       isLineLevel: () => {
         const p = get().user?.position
         return p === 'LINE_LEADER' || p === 'LINE_DEPUTY'
+      },
+
+      productionSection: () => {
+        const p = get().user?.position
+        if (p === 'LINE_LEADER' || p === 'LINE_DEPUTY') return 'LINE'
+        if (p === 'CUTTING_LEADER') return 'CUTTING'
+        if (p === 'FINISHING_LEADER') return 'FINISHING'
+        if (p === 'QC_LEADER') return 'QC'
+        return null
+      },
+
+      isShopFloor: () => {
+        const p = get().user?.position
+        return (
+          p === 'LINE_LEADER' ||
+          p === 'LINE_DEPUTY' ||
+          p === 'CUTTING_LEADER' ||
+          p === 'FINISHING_LEADER' ||
+          p === 'QC_LEADER'
+        )
       },
     }),
     {

@@ -14,10 +14,12 @@ export function useLogin() {
     onSuccess: (data) => {
       setTokens(data.accessToken, data.refreshToken)
       setUser(data.user)
-      // Tổ trưởng / tổ phó vào thẳng trang nhập sản lượng
+      // Các tổ shop-floor (chuyền/cắt/hoàn thành/KCS) vào thẳng trang nhập sản lượng
       const p = data.user.position
-      const isLineLevel = p === 'LINE_LEADER' || p === 'LINE_DEPUTY'
-      navigate(isLineLevel ? '/output' : '/', { replace: true })
+      const isShopFloor =
+        p === 'LINE_LEADER' || p === 'LINE_DEPUTY' ||
+        p === 'CUTTING_LEADER' || p === 'FINISHING_LEADER' || p === 'QC_LEADER'
+      navigate(isShopFloor ? '/output' : '/', { replace: true })
     },
   })
 }

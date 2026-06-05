@@ -87,6 +87,75 @@ export interface CreateOutputPayload {
   outputDate?: string
 }
 
+// ===== Tổ cấp xưởng (Cắt / KCS) =====
+export type FactorySection = 'CUTTING' | 'QC'
+
+export interface SectionOutput {
+  id: number
+  factoryId: number
+  section: FactorySection
+  styleId: number
+  colorId: number
+  sizeId: number
+  outputDate: string
+  quantity: number
+  enteredAt: string
+  style?: StyleForLine
+  color?: ColorRef | null
+  size?: SizeRef | null
+}
+
+export interface SectionTodayResult {
+  date: string
+  isPastCutoff: boolean
+  cutoffHour: number
+  section: FactorySection
+  outputs: SectionOutput[]
+}
+
+export interface CreateSectionPayload {
+  section: FactorySection
+  styleId: number
+  colorId: number
+  sizeId: number
+  quantity: number
+  outputDate?: string
+}
+
+// ===== Tổ Hoàn thành (theo PO) =====
+export interface FinishingPo {
+  id: number
+  poNumber: string
+  totalQuantity: number
+  styleId: number
+  style?: { id: number; code: string; name: string }
+}
+
+export interface FinishingOutput {
+  id: number
+  factoryId: number
+  poId: number
+  outputDate: string
+  receivedQuantity: number
+  packedQuantity: number
+  enteredAt: string
+  po?: { id: number; poNumber: string; style?: { code: string; name: string } }
+}
+
+export interface FinishingTodayResult {
+  date: string
+  isPastCutoff: boolean
+  cutoffHour: number
+  outputs: FinishingOutput[]
+}
+
+export interface CreateFinishingPayload {
+  poId: number
+  receivedQuantity: number
+  packedQuantity: number
+  outputDate?: string
+}
+
 // ============================================================
 // API FUNCTIONS
 // ============================================================
@@ -111,4 +180,26 @@ export const outputApi = {
 
   upsert: (payload: CreateOutputPayload) =>
     api.post<DailyOutput>('/output', payload).then((r) => r.data),
+
+  // Tổ cấp xưởng (Cắt / KCS)
+  getFactoryStyles: () =>
+    api.get<StyleForLine[]>('/output/section/styles').then((r) => r.data),
+
+  getSectionToday: (section: FactorySection) =>
+    api
+      .get<SectionTodayResult>('/output/section/today', { params: { section } })
+      .then((r) => r.data),
+
+  upsertSection: (payload: CreateSectionPayload) =>
+    api.post<SectionOutput>('/output/section', payload).then((r) => r.data),
+
+  // Tổ Hoàn thành
+  getFinishingPos: () =>
+    api.get<FinishingPo[]>('/output/finishing/pos').then((r) => r.data),
+
+  getFinishingToday: () =>
+    api.get<FinishingTodayResult>('/output/finishing/today').then((r) => r.data),
+
+  upsertFinishing: (payload: CreateFinishingPayload) =>
+    api.post<FinishingOutput>('/output/finishing', payload).then((r) => r.data),
 }

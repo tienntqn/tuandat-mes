@@ -173,61 +173,157 @@ export class ReportService {
 
     const rows: ProgressRow[] = []
 
-    for (const fp of factoryPlans) {
-      // 'FINISHING' (hoàn thiện) gộp 2 công đoạn QC + PACKING
-      const stages =
-        stage === 'FINISHING'
-          ? ['QC', 'PACKING']
-          : stage
-            ? [stage]
-            : ['CUTTING', 'SEWING', 'QC', 'PACKING']
-      for (const st of stages) {
-        // Tổng sản lượng thực tế cho line + style + stage
+    // 'FINISHING' (hoàn thiện) gộp 2 công đoạn QC + PACKING
+    const stages =
+      stage === 'FINISHING'
+        ? ['QC', 'PACKING']
+        : stage
+          ? [stage]
+          : ['CUTTING', 'SEWING', 'QC', 'PACKING']
+
+    // May (SEWING) nhập ở cấp CHUYỀN → 1 dòng / chuyền / mã hàng
+    if (stages.includes('SEWING')) {
+      for (const fp of factoryPlans) {
         const agg = await this.prisma.dailyOutput.aggregate({
-          where: {
-            lineId: fp.lineId,
-            styleId: fp.companyPlan.styleId,
-            stage: st as any,
-          },
+          where: { lineId: fp.lineId, styleId: fp.companyPlan.styleId, stage: 'SEWING' },
           _sum: { quantity: true },
         })
-
         const actualQty = agg._sum.quantity ?? 0
-        const plannedQty = fp.plannedQuantity
-        const pct = plannedQty > 0 ? Math.round((actualQty / plannedQty) * 100) : 0
-        const expectedPct = this.expectedPctByNow(
-          new Date(fp.companyPlan.startDate ?? fp.companyPlan.createdAt),
-          new Date(fp.expectedFinishDate),
-        )
-        const isLate = pct < expectedPct * (this.alertSlowPct / 100)
-
-        rows.push({
-          factoryId: fp.line.factoryId,
-          factoryName: fp.line.factory.name,
-          lineId: fp.lineId,
-          lineName: fp.line.name,
-          styleId: fp.companyPlan.styleId,
-          styleCode: fp.companyPlan.style.code,
-          styleName: fp.companyPlan.style.name,
-          stage: st,
-          plannedQty,
-          actualQty,
-          pct,
-          startDate: fp.companyPlan.startDate
-            ? new Date(fp.companyPlan.startDate).toISOString().slice(0, 10)
-            : new Date(fp.companyPlan.createdAt).toISOString().slice(0, 10),
-          expectedFinishDate: new Date(fp.expectedFinishDate).toISOString().slice(0, 10),
-          estimatedFinishDate: this.estimateFinish(
-            new Date(fp.companyPlan.startDate ?? fp.companyPlan.createdAt),
+        const startDate = new Date(fp.companyPlan.startDate ?? fp.companyPlan.createdAt)
+        rows.push(
+          this.buildProgressRow({
+            factoryId: fp.line.factoryId,
+            factoryName: fp.line.factory.name,
+            lineId: fp.lineId,
+            lineName: fp.line.name,
+            styleId: fp.companyPlan.styleId,
+            styleCode: fp.companyPlan.style.code,
+            styleName: fp.companyPlan.style.name,
+            stage: 'SEWING',
+            plannedQty: fp.plannedQuantity,
             actualQty,
-            plannedQty,
-          ),
-          isLate,
-        })
+            startDate,
+            expectedFinishDate: new Date(fp.expectedFinishDate),
+          }),
+        )
+      }
+    }
+
+    // Cắt / KCS / Đóng gói nhập ở cấp XƯỞNG → gộp 1 dòng / xưởng / mã hàng
+    const factoryStages = stages.filter((s) => s !== 'SEWING')
+    if (factoryStages.length > 0) {
+      // Gom factoryPlan theo (factoryId, styleId): cộng chỉ tiêu, lấy mốc ngày
+      const groups = new Map<
+        string,
+        {
+          factoryId: number
+          factoryName: string
+          styleId: number
+          styleCode: string
+          styleName: string
+          plannedQty: number
+          startDate: Date
+          expectedFinishDate: Date
+        }
+      >()
+      for (const fp of factoryPlans) {
+        const key = `${fp.line.factoryId}:${fp.companyPlan.styleId}`
+        const start = new Date(fp.companyPlan.startDate ?? fp.companyPlan.createdAt)
+        const finish = new Date(fp.expectedFinishDate)
+        const g = groups.get(key)
+        if (!g) {
+          groups.set(key, {
+            factoryId: fp.line.factoryId,
+            factoryName: fp.line.factory.name,
+            styleId: fp.companyPlan.styleId,
+            styleCode: fp.companyPlan.style.code,
+            styleName: fp.companyPlan.style.name,
+            plannedQty: fp.plannedQuantity,
+            startDate: start,
+            expectedFinishDate: finish,
+          })
+        } else {
+          g.plannedQty += fp.plannedQuantity
+          if (start < g.startDate) g.startDate = start
+          if (finish > g.expectedFinishDate) g.expectedFinishDate = finish
+        }
+      }
+
+      for (const g of groups.values()) {
+        for (const st of factoryStages) {
+          let actualQty = 0
+          if (st === 'PACKING') {
+            const agg = await this.prisma.finishingOutput.aggregate({
+              where: { factoryId: g.factoryId, po: { styleId: g.styleId } },
+              _sum: { packedQuantity: true },
+            })
+            actualQty = agg._sum.packedQuantity ?? 0
+          } else {
+            // CUTTING hoặc QC
+            const agg = await this.prisma.factorySectionOutput.aggregate({
+              where: { factoryId: g.factoryId, styleId: g.styleId, section: st as any },
+              _sum: { quantity: true },
+            })
+            actualQty = agg._sum.quantity ?? 0
+          }
+          rows.push(
+            this.buildProgressRow({
+              factoryId: g.factoryId,
+              factoryName: g.factoryName,
+              lineId: 0,
+              lineName: 'Toàn xưởng',
+              styleId: g.styleId,
+              styleCode: g.styleCode,
+              styleName: g.styleName,
+              stage: st,
+              plannedQty: g.plannedQty,
+              actualQty,
+              startDate: g.startDate,
+              expectedFinishDate: g.expectedFinishDate,
+            }),
+          )
+        }
       }
     }
 
     return rows
+  }
+
+  // Dựng 1 dòng báo cáo tiến độ (tính %, dự báo, trễ hạn)
+  private buildProgressRow(p: {
+    factoryId: number
+    factoryName: string
+    lineId: number
+    lineName: string
+    styleId: number
+    styleCode: string
+    styleName: string
+    stage: string
+    plannedQty: number
+    actualQty: number
+    startDate: Date
+    expectedFinishDate: Date
+  }): ProgressRow {
+    const pct = p.plannedQty > 0 ? Math.round((p.actualQty / p.plannedQty) * 100) : 0
+    const expectedPct = this.expectedPctByNow(p.startDate, p.expectedFinishDate)
+    const isLate = pct < expectedPct * (this.alertSlowPct / 100)
+    return {
+      factoryId: p.factoryId,
+      factoryName: p.factoryName,
+      lineId: p.lineId,
+      lineName: p.lineName,
+      styleId: p.styleId,
+      styleCode: p.styleCode,
+      styleName: p.styleName,
+      stage: p.stage,
+      plannedQty: p.plannedQty,
+      actualQty: p.actualQty,
+      pct,
+      startDate: p.startDate.toISOString().slice(0, 10),
+      expectedFinishDate: p.expectedFinishDate.toISOString().slice(0, 10),
+      estimatedFinishDate: this.estimateFinish(p.startDate, p.actualQty, p.plannedQty),
+      isLate,
+    }
   }
 
   // Báo cáo tiến độ bóc tách theo Màu × Size cho từng mã hàng.
@@ -268,17 +364,29 @@ export class ReportService {
         _sum: { quantity: true },
       })
       // SL đã sản xuất theo màu/size ở công đoạn được chọn (bỏ qua bản ghi không gắn màu/size)
-      const producedGroups = await this.prisma.dailyOutput.groupBy({
-        by: ['colorId', 'sizeId'],
-        where: {
-          styleId: st.id,
-          stage: stage as any,
-          colorId: { not: null },
-          sizeId: { not: null },
-          ...producedScope,
-        },
-        _sum: { quantity: true },
-      })
+      // Cắt/KCS được nhập ở cấp xưởng (FactorySectionOutput); May ở cấp chuyền (DailyOutput).
+      let producedGroups: { colorId: number | null; sizeId: number | null; _sum: { quantity: number | null } }[]
+      if (stage === 'CUTTING' || stage === 'QC') {
+        const sectionScope: any = {}
+        if (user.dataScope.type === 'FACTORY') sectionScope.factoryId = user.dataScope.factoryId
+        producedGroups = await this.prisma.factorySectionOutput.groupBy({
+          by: ['colorId', 'sizeId'],
+          where: { styleId: st.id, section: stage as any, ...sectionScope },
+          _sum: { quantity: true },
+        })
+      } else {
+        producedGroups = await this.prisma.dailyOutput.groupBy({
+          by: ['colorId', 'sizeId'],
+          where: {
+            styleId: st.id,
+            stage: stage as any,
+            colorId: { not: null },
+            sizeId: { not: null },
+            ...producedScope,
+          },
+          _sum: { quantity: true },
+        })
+      }
 
       const orderedMap = new Map<string, number>()
       for (const g of orderedGroups) orderedMap.set(`${g.colorId}:${g.sizeId}`, g._sum.quantity ?? 0)

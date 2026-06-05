@@ -9,6 +9,9 @@ export const POSITION_LABELS: Record<string, string> = {
   LINE_LEADER: 'Tổ trưởng',
   LINE_DEPUTY: 'Tổ phó',
   MECHANIC: 'Cơ điện',
+  CUTTING_LEADER: 'Tổ trưởng Cắt',
+  FINISHING_LEADER: 'Tổ trưởng Hoàn thành',
+  QC_LEADER: 'Tổ trưởng KCS',
 }
 
 export interface Employee {

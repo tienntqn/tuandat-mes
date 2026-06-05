@@ -29,6 +29,15 @@ enum EmployeePosition {
   LINE_LEADER
   LINE_DEPUTY
   MECHANIC
+  CUTTING_LEADER // Tổ trưởng Cắt (cấp xưởng)
+  FINISHING_LEADER // Tổ trưởng Hoàn thành (cấp xưởng)
+  QC_LEADER // Tổ trưởng KCS (cấp xưởng)
+}
+
+// Tổ cấp xưởng nhập sản lượng theo ma trận màu × size (Cắt, KCS)
+enum FactorySection {
+  CUTTING
+  QC
 }
 
 enum MachineType {
@@ -92,10 +101,11 @@ model Color {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  styleColors   StyleColor[]
-  poItems       PoItem[]
-  dailyOutputs  DailyOutput[]
-  deliveryItems DeliveryItem[]
+  styleColors          StyleColor[]
+  poItems              PoItem[]
+  dailyOutputs         DailyOutput[]
+  deliveryItems        DeliveryItem[]
+  factorySectionOutputs FactorySectionOutput[]
 
   @@index([deletedAt])
 }
@@ -109,10 +119,11 @@ model Size {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  styleSizes    StyleSize[]
-  poItems       PoItem[]
-  dailyOutputs  DailyOutput[]
-  deliveryItems DeliveryItem[]
+  styleSizes           StyleSize[]
+  poItems              PoItem[]
+  dailyOutputs         DailyOutput[]
+  deliveryItems        DeliveryItem[]
+  factorySectionOutputs FactorySectionOutput[]
 
   @@index([sortOrder])
   @@index([deletedAt])
@@ -216,6 +227,8 @@ model Factory {
   companyPlans    CompanyPlan[]
   transfersFrom   MachineTransfer[] @relation("TransferFrom")
   transfersTo     MachineTransfer[] @relation("TransferTo")
+  factorySectionOutputs FactorySectionOutput[]
+  finishingOutputs      FinishingOutput[]
 
   @@index([companyId])
   @@index([status])
@@ -392,6 +405,7 @@ model Style {
   styleLines     StyleLine[]
   styleColors    StyleColor[]
   styleSizes     StyleSize[]
+  factorySectionOutputs FactorySectionOutput[]
 
   @@index([customerId])
   @@index([deletedAt])
@@ -414,6 +428,7 @@ model PurchaseOrder {
   companyPlans  CompanyPlan[]
   deliveryPlans DeliveryPlan[]
   items         PoItem[]
+  finishingOutputs FinishingOutput[]
 
   @@index([styleId])
   @@index([orderId])
@@ -582,6 +597,104 @@ model DailyOutputLog {
 
   @@index([dailyOutputId])
   @@index([enteredAt])
+}
+
+// ============================================================
+// SẢN LƯỢNG TỔ CẤP XƯỞNG (Cắt, KCS) — theo ma trận màu × size
+// Throughput của tổ ≈ tổng các chuyền của xưởng; nhập trực tiếp ở cấp xưởng.
+// ============================================================
+model FactorySectionOutput {
+  id         Int            @id @default(autoincrement())
+  factoryId  Int
+  section    FactorySection
+  styleId    Int
+  colorId    Int
+  sizeId     Int
+  outputDate DateTime       @db.Date
+  quantity   Int
+  enteredBy  Int
+  enteredAt  DateTime       @default(now())
+  isLocked   Boolean        @default(false)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  factory Factory                   @relation(fields: [factoryId], references: [id])
+  style   Style                     @relation(fields: [styleId], references: [id])
+  color   Color                     @relation(fields: [colorId], references: [id])
+  size    Size                      @relation(fields: [sizeId], references: [id])
+  logs    FactorySectionOutputLog[]
+
+  @@unique([factoryId, section, styleId, colorId, sizeId, outputDate])
+  @@index([factoryId])
+  @@index([section])
+  @@index([styleId])
+  @@index([outputDate])
+}
+
+// Audit trail cho sản lượng tổ cấp xưởng
+model FactorySectionOutputLog {
+  id                     Int      @id @default(autoincrement())
+  factorySectionOutputId Int
+  quantity               Int
+  enteredBy              Int
+  enteredAt              DateTime @default(now())
+
+  output FactorySectionOutput @relation(fields: [factorySectionOutputId], references: [id])
+
+  @@index([factorySectionOutputId])
+  @@index([enteredAt])
+}
+
+// ============================================================
+// SẢN LƯỢNG TỔ HOÀN THÀNH — theo PO (không quan tâm màu/size)
+// receivedQuantity: hàng nhận từ các chuyền may; packedQuantity: đã đóng thùng.
+// ============================================================
+model FinishingOutput {
+  id               Int      @id @default(autoincrement())
+  factoryId        Int
+  poId             Int
+  outputDate       DateTime @db.Date
+  receivedQuantity Int      @default(0)
+  packedQuantity   Int      @default(0)
+  enteredBy        Int
+  enteredAt        DateTime @default(now())
+  isLocked         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  factory Factory               @relation(fields: [factoryId], references: [id])
+  po      PurchaseOrder         @relation(fields: [poId], references: [id])
+  logs    FinishingOutputLog[]
+
+  @@unique([factoryId, poId, outputDate])
+  @@index([factoryId])
+  @@index([poId])
+  @@index([outputDate])
+}
+
+// Audit trail cho sản lượng tổ hoàn thành (lưu cả 2 con số mỗi lần nhập)
+model FinishingOutputLog {
+  id                Int      @id @default(autoincrement())
+  finishingOutputId Int
+  receivedQuantity  Int
+  packedQuantity    Int
+  enteredBy         Int
+  enteredAt         DateTime @default(now())
+
+  output FinishingOutput @relation(fields: [finishingOutputId], references: [id])
+
+  @@index([finishingOutputId])
+  @@index([enteredAt])
+}
+
+// ============================================================
+// CẤU HÌNH HỆ THỐNG (key/value, ghi được vào DB)
+// ============================================================
+model AppSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 // ============================================================

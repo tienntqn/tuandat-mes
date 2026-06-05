@@ -6,7 +6,7 @@ import {
   IsDateString,
   Min,
 } from 'class-validator'
-import { ProductionStage } from '@prisma/client'
+import { ProductionStage, FactorySection } from '@prisma/client'
 
 export class CreateDailyOutputDto {
   @IsInt()
@@ -28,6 +28,47 @@ export class CreateDailyOutputDto {
   quantity: number
 
   // Nếu không truyền → dùng ngày hôm nay (server time)
+  @IsOptional()
+  @IsDateString()
+  outputDate?: string
+}
+
+// Nhập sản lượng tổ cấp xưởng (Cắt / KCS) theo màu × size
+export class CreateSectionOutputDto {
+  @IsEnum(FactorySection)
+  section: FactorySection
+
+  @IsInt()
+  styleId: number
+
+  @IsInt()
+  colorId: number
+
+  @IsInt()
+  sizeId: number
+
+  @IsInt()
+  @Min(0)
+  quantity: number
+
+  @IsOptional()
+  @IsDateString()
+  outputDate?: string
+}
+
+// Nhập sản lượng tổ Hoàn thành theo PO (nhận + đóng thùng)
+export class CreateFinishingDto {
+  @IsInt()
+  poId: number
+
+  @IsInt()
+  @Min(0)
+  receivedQuantity: number
+
+  @IsInt()
+  @Min(0)
+  packedQuantity: number
+
   @IsOptional()
   @IsDateString()
   outputDate?: string

@@ -23,10 +23,10 @@ const ForbiddenPage = lazy(() => import('./ForbiddenPage'))
 const NotFoundPage = lazy(() => import('./NotFoundPage'))
 
 export default function AppLayout() {
-  const { isLineLevel, isAdmin } = useAuthStore()
+  const { isShopFloor, isAdmin } = useAuthStore()
 
-  // Tổ trưởng / Tổ phó: chỉ thấy trang nhập sản lượng, ẩn sidebar
-  if (isLineLevel() && !isAdmin()) {
+  // Tổ trưởng chuyền / Tổ Cắt / Tổ Hoàn thành / Tổ KCS: chỉ thấy trang nhập sản lượng, ẩn sidebar
+  if (isShopFloor() && !isAdmin()) {
     return (
       <Suspense fallback={<LoadingScreen />}>
         <ShopFloorLayout />
@@ -98,7 +98,7 @@ export default function AppLayout() {
                 <Route
                   path="/output/*"
                   element={
-                    <ProtectedRoute roles={['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY']}>
+                    <ProtectedRoute roles={['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY', 'CUTTING_LEADER', 'FINISHING_LEADER', 'QC_LEADER']}>
                       <OutputLayout />
                     </ProtectedRoute>
                   }

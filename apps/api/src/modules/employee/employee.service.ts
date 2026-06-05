@@ -13,6 +13,9 @@ const FACTORY_POSITIONS: EmployeePosition[] = [
   EmployeePosition.FACTORY_DIRECTOR,
   EmployeePosition.FACTORY_PLANNER,
   EmployeePosition.MECHANIC,
+  EmployeePosition.CUTTING_LEADER,
+  EmployeePosition.FINISHING_LEADER,
+  EmployeePosition.QC_LEADER,
 ]
 const LINE_POSITIONS: EmployeePosition[] = [EmployeePosition.LINE_LEADER, EmployeePosition.LINE_DEPUTY]
 
