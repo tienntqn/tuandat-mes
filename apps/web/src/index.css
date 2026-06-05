@@ -153,3 +153,36 @@
 @media print {
   .section-tabs { display: none !important; }
 }
+
+/* ============================================================
+   MOBILE: sửa vỡ layout trang danh sách (header actions + bảng)
+   ============================================================ */
+@media (max-width: 575px) {
+  /* Page header: tiêu đề và cụm nút xuống 2 dòng thay vì tràn ngang */
+  .page-header {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 8px;
+  }
+  .page-header .pageheader-btn {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+  /* Cụm nút thao tác tự xuống dòng, mỗi nút co gọn */
+  .page-header .pageheader-btn .d-flex {
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+  .page-header .pageheader-btn .btn {
+    font-size: 12px;
+    padding: 0.35rem 0.6rem;
+  }
+
+  /* Bảng: cho cuộn ngang, không bẻ chữ từng ký tự */
+  .table-responsive { -webkit-overflow-scrolling: touch; }
+  .table-responsive > table { white-space: nowrap; }
+  .table-responsive > table code { white-space: nowrap; }
+
+  /* Hàng bộ lọc: các ô gọn lại, không tràn */
+  .main-container .row.g-2 > [class*='col-'] { min-width: 0; }
+}
