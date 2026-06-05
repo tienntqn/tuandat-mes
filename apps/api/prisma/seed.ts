@@ -69,7 +69,15 @@ async function wipe() {
   await prisma.styleLine.deleteMany()
   await prisma.machineMaintenance.deleteMany()
   await prisma.machineTransfer.deleteMany()
+  await prisma.repairProposalAttachment.deleteMany()
+  await prisma.repairProposalItem.deleteMany()
+  await prisma.repairProposal.deleteMany()
+  await prisma.machineImage.deleteMany()
+  await prisma.machineLiquidation.deleteMany()
   await prisma.machine.deleteMany()
+  await prisma.sparePart.deleteMany()
+  await prisma.machineCategory.deleteMany()
+  await prisma.machineBrand.deleteMany()
   await prisma.purchaseOrder.deleteMany()
   await prisma.order.deleteMany()
   await prisma.userRole.deleteMany()
@@ -171,7 +179,7 @@ async function main() {
   console.log(`✓ Employee: ${3 + factories.length * 6} nhân viên`)
 
   // ── 4. ROLES & PERMISSIONS ──
-  const resources = ['company', 'factory', 'line', 'employee', 'machine', 'maintenance', 'transfer', 'customer', 'style', 'order', 'purchase_order', 'company_plan', 'factory_plan', 'delivery_plan', 'daily_output', 'report', 'user', 'role']
+  const resources = ['company', 'factory', 'line', 'employee', 'machine', 'maintenance', 'transfer', 'machine_brand', 'machine_category', 'spare_part', 'repair_proposal', 'customer', 'style', 'order', 'purchase_order', 'company_plan', 'factory_plan', 'delivery_plan', 'daily_output', 'report', 'user', 'role']
   const actions = Object.values(PermissionAction)
   for (const resource of resources) {
     for (const action of actions) {
@@ -196,6 +204,8 @@ async function main() {
       name: 'FACTORY_DIRECTOR', description: 'Giám đốc xưởng', rules: [
         { resource: 'line', actions: [PermissionAction.READ, PermissionAction.UPDATE] }, { resource: 'machine', actions: [PermissionAction.READ, PermissionAction.UPDATE] },
         { resource: 'transfer', actions: [PermissionAction.CREATE, PermissionAction.READ, PermissionAction.APPROVE] },
+        { resource: 'machine_brand', actions: RW }, { resource: 'machine_category', actions: RW }, { resource: 'spare_part', actions: RW },
+        { resource: 'repair_proposal', actions: [PermissionAction.READ, PermissionAction.APPROVE] },
         { resource: 'factory_plan', actions: RWD }, { resource: 'daily_output', actions: [PermissionAction.READ] }, { resource: 'report', actions: [PermissionAction.READ] },
       ],
     },
@@ -207,7 +217,11 @@ async function main() {
     },
     { name: 'LINE_LEADER', description: 'Tổ trưởng', rules: [{ resource: 'daily_output', actions: RW }, { resource: 'factory_plan', actions: [PermissionAction.READ] }] },
     { name: 'LINE_DEPUTY', description: 'Tổ phó', rules: [{ resource: 'daily_output', actions: RW }, { resource: 'factory_plan', actions: [PermissionAction.READ] }] },
-    { name: 'MECHANIC', description: 'Cơ điện', rules: [{ resource: 'machine', actions: [PermissionAction.READ, PermissionAction.UPDATE] }, { resource: 'maintenance', actions: RW }] },
+    { name: 'MECHANIC', description: 'Cơ điện', rules: [
+      { resource: 'machine', actions: [PermissionAction.READ, PermissionAction.UPDATE] }, { resource: 'maintenance', actions: RW },
+      { resource: 'machine_brand', actions: RW }, { resource: 'machine_category', actions: RW }, { resource: 'spare_part', actions: RW },
+      { resource: 'repair_proposal', actions: RW },
+    ] },
     { name: 'CUTTING_LEADER', description: 'Tổ trưởng Cắt', rules: [{ resource: 'daily_output', actions: RW }] },
     { name: 'FINISHING_LEADER', description: 'Tổ trưởng Hoàn thành', rules: [{ resource: 'daily_output', actions: RW }] },
     { name: 'QC_LEADER', description: 'Tổ trưởng KCS', rules: [{ resource: 'daily_output', actions: RW }] },
@@ -519,10 +533,58 @@ async function main() {
     { code: 'MX-X4-001', name: 'Máy vắt sổ X4-C1', type: MachineType.SEAM_SEALING, fIdx: 3, lineIdx: 0, status: MachineStatus.RUNNING, brand: 'Juki', model: 'MO-6716', purchaseOff: -600 },
     { code: 'MX-X4-002', name: 'Máy may X4-C2', type: MachineType.SEWING, fIdx: 3, lineIdx: 1, status: MachineStatus.IDLE, brand: 'Brother', model: 'S-7300A', purchaseOff: -400 },
   ]
+  // ── 12a. DANH MỤC MÁY: Hãng, Chủng loại, Phụ tùng ──
+  const brandSeed = [
+    { code: 'JUKI', name: 'Juki', country: 'Nhật Bản' },
+    { code: 'BROTHER', name: 'Brother', country: 'Nhật Bản' },
+    { code: 'EASTMAN', name: 'Eastman', country: 'Mỹ' },
+    { code: 'SIRUBA', name: 'Siruba', country: 'Đài Loan' },
+  ]
+  const brandByName: Record<string, number> = {}
+  for (const b of brandSeed) { const row = await prisma.machineBrand.create({ data: b }); brandByName[b.name] = row.id }
+
+  const categorySeed = [
+    { code: 'CL1KIM', name: 'Máy 1 kim' },
+    { code: 'CL2KIM', name: 'Máy 2 kim' },
+    { code: 'CLVATSO', name: 'Máy vắt sổ' },
+    { code: 'CLCAT', name: 'Máy cắt' },
+    { code: 'CLLT', name: 'Máy lập trình' },
+    { code: 'CLEPKEO', name: 'Máy ép keo' },
+    { code: 'CLTRAIVAI', name: 'Máy trải vải' },
+  ]
+  const catByCode: Record<string, number> = {}
+  for (const c of categorySeed) { const row = await prisma.machineCategory.create({ data: c }); catByCode[c.code] = row.id }
+
+  const sparePartSeed = [
+    { code: 'PT001', name: 'Bo mạch điều khiển', unit: 'cái', categoryCode: 'CLLT' },
+    { code: 'PT002', name: 'Dây cua roa', unit: 'sợi' },
+    { code: 'PT003', name: 'Motor', unit: 'cái' },
+    { code: 'PT004', name: 'Màn hình hiển thị', unit: 'cái', categoryCode: 'CLLT' },
+    { code: 'PT005', name: 'Kim máy may', unit: 'hộp', categoryCode: 'CL1KIM' },
+    { code: 'PT006', name: 'Lưỡi dao cắt', unit: 'cái', categoryCode: 'CLCAT' },
+  ]
+  for (const p of sparePartSeed) {
+    await prisma.sparePart.create({ data: { code: p.code, name: p.name, unit: p.unit, categoryId: p.categoryCode ? catByCode[p.categoryCode] : null } })
+  }
+  console.log(`✓ Hãng: ${brandSeed.length} | Chủng loại: ${categorySeed.length} | Phụ tùng: ${sparePartSeed.length}`)
+
+  // Map loại máy → chủng loại để gán categoryId
+  const typeToCat: Record<string, string> = { SEWING: 'CL1KIM', CUTTING: 'CLCAT', PROGRAMMABLE: 'CLLT', SEAM_SEALING: 'CLVATSO', OTHER: 'CL1KIM' }
+  const createdMachines: { id: number; status: MachineStatus; factoryId: number }[] = []
   for (const m of machineData) {
     const machine = await prisma.machine.create({
-      data: { code: m.code, name: m.name, type: m.type, factoryId: factories[m.fIdx].id, lineId: m.lineIdx != null ? linesByFactory[m.fIdx][m.lineIdx].id : null, status: m.status, brand: m.brand, model: m.model, purchaseDate: d(m.purchaseOff), note: m.note ?? null },
+      data: {
+        code: m.code, name: m.name, type: m.type, factoryId: factories[m.fIdx].id,
+        lineId: m.lineIdx != null ? linesByFactory[m.fIdx][m.lineIdx].id : null,
+        status: m.status, brand: m.brand, brandId: brandByName[m.brand] ?? null,
+        categoryId: catByCode[typeToCat[m.type]] ?? null,
+        model: m.model, purchaseDate: d(m.purchaseOff),
+        warrantyExpiry: d(m.purchaseOff + 1095), // bảo hành ~3 năm từ ngày mua
+        manufactureYear: new Date(d(m.purchaseOff)).getFullYear(),
+        note: m.note ?? null,
+      },
     })
+    createdMachines.push({ id: machine.id, status: m.status, factoryId: factories[m.fIdx].id })
     if (m.status === MachineStatus.MAINTENANCE) {
       await prisma.machineMaintenance.create({
         data: { machineId: machine.id, maintenanceDate: d(-2), type: MaintenanceType.PERIODIC, description: 'Vệ sinh, tra dầu, kiểm tra tải', performedBy: 'Cơ điện Xưởng 3', cost: 500000, nextDueDate: d(5) },
@@ -530,6 +592,21 @@ async function main() {
     }
   }
   console.log(`✓ Machine: ${machineData.length} (có 1 hỏng, 1 đang bảo dưỡng sắp tới hạn)`)
+
+  // ── 12b. ĐỀ XUẤT SỬA CHỮA mẫu (cho máy hỏng) ──
+  const brokenMachine = createdMachines.find((m) => m.status === MachineStatus.BROKEN)
+  if (brokenMachine) {
+    await prisma.repairProposal.create({
+      data: {
+        proposalNo: 'DX00001', machineId: brokenMachine.id, factoryId: brokenMachine.factoryId,
+        type: 'REPAIR', status: 'PENDING', title: 'Thay bo mạch điều khiển máy lập trình',
+        description: 'Máy báo lỗi không khởi động, nghi hỏng bo mạch.', estimatedCost: 3500000,
+        requestedBy: empCreated['NV-001'].id,
+        items: { create: [{ name: 'Bo mạch điều khiển', quantity: 1, unit: 'cái' }] },
+      },
+    })
+    console.log('✓ RepairProposal: 1 (mẫu, chờ duyệt)')
+  }
 
   console.log(`
 ╔══════════════════════════════════════════════════════════╗
