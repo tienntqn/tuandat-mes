@@ -369,13 +369,14 @@ export class ReportService {
       if (stage === 'CUTTING' || stage === 'QC') {
         const sectionScope: any = {}
         if (user.dataScope.type === 'FACTORY') sectionScope.factoryId = user.dataScope.factoryId
-        producedGroups = await this.prisma.factorySectionOutput.groupBy({
+        const sectionGroups = await this.prisma.factorySectionOutput.groupBy({
           by: ['colorId', 'sizeId'],
           where: { styleId: st.id, section: stage as any, ...sectionScope },
           _sum: { quantity: true },
         })
+        producedGroups = sectionGroups
       } else {
-        producedGroups = await this.prisma.dailyOutput.groupBy({
+        const dailyGroups = await this.prisma.dailyOutput.groupBy({
           by: ['colorId', 'sizeId'],
           where: {
             styleId: st.id,
@@ -386,6 +387,7 @@ export class ReportService {
           },
           _sum: { quantity: true },
         })
+        producedGroups = dailyGroups
       }
 
       const orderedMap = new Map<string, number>()
