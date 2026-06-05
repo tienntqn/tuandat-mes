@@ -9,6 +9,27 @@ import type { RequestUser } from '../../common/types/request-user.type'
 export class MachineTransferService {
   constructor(private prisma: PrismaService) {}
 
+  // Dữ liệu cho form tạo lệnh điều chuyển: tất cả xưởng + người (GĐ xưởng/Cơ điện) theo xưởng
+  async getFormOptions() {
+    const [factories, people] = await Promise.all([
+      this.prisma.factory.findMany({
+        where: { deletedAt: null },
+        select: { id: true, code: true, name: true },
+        orderBy: { name: 'asc' },
+      }),
+      this.prisma.employee.findMany({
+        where: {
+          deletedAt: null,
+          factoryId: { not: null },
+          position: { in: ['FACTORY_DIRECTOR', 'MECHANIC'] },
+        },
+        select: { id: true, fullName: true, position: true, factoryId: true },
+        orderBy: { fullName: 'asc' },
+      }),
+    ])
+    return { factories, people }
+  }
+
   async findAll(
     user: RequestUser,
     machineId?: number,

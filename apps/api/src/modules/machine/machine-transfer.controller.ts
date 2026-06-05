@@ -31,6 +31,15 @@ export class MachineTransferController {
     return this.transferService.findAll(user, machineId, status, page, pageSize)
   }
 
+  // Dữ liệu cho form tạo lệnh: TẤT CẢ xưởng + người nhận/đưa hợp lệ (GĐ xưởng/Cơ điện) của mọi xưởng.
+  // Không lọc theo dataScope vì cần chọn xưởng đích (xưởng khác).
+  @Get('form-options')
+  @Roles('ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC')
+  @ApiOperation({ summary: 'Dữ liệu cho form tạo lệnh điều chuyển' })
+  getFormOptions() {
+    return this.transferService.getFormOptions()
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Chi tiết lệnh điều chuyển' })
   findOne(@Param('id', ParseIntPipe) id: number) {

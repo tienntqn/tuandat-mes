@@ -113,6 +113,14 @@ export function useTransfer(id: number) {
   })
 }
 
+export function useTransferFormOptions() {
+  return useQuery({
+    queryKey: [TRANSFER_KEY, 'form-options'],
+    queryFn: () => transferApi.formOptions(),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function useMachineTransferHistory(machineId: number) {
   return useQuery({
     queryKey: [TRANSFER_KEY, 'history', machineId],

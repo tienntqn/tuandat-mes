@@ -223,9 +223,16 @@ export const maintenanceApi = {
     api.post<MachineMaintenance>('/machine-maintenances', dto).then((r) => r.data),
 }
 
+export interface TransferFormOptions {
+  factories: { id: number; code: string; name: string }[]
+  people: { id: number; fullName: string; position: string; factoryId: number }[]
+}
+
 export const transferApi = {
   list: (params?: { machineId?: number; status?: string; page?: number }) =>
     api.get<TransferListResult>('/machine-transfers', { params }).then((r) => r.data),
+  formOptions: () =>
+    api.get<TransferFormOptions>('/machine-transfers/form-options').then((r) => r.data),
   get: (id: number) => api.get<MachineTransfer>(`/machine-transfers/${id}`).then((r) => r.data),
   history: (machineId: number) =>
     api.get<MachineTransfer[]>(`/machine-transfers/machine/${machineId}/history`).then((r) => r.data),

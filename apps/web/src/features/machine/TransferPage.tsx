@@ -1,17 +1,14 @@
 import { useState } from 'react'
 import {
   useTransfers, useCreateTransfer, useConfirmSender, useConfirmReceiver, useRejectTransfer,
-  useMachines,
+  useMachines, useTransferFormOptions,
 } from './machine.hooks'
-import type { MachineTransfer, CreateTransferDto, TransferStatus } from './machine.api'
+import type { MachineTransfer, CreateTransferDto, TransferStatus, TransferFormOptions } from './machine.api'
 import { TRANSFER_STATUS_LABELS, MACHINE_TYPE_LABELS } from './machine.api'
 import { Pagination } from '@/components/shared/Pagination'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { useAuthStore } from '@/stores/auth.store'
-import { factoryApi } from '@/features/factory/factory.api'
-import { useQuery } from '@tanstack/react-query'
-import { employeeApi } from '@/features/employee/employee.api'
 
 export default function TransferPage() {
   const [filterStatus, setFilterStatus] = useState<string>('')
@@ -26,8 +23,7 @@ export default function TransferPage() {
 
   const { data, isLoading, refetch } = useTransfers({ status: filterStatus || undefined, page, pageSize: 20 } as any)
   const { data: machinesData } = useMachines({ pageSize: 200 })
-  const { data: factories } = useQuery({ queryKey: ['factories-all'], queryFn: () => factoryApi.list({ pageSize: 100 }) })
-  const { data: employees } = useQuery({ queryKey: ['employees-all'], queryFn: () => employeeApi.list({ pageSize: 200 }) })
+  const { data: formOptions } = useTransferFormOptions()
 
   const createTransfer = useCreateTransfer()
   const confirmSender = useConfirmSender()
@@ -35,8 +31,6 @@ export default function TransferPage() {
   const rejectTransfer = useRejectTransfer()
 
   const machineList = machinesData?.data ?? []
-  const factoryList = factories?.data ?? []
-  const employeeList = employees?.data ?? []
 
   const handleReject = () => {
     if (!rejectTarget || !rejectReason.trim()) return
@@ -185,8 +179,7 @@ export default function TransferPage() {
       {formOpen && (
         <TransferFormDialog
           machines={machineList}
-          factories={factoryList}
-          employees={employeeList}
+          options={formOptions}
           onClose={() => setFormOpen(false)}
           onSubmit={(dto) => createTransfer.mutate(dto, { onSuccess: () => setFormOpen(false) })}
           isPending={createTransfer.isPending}
@@ -299,20 +292,33 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   )
 }
 
+const POS_SHORT: Record<string, string> = { FACTORY_DIRECTOR: 'GĐ xưởng', MECHANIC: 'Cơ điện' }
+
 function TransferFormDialog({
-  machines, factories, employees, onClose, onSubmit, isPending,
+  machines, options, onClose, onSubmit, isPending,
 }: {
   machines: any[]
-  factories: any[]
-  employees: any[]
+  options?: TransferFormOptions
   onClose: () => void
   onSubmit: (dto: CreateTransferDto) => void
   isPending?: boolean
 }) {
+  const user = useAuthStore((s) => s.user)
+  const isMech = user?.position === 'MECHANIC'
+  const factories = options?.factories ?? []
+  const people = options?.people ?? []
+
   const [form, setForm] = useState<Partial<CreateTransferDto>>({
     transferDate: new Date().toISOString().substring(0, 10),
+    // Cơ điện: mặc định xưởng gửi = xưởng mình, người đưa = chính mình
+    fromFactoryId: isMech ? user?.factoryId ?? undefined : undefined,
+    senderId: isMech ? user?.employeeId : undefined,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const fromFactoryName = factories.find((f) => f.id === form.fromFactoryId)?.name
+  const sendersList = people.filter((p) => p.factoryId === form.fromFactoryId)
+  const receiversList = people.filter((p) => p.factoryId === form.toFactoryId)
 
   const validate = () => {
     const e: Record<string, string> = {}
@@ -334,10 +340,10 @@ function TransferFormDialog({
     if (validate()) onSubmit(form as CreateTransferDto)
   }
 
-  // Khi chọn máy, tự điền xưởng gửi
+  // Khi chọn máy, tự điền xưởng gửi (= xưởng của máy)
   const handleMachineChange = (machineId: number) => {
     const m = machines.find((m) => m.id === machineId)
-    setForm({ ...form, machineId, fromFactoryId: m?.factoryId })
+    setForm((f) => ({ ...f, machineId, fromFactoryId: m?.factoryId ?? f.fromFactoryId }))
   }
 
   return (
@@ -364,7 +370,7 @@ function TransferFormDialog({
               </Field>
 
               <div className="row g-3">
-                <div className="col-6">
+                <div className="col-12 col-sm-6">
                   <Field label="Số lệnh chuyển *" error={errors.transferOrderNo}>
                     <input
                       className="form-control"
@@ -374,7 +380,7 @@ function TransferFormDialog({
                     />
                   </Field>
                 </div>
-                <div className="col-6">
+                <div className="col-12 col-sm-6">
                   <Field label="Ngày chuyển *" error={errors.transferDate}>
                     <input
                       type="date"
@@ -396,26 +402,30 @@ function TransferFormDialog({
               </Field>
 
               <div className="row g-3">
-                <div className="col-6">
+                <div className="col-12 col-sm-6">
                   <Field label="Xưởng GỬI *" error={errors.fromFactoryId}>
-                    <select
-                      className="form-select"
-                      value={form.fromFactoryId ?? ''}
-                      onChange={(e) => setForm({ ...form, fromFactoryId: Number(e.target.value) })}
-                    >
-                      <option value="">— Chọn —</option>
-                      {factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                    </select>
+                    {isMech ? (
+                      <input className="form-control bg-light" value={fromFactoryName ?? 'Xưởng của bạn'} disabled />
+                    ) : (
+                      <select
+                        className="form-select"
+                        value={form.fromFactoryId ?? ''}
+                        onChange={(e) => setForm({ ...form, fromFactoryId: Number(e.target.value), senderId: undefined })}
+                      >
+                        <option value="">— Chọn —</option>
+                        {factories.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                      </select>
+                    )}
                   </Field>
                 </div>
-                <div className="col-6">
+                <div className="col-12 col-sm-6">
                   <Field label="Xưởng NHẬN *" error={errors.toFactoryId}>
                     <select
                       className="form-select"
                       value={form.toFactoryId ?? ''}
-                      onChange={(e) => setForm({ ...form, toFactoryId: Number(e.target.value) })}
+                      onChange={(e) => setForm({ ...form, toFactoryId: Number(e.target.value), receiverId: undefined })}
                     >
-                      <option value="">— Chọn —</option>
+                      <option value="">— Chọn xưởng nhận —</option>
                       {factories.filter((f) => f.id !== form.fromFactoryId).map((f) => (
                         <option key={f.id} value={f.id}>{f.name}</option>
                       ))}
@@ -425,27 +435,33 @@ function TransferFormDialog({
               </div>
 
               <div className="row g-3">
-                <div className="col-6">
+                <div className="col-12 col-sm-6">
                   <Field label="Người bên ĐƯA *" error={errors.senderId}>
-                    <select
-                      className="form-select"
-                      value={form.senderId ?? ''}
-                      onChange={(e) => setForm({ ...form, senderId: Number(e.target.value) })}
-                    >
-                      <option value="">— Chọn —</option>
-                      {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
-                    </select>
+                    {isMech ? (
+                      <input className="form-control bg-light" value={user?.fullName ?? user?.username ?? ''} disabled />
+                    ) : (
+                      <select
+                        className="form-select"
+                        value={form.senderId ?? ''}
+                        onChange={(e) => setForm({ ...form, senderId: Number(e.target.value) })}
+                        disabled={!form.fromFactoryId}
+                      >
+                        <option value="">— Chọn —</option>
+                        {sendersList.map((p) => <option key={p.id} value={p.id}>{p.fullName} ({POS_SHORT[p.position] ?? p.position})</option>)}
+                      </select>
+                    )}
                   </Field>
                 </div>
-                <div className="col-6">
+                <div className="col-12 col-sm-6">
                   <Field label="Người bên NHẬN *" error={errors.receiverId}>
                     <select
                       className="form-select"
                       value={form.receiverId ?? ''}
                       onChange={(e) => setForm({ ...form, receiverId: Number(e.target.value) })}
+                      disabled={!form.toFactoryId}
                     >
-                      <option value="">— Chọn —</option>
-                      {employees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+                      <option value="">{form.toFactoryId ? '— Chọn người nhận —' : '— Chọn xưởng nhận trước —'}</option>
+                      {receiversList.map((p) => <option key={p.id} value={p.id}>{p.fullName} ({POS_SHORT[p.position] ?? p.position})</option>)}
                     </select>
                   </Field>
                 </div>
