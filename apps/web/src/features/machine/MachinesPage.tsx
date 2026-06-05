@@ -27,10 +27,12 @@ export default function MachinesPage() {
   const [editTarget, setEditTarget] = useState<Machine | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Machine | null>(null)
 
-  const { isAdmin, hasRole } = useAuthStore()
+  const { isAdmin, hasRole, isCompanyLevel } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('MECHANIC')
   // Cơ điện được sửa máy nhưng KHÔNG được thêm máy mới (chỉ ADMIN/BOD/GĐ xưởng)
   const canCreate = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR')
+  // Chỉ user cấp công ty mới cần lọc theo xưởng (user cấp xưởng chỉ có 1 xưởng)
+  const showFactoryFilter = isCompanyLevel()
 
   const params = {
     search: search || undefined,
@@ -141,7 +143,7 @@ export default function MachinesPage() {
     >
       {/* Filters */}
       <div className="row mb-3 g-2">
-        <div className="col-auto">
+        <div className="col-12 col-sm">
           <div className="input-group">
             <input
               className="form-control"
@@ -152,17 +154,19 @@ export default function MachinesPage() {
             <span className="input-group-text"><i className="fe fe-search"></i></span>
           </div>
         </div>
-        <div className="col-auto">
-          <select
-            className="form-select"
-            value={filterFactoryId}
-            onChange={(e) => { setFilterFactoryId(e.target.value); setPage(1) }}
-          >
-            <option value="">Tất cả xưởng</option>
-            {factoryList.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        </div>
-        <div className="col-auto">
+        {showFactoryFilter && (
+          <div className="col-6 col-sm-auto">
+            <select
+              className="form-select"
+              value={filterFactoryId}
+              onChange={(e) => { setFilterFactoryId(e.target.value); setPage(1) }}
+            >
+              <option value="">Tất cả xưởng</option>
+              {factoryList.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="col-6 col-sm-auto">
           <select
             className="form-select"
             value={filterType}
@@ -174,7 +178,7 @@ export default function MachinesPage() {
             ))}
           </select>
         </div>
-        <div className="col-auto">
+        <div className="col-6 col-sm-auto">
           <select
             className="form-select"
             value={filterStatus}
@@ -186,7 +190,7 @@ export default function MachinesPage() {
             ))}
           </select>
         </div>
-        <div className="col-auto d-flex align-items-center">
+        <div className="col-12 col-sm-auto d-flex align-items-center">
           <small className="text-muted">{data?.total ?? 0} máy</small>
         </div>
       </div>

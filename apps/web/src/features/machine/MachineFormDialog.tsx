@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, ScanLine } from 'lucide-react'
 import type { Machine, CreateMachineDto, MachineType, MachineStatus } from './machine.api'
 import { MACHINE_TYPE_LABELS, MACHINE_STATUS_LABELS } from './machine.api'
 import { useBrandsActive, useCategoriesActive } from './catalog.hooks'
 import { FileUpload, type UploadedFile } from '@/components/shared/FileUpload'
+import { BarcodeScannerDialog } from '@/components/shared/BarcodeScannerDialog'
 
 interface Props {
   open: boolean
@@ -35,6 +36,7 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
   const [form, setForm] = useState<CreateMachineDto>(EMPTY)
   const [images, setImages] = useState<UploadedFile[]>([])
   const [errors, setErrors] = useState<Partial<Record<keyof CreateMachineDto, string>>>({})
+  const [scanOpen, setScanOpen] = useState(false)
   const { data: brands = [] } = useBrandsActive()
   const { data: categories = [] } = useCategoriesActive()
 
@@ -109,7 +111,7 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Tên máy *" error={errors.name}>
               <input
                 className="w-full rounded-lg border px-3 py-2 text-sm"
@@ -171,7 +173,7 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
             </select>
           </FormField>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Hãng sản xuất">
               <select className="w-full rounded-lg border px-3 py-2 text-sm bg-background" value={form.brandId ?? ''} onChange={(e) => setForm({ ...form, brandId: e.target.value ? Number(e.target.value) : undefined })}>
                 <option value="">— Chọn hãng —</option>
@@ -186,16 +188,21 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
             </FormField>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField label="Model">
               <input className="w-full rounded-lg border px-3 py-2 text-sm" placeholder="VD: DDL-8700" value={form.model ?? ''} onChange={(e) => setForm({ ...form, model: e.target.value })} />
             </FormField>
             <FormField label="Số serial">
-              <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.serialNo ?? ''} onChange={(e) => setForm({ ...form, serialNo: e.target.value })} />
+              <div className="d-flex gap-2">
+                <input className="w-full rounded-lg border px-3 py-2 text-sm" value={form.serialNo ?? ''} onChange={(e) => setForm({ ...form, serialNo: e.target.value })} placeholder="Nhập hoặc quét mã" />
+                <button type="button" onClick={() => setScanOpen(true)} title="Quét QR / mã vạch" className="btn btn-outline-secondary d-inline-flex align-items-center px-3">
+                  <ScanLine size={18} />
+                </button>
+              </div>
             </FormField>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <FormField label="Năm SX">
               <input type="number" min={1900} className="w-full rounded-lg border px-3 py-2 text-sm" value={form.manufactureYear ?? ''} onChange={(e) => setForm({ ...form, manufactureYear: e.target.value ? Number(e.target.value) : undefined })} />
             </FormField>
@@ -221,6 +228,13 @@ export function MachineFormDialog({ open, machine, factories, lines, onClose, on
           </div>
         </form>
       </div>
+
+      <BarcodeScannerDialog
+        open={scanOpen}
+        onClose={() => setScanOpen(false)}
+        onResult={(text) => setForm((f) => ({ ...f, serialNo: text }))}
+        title="Quét serial máy"
+      />
     </div>
   )
 }
