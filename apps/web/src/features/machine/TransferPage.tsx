@@ -347,15 +347,14 @@ function TransferFormDialog({
   }
 
   return (
-    <div className="modal d-block" tabIndex={-1} style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
-      <div className="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Tạo lệnh điều chuyển máy</h5>
-            <button onClick={onClose} type="button" className="btn-close"></button>
-          </div>
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
+      <div className="bg-card rounded-xl shadow-xl w-full d-flex flex-column" style={{ maxWidth: 680, maxHeight: '92vh' }}>
+        <div className="modal-header">
+          <h5 className="modal-title">Tạo lệnh điều chuyển máy</h5>
+          <button onClick={onClose} type="button" className="btn-close"></button>
+        </div>
+        <form onSubmit={handleSubmit} className="d-flex flex-column" style={{ overflow: 'hidden', flex: '1 1 auto', minHeight: 0 }}>
+          <div className="modal-body" style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}>
               <Field label="Máy *" error={errors.machineId}>
                 <select
                   className="form-select"
@@ -466,19 +465,18 @@ function TransferFormDialog({
                   </Field>
                 </div>
               </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" onClick={onClose} className="btn btn-outline-secondary">Hủy</button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="btn btn-primary text-white"
-              >
-                {isPending ? 'Đang tạo...' : 'Tạo lệnh chuyển'}
-              </button>
-            </div>
-          </form>
-        </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn btn-outline-secondary">Hủy</button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="btn btn-primary text-white"
+            >
+              {isPending ? 'Đang tạo...' : 'Tạo lệnh chuyển'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

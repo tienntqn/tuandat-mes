@@ -39,9 +39,9 @@ export default function MechanicLayout() {
         </div>
       </header>
 
-      {/* Thanh tab ngang thay cho sidebar */}
+      {/* Thanh tab ngang thay cho sidebar — tự xuống dòng khi quá rộng */}
       <div className="bg-white border-bottom px-3 py-2" style={{ position: 'sticky', top: 44, zIndex: 19 }}>
-        <div className="section-tabs" style={{ margin: 0 }}>
+        <div className="section-tabs mechanic-tabs" style={{ margin: 0 }}>
           {TABS.map((t) => (
             <NavLink
               key={t.path}
