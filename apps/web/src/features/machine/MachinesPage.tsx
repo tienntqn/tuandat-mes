@@ -29,6 +29,8 @@ export default function MachinesPage() {
 
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('MECHANIC')
+  // Cơ điện được sửa máy nhưng KHÔNG được thêm máy mới (chỉ ADMIN/BOD/GĐ xưởng)
+  const canCreate = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR')
 
   const params = {
     search: search || undefined,
@@ -122,11 +124,11 @@ export default function MachinesPage() {
             fileBase="may-moc"
             exportRows={exportRows}
             templateRows={templateRows}
-            onImport={canWrite ? handleImportRows : undefined}
-            canWrite={canWrite}
+            onImport={canCreate ? handleImportRows : undefined}
+            canWrite={canCreate}
             entityLabel="máy"
           />
-          {canWrite && (
+          {canCreate && (
             <button
               onClick={() => { setEditTarget(null); setFormOpen(true) }}
               className="btn btn-primary btn-icon text-white"

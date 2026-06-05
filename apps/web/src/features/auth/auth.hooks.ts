@@ -19,6 +19,7 @@ export function useLogin() {
       const isShopFloor =
         p === 'LINE_LEADER' || p === 'LINE_DEPUTY' ||
         p === 'CUTTING_LEADER' || p === 'FINISHING_LEADER' || p === 'QC_LEADER'
+      // Cơ điện vào Dashboard máy móc ('/' trong MechanicLayout)
       navigate(isShopFloor ? '/output' : '/', { replace: true })
     },
   })

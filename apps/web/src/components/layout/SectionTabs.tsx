@@ -9,8 +9,11 @@ import { NAV_SECTIONS, collectLeafPaths, findActiveSiblings, isNodeVisible, type
  */
 export function SectionTabs() {
   const location = useLocation()
-  const { isAdmin, hasRole } = useAuthStore()
+  const { isAdmin, hasRole, isMechanic } = useAuthStore()
   const pathname = location.pathname
+
+  // Cơ điện dùng layout riêng đã có thanh tab ngang → không hiện thêm SectionTabs (tránh trùng)
+  if (isMechanic() && !isAdmin()) return null
 
   // Tìm menu cha (cấp 1) chứa route hiện tại, rồi lấy danh sách anh em cấp-3 đang active
   let siblings: NavSubItem[] | null = null

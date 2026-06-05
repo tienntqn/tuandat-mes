@@ -45,6 +45,7 @@ interface AuthState {
   isCompanyLevel: () => boolean
   isFactoryLevel: () => boolean
   isLineLevel: () => boolean
+  isMechanic: () => boolean
   // Bộ phận nhập sản lượng của user (LINE/CUTTING/FINISHING/QC) hoặc null
   productionSection: () => ProductionSection
   // Là user "shop-floor" (chỉ thấy màn nhập sản lượng): tổ trưởng chuyền hoặc tổ cấp xưởng
@@ -95,6 +96,8 @@ export const useAuthStore = create<AuthState>()(
         const p = get().user?.position
         return p === 'LINE_LEADER' || p === 'LINE_DEPUTY'
       },
+
+      isMechanic: () => get().user?.position === 'MECHANIC',
 
       productionSection: () => {
         const p = get().user?.position

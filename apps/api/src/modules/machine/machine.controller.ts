@@ -66,7 +66,7 @@ export class MachineController {
   }
 
   @Post()
-  @Roles('ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC')
+  @Roles('ADMIN', 'BOD', 'FACTORY_DIRECTOR')
   @ApiOperation({ summary: 'Thêm máy mới' })
   create(@Body() dto: CreateMachineDto) {
     return this.machineService.create(dto)

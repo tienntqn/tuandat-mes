@@ -7,6 +7,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { useAuthStore } from '@/stores/auth.store'
 
 const ShopFloorLayout = lazy(() => import('./ShopFloorLayout'))
+const MechanicLayout = lazy(() => import('./MechanicLayout'))
 
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const UsersPage = lazy(() => import('@/features/users/UsersPage'))
@@ -23,7 +24,16 @@ const ForbiddenPage = lazy(() => import('./ForbiddenPage'))
 const NotFoundPage = lazy(() => import('./NotFoundPage'))
 
 export default function AppLayout() {
-  const { isShopFloor, isAdmin } = useAuthStore()
+  const { isShopFloor, isMechanic, isAdmin } = useAuthStore()
+
+  // Cơ điện: ẩn sidebar, chỉ thấy phân hệ Quản lý máy móc của xưởng mình
+  if (isMechanic() && !isAdmin()) {
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        <MechanicLayout />
+      </Suspense>
+    )
+  }
 
   // Tổ trưởng chuyền / Tổ Cắt / Tổ Hoàn thành / Tổ KCS: chỉ thấy trang nhập sản lượng, ẩn sidebar
   if (isShopFloor() && !isAdmin()) {
