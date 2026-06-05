@@ -1,12 +1,18 @@
 import { NestFactory, Reflector } from '@nestjs/core'
+import { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { join } from 'path'
 import { AppModule } from './app.module'
 import { AppValidationPipe } from './common/pipes/app-validation.pipe'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create<NestExpressApplication>(AppModule)
 
   app.setGlobalPrefix('api/v1')
+
+  // Phục vụ file upload (ảnh/video máy móc) — nginx đã proxy /api/* sang API
+  const uploadDir = process.env.UPLOAD_DIR ?? join(process.cwd(), 'uploads')
+  app.useStaticAssets(uploadDir, { prefix: '/api/v1/uploads/' })
 
   app.useGlobalPipes(
     new AppValidationPipe({

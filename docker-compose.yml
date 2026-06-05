@@ -38,8 +38,11 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       OUTPUT_CUTOFF_TIME: ${OUTPUT_CUTOFF_TIME:-19:00}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
     ports:
       - '${API_PORT:-3000}:3000'
+    volumes:
+      - uploads_data:/app/uploads
 
   web:
     build:
@@ -71,4 +74,6 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  uploads_data:
     driver: local
