@@ -194,9 +194,10 @@ export class MachineTransferService {
       throw new BadRequestException('Lệnh chuyển chưa được bên đưa xác nhận')
     }
 
-    // Kiểm tra người dùng hiện tại thuộc xưởng bên NHẬN
-    if (user.dataScope.type === 'FACTORY' && user.dataScope.factoryId !== transfer.toFactoryId) {
-      throw new ForbiddenException('Bạn không thuộc xưởng bên nhận máy')
+    // Chỉ đúng người nhận được chỉ định trong lệnh mới được xác nhận đã nhận (Admin có thể thay)
+    const isAdmin = user.roles.includes('ADMIN')
+    if (!isAdmin && user.employeeId !== transfer.receiverId) {
+      throw new ForbiddenException('Chỉ người nhận trong lệnh chuyển mới được xác nhận đã nhận máy')
     }
 
     // Transaction: cập nhật lệnh + cập nhật máy

@@ -67,8 +67,8 @@ export class MachineTransferController {
   }
 
   @Patch(':id/confirm-receiver')
-  @Roles('ADMIN', 'BOD')
-  @ApiOperation({ summary: 'Bên NHẬN xác nhận → máy chuyển xưởng (chỉ BOD/Admin duyệt)' })
+  @Roles('ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC')
+  @ApiOperation({ summary: 'Người NHẬN trong lệnh xác nhận đã nhận → máy chuyển xưởng' })
   confirmReceiver(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.transferService.confirmReceiver(id, user)
   }

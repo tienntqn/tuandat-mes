@@ -18,10 +18,12 @@ export default function TransferPage() {
   const [rejectTarget, setRejectTarget] = useState<MachineTransfer | null>(null)
   const [rejectReason, setRejectReason] = useState('')
 
-  const { isAdmin, hasRole } = useAuthStore()
-  // Tạo lệnh: GĐ xưởng/Cơ điện được phép. Duyệt (xác nhận/từ chối): chỉ BOD/Admin.
+  const { isAdmin, hasRole, user } = useAuthStore()
+  // Tạo lệnh: GĐ xưởng/Cơ điện được phép. Duyệt bên đưa + từ chối: chỉ BOD/Admin.
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('MECHANIC')
   const canApprove = isAdmin() || hasRole('BOD')
+  // Xác nhận đã nhận: đúng người nhận trong lệnh (hoặc Admin)
+  const canReceive = (t: MachineTransfer) => isAdmin() || user?.employeeId === t.receiverId
 
   const { data, isLoading, refetch } = useTransfers({ status: filterStatus || undefined, page, pageSize: 20 } as any)
   const { data: machinesData } = useMachines({ pageSize: 200 })
@@ -145,21 +147,25 @@ export default function TransferPage() {
                               </button>
                             </>
                           )}
-                          {canApprove && t.status === 'SENDER_CONFIRMED' && (
+                          {t.status === 'SENDER_CONFIRMED' && (
                             <>
-                              <button
-                                onClick={() => confirmReceiver.mutate(t.id)}
-                                disabled={confirmReceiver.isPending}
-                                className="btn btn-sm btn-success text-white"
-                              >
-                                XN Bên nhận
-                              </button>
-                              <button
-                                onClick={() => setRejectTarget(t)}
-                                className="btn btn-sm btn-danger text-white"
-                              >
-                                Từ chối
-                              </button>
+                              {canReceive(t) && (
+                                <button
+                                  onClick={() => confirmReceiver.mutate(t.id)}
+                                  disabled={confirmReceiver.isPending}
+                                  className="btn btn-sm btn-success text-white"
+                                >
+                                  XN Bên nhận
+                                </button>
+                              )}
+                              {canApprove && (
+                                <button
+                                  onClick={() => setRejectTarget(t)}
+                                  className="btn btn-sm btn-danger text-white"
+                                >
+                                  Từ chối
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
