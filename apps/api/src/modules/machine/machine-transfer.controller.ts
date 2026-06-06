@@ -60,22 +60,22 @@ export class MachineTransferController {
   }
 
   @Patch(':id/confirm-sender')
-  @Roles('ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC')
-  @ApiOperation({ summary: 'Bên ĐƯA xác nhận lệnh chuyển' })
+  @Roles('ADMIN', 'BOD')
+  @ApiOperation({ summary: 'Bên ĐƯA xác nhận lệnh chuyển (chỉ BOD/Admin duyệt)' })
   confirmSender(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.transferService.confirmSender(id, user)
   }
 
   @Patch(':id/confirm-receiver')
-  @Roles('ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC')
-  @ApiOperation({ summary: 'Bên NHẬN xác nhận → máy chuyển xưởng' })
+  @Roles('ADMIN', 'BOD')
+  @ApiOperation({ summary: 'Bên NHẬN xác nhận → máy chuyển xưởng (chỉ BOD/Admin duyệt)' })
   confirmReceiver(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.transferService.confirmReceiver(id, user)
   }
 
   @Patch(':id/reject')
-  @Roles('ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'MECHANIC')
-  @ApiOperation({ summary: 'Từ chối lệnh điều chuyển' })
+  @Roles('ADMIN', 'BOD')
+  @ApiOperation({ summary: 'Từ chối lệnh điều chuyển (chỉ BOD/Admin duyệt)' })
   reject(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: RejectTransferDto,

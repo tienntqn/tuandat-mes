@@ -6,10 +6,10 @@ export class CreateTransferDto {
   @IsInt()
   machineId: number
 
-  @ApiProperty()
+  @ApiPropertyOptional({ description: 'Số lệnh chuyển — tự sinh nếu bỏ trống (vd X2_LC_001)' })
   @IsString()
-  @IsNotEmpty({ message: 'Số lệnh chuyển không được để trống' })
-  transferOrderNo: string
+  @IsOptional()
+  transferOrderNo?: string
 
   @ApiProperty()
   @IsDateString()

@@ -86,6 +86,22 @@ export class MachineTransferService {
     return transfer
   }
 
+  // Tự sinh số lệnh chuyển theo xưởng nguồn: {code}_LC_001, {code}_LC_002, ...
+  private async generateTransferOrderNo(factoryCode: string): Promise<string> {
+    const prefix = `${factoryCode}_LC_`
+    // Đếm các lệnh đã có cùng tiền tố để lấy số kế tiếp; lặp để đảm bảo không trùng
+    let seq =
+      (await this.prisma.machineTransfer.count({
+        where: { transferOrderNo: { startsWith: prefix } },
+      })) + 1
+    let code = `${prefix}${String(seq).padStart(3, '0')}`
+    while (await this.prisma.machineTransfer.findUnique({ where: { transferOrderNo: code } })) {
+      seq++
+      code = `${prefix}${String(seq).padStart(3, '0')}`
+    }
+    return code
+  }
+
   async create(dto: CreateTransferDto) {
     // Kiểm tra máy tồn tại và đang ở xưởng nguồn
     const machine = await this.prisma.machine.findFirst({ where: { id: dto.machineId, deletedAt: null } })
@@ -112,6 +128,10 @@ export class MachineTransferService {
     if (!toFactory) throw new NotFoundException('Xưởng đích không tồn tại')
     if (dto.fromFactoryId === dto.toFactoryId) throw new BadRequestException('Xưởng nguồn và đích không được trùng nhau')
 
+    // Số lệnh chuyển: dùng giá trị nhập hoặc tự sinh theo định dạng {MãXưởngNguồn}_LC_XXX (vd X2_LC_001)
+    const transferOrderNo =
+      dto.transferOrderNo?.trim() || (await this.generateTransferOrderNo(fromFactory.code))
+
     // Kiểm tra sender/receiver tồn tại
     const [sender, receiver] = await Promise.all([
       this.prisma.employee.findFirst({ where: { id: dto.senderId, deletedAt: null } }),
@@ -123,7 +143,7 @@ export class MachineTransferService {
     return this.prisma.machineTransfer.create({
       data: {
         machineId: dto.machineId,
-        transferOrderNo: dto.transferOrderNo,
+        transferOrderNo,
         transferDate: new Date(dto.transferDate),
         reason: dto.reason,
         fromFactoryId: dto.fromFactoryId,

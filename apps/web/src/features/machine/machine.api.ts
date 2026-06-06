@@ -164,7 +164,7 @@ export type CreateMaintenanceDto = {
 
 export type CreateTransferDto = {
   machineId: number
-  transferOrderNo: string
+  transferOrderNo?: string // tự sinh ở backend nếu bỏ trống
   transferDate: string
   reason: string
   fromFactoryId: number

@@ -19,7 +19,9 @@ export default function TransferPage() {
   const [rejectReason, setRejectReason] = useState('')
 
   const { isAdmin, hasRole } = useAuthStore()
+  // Tạo lệnh: GĐ xưởng/Cơ điện được phép. Duyệt (xác nhận/từ chối): chỉ BOD/Admin.
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('MECHANIC')
+  const canApprove = isAdmin() || hasRole('BOD')
 
   const { data, isLoading, refetch } = useTransfers({ status: filterStatus || undefined, page, pageSize: 20 } as any)
   const { data: machinesData } = useMachines({ pageSize: 200 })
@@ -126,7 +128,7 @@ export default function TransferPage() {
                           >
                             Chi tiết
                           </button>
-                          {canWrite && t.status === 'PENDING' && (
+                          {canApprove && t.status === 'PENDING' && (
                             <>
                               <button
                                 onClick={() => confirmSender.mutate(t.id)}
@@ -143,7 +145,7 @@ export default function TransferPage() {
                               </button>
                             </>
                           )}
-                          {canWrite && t.status === 'SENDER_CONFIRMED' && (
+                          {canApprove && t.status === 'SENDER_CONFIRMED' && (
                             <>
                               <button
                                 onClick={() => confirmReceiver.mutate(t.id)}
@@ -323,7 +325,6 @@ function TransferFormDialog({
   const validate = () => {
     const e: Record<string, string> = {}
     if (!form.machineId) e.machineId = 'Chọn máy'
-    if (!form.transferOrderNo?.trim()) e.transferOrderNo = 'Nhập số lệnh'
     if (!form.transferDate) e.transferDate = 'Chọn ngày'
     if (!form.reason?.trim()) e.reason = 'Nhập lý do'
     if (!form.fromFactoryId) e.fromFactoryId = 'Chọn xưởng gửi'
@@ -370,12 +371,11 @@ function TransferFormDialog({
 
               <div className="row g-3">
                 <div className="col-12 col-sm-6">
-                  <Field label="Số lệnh chuyển *" error={errors.transferOrderNo}>
+                  <Field label="Số lệnh chuyển">
                     <input
-                      className="form-control"
-                      placeholder="VD: TC-2024-001"
-                      value={form.transferOrderNo ?? ''}
-                      onChange={(e) => setForm({ ...form, transferOrderNo: e.target.value })}
+                      className="form-control bg-light"
+                      value="Tự sinh (vd X2_LC_001)"
+                      disabled
                     />
                   </Field>
                 </div>
