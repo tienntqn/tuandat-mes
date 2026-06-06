@@ -50,7 +50,9 @@ export default function SettingsPage() {
     >
       <p className="text-muted mb-4">Quản lý các thông số vận hành</p>
 
-      <div style={{ maxWidth: 672 }}>
+      <div className="row">
+        {/* ===== CỘT TRÁI ===== */}
+        <div className="col-lg-6">
         {/* Cutoff time */}
         <div className="card mb-4">
           <div className="card-header">
@@ -130,6 +132,10 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        </div>{/* /CỘT TRÁI */}
+
+        {/* ===== CỘT PHẢI ===== */}
+        <div className="col-lg-6">
         {/* Bộ phận KCS tham gia báo cáo (ghi được vào DB) */}
         <div className="card mb-4">
           <div className="card-header">
@@ -200,26 +206,29 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+        </div>{/* /CỘT PHẢI */}
 
-        {/* Thông tin hệ thống */}
-        <div className="card">
-          <div className="card-header">
-            <h6 className="card-title mb-0">Thông tin hệ thống</h6>
-          </div>
-          <div className="card-body">
-            <dl className="row mb-0">
-              {[
-                ['Phiên bản', 'Tuấn Đạt MES v1.0'],
-                ['Tech Stack', 'NestJS + React + PostgreSQL'],
-                ['Người dùng hiện tại', user?.fullName ?? '—'],
-                ['Vai trò', user?.roles.join(', ') ?? '—'],
-              ].map(([label, value]) => (
-                <React.Fragment key={label as string}>
-                  <dt className="col-sm-4 text-muted">{label}</dt>
-                  <dd className="col-sm-8 fw-medium">{value}</dd>
-                </React.Fragment>
-              ))}
-            </dl>
+        {/* ===== Thông tin hệ thống (full-width) ===== */}
+        <div className="col-12">
+          <div className="card">
+            <div className="card-header">
+              <h6 className="card-title mb-0">Thông tin hệ thống</h6>
+            </div>
+            <div className="card-body">
+              <dl className="row mb-0">
+                {[
+                  ['Phiên bản', 'Tuấn Đạt MES v1.0'],
+                  ['Tech Stack', 'NestJS + React + PostgreSQL'],
+                  ['Người dùng hiện tại', user?.fullName ?? '—'],
+                  ['Vai trò', user?.roles.join(', ') ?? '—'],
+                ].map(([label, value]) => (
+                  <React.Fragment key={label as string}>
+                    <dt className="col-sm-3 text-muted">{label}</dt>
+                    <dd className="col-sm-9 fw-medium">{value}</dd>
+                  </React.Fragment>
+                ))}
+              </dl>
+            </div>
           </div>
         </div>
       </div>
