@@ -181,7 +181,7 @@ export default function SettingsPage() {
               <div className="col-md-4">
                 <label className="form-label small text-muted">% Tổ Cắt</label>
                 <div className="input-group">
-                  <input type="number" min={0} max={100} className="form-control" value={payroll.cuttingRatePct}
+                  <input type="number" min={0} max={100} step={0.1} className="form-control" value={payroll.cuttingRatePct}
                     onChange={(e) => setPayroll((p) => ({ ...p, cuttingRatePct: +e.target.value }))} />
                   <span className="input-group-text">%</span>
                 </div>
@@ -189,7 +189,7 @@ export default function SettingsPage() {
               <div className="col-md-4">
                 <label className="form-label small text-muted">% Tổ Hoàn thành</label>
                 <div className="input-group">
-                  <input type="number" min={0} max={100} className="form-control" value={payroll.finishingRatePct}
+                  <input type="number" min={0} max={100} step={0.1} className="form-control" value={payroll.finishingRatePct}
                     onChange={(e) => setPayroll((p) => ({ ...p, finishingRatePct: +e.target.value }))} />
                   <span className="input-group-text">%</span>
                 </div>

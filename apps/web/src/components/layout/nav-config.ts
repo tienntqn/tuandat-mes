@@ -109,7 +109,7 @@ export const NAV_SECTIONS: NavSection[] = [
             children: [
               { label: 'Tiến độ cắt', path: '/planning/progress/cutting', icon: 'fe fe-scissors', roles: R_PROGRESS },
               { label: 'Tiến độ may', path: '/planning/progress/sewing', icon: 'fe fe-feather', roles: R_PROGRESS },
-              { label: 'Tiến độ hoàn thiện', path: '/planning/progress/finishing', icon: 'fe fe-check-circle', roles: R_PROGRESS },
+              { label: 'Tiến độ hoàn thành', path: '/planning/progress/finishing', icon: 'fe fe-check-circle', roles: R_PROGRESS },
               { label: 'Tiến độ xuất hàng', path: '/planning/progress/shipping', icon: 'fe fe-package', roles: R_PROGRESS },
             ],
           },
