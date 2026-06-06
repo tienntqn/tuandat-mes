@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { useMachineTransferHistory, useMachines } from './machine.hooks'
+import { useMemo, useState } from 'react'
+import { useMachineTransferHistory, useMachines, useTransfers } from './machine.hooks'
 import { TRANSFER_STATUS_LABELS, MACHINE_TYPE_LABELS } from './machine.api'
+import type { MachineTransfer, TransferStatus } from './machine.api'
 import { PageWrapper } from '@/components/layout/PageWrapper'
-import type { TransferStatus } from './machine.api'
+import { useAuthStore } from '@/stores/auth.store'
 
 const STATUS_BADGE: Record<TransferStatus, string> = {
   PENDING: 'badge bg-secondary',
@@ -18,7 +19,148 @@ const STATUS_DOT: Record<TransferStatus, string> = {
   REJECTED: '#dc3545',
 }
 
+type Tab = 'factory' | 'machine'
+type Direction = '' | 'out' | 'in'
+
 export default function MachineHistoryPage() {
+  const { user, isAdmin, hasRole } = useAuthStore()
+  // Người dùng cấp công ty (Admin/BOD) không gắn xưởng → không lọc theo hướng
+  const isCompanyLevel = isAdmin() || hasRole('BOD') || hasRole('COMPANY_PLANNER')
+  const myFactoryId = user?.factoryId ?? null
+
+  const [tab, setTab] = useState<Tab>('factory')
+
+  return (
+    <PageWrapper
+      title="Lịch sử di chuyển máy"
+      breadcrumbs={[{ label: 'Quản lý máy móc' }, { label: 'Lịch sử di chuyển' }]}
+    >
+      {/* Tabs */}
+      <ul className="nav nav-tabs mb-3">
+        <li className="nav-item">
+          <button className={`nav-link ${tab === 'factory' ? 'active' : ''}`} onClick={() => setTab('factory')}>
+            <i className="fe fe-home me-1"></i> Theo xưởng
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className={`nav-link ${tab === 'machine' ? 'active' : ''}`} onClick={() => setTab('machine')}>
+            <i className="fe fe-hard-drive me-1"></i> Theo máy
+          </button>
+        </li>
+      </ul>
+
+      {tab === 'factory' ? (
+        <FactoryHistory myFactoryId={myFactoryId} isCompanyLevel={isCompanyLevel} />
+      ) : (
+        <MachineTimeline />
+      )}
+    </PageWrapper>
+  )
+}
+
+// ===== Lịch sử chuyển đi / chuyển đến theo xưởng =====
+function FactoryHistory({ myFactoryId, isCompanyLevel }: { myFactoryId: number | null; isCompanyLevel: boolean }) {
+  const [direction, setDirection] = useState<Direction>('')
+  const [status, setStatus] = useState<string>('')
+
+  // API tự lọc theo data scope: Cơ điện/GĐ xưởng chỉ nhận lệnh của xưởng mình (đưa hoặc nhận)
+  const { data, isLoading } = useTransfers({ status: status || undefined, pageSize: 200 } as any)
+  const rows = data?.data ?? []
+
+  // Hướng so với xưởng của mình (chỉ áp dụng cho user gắn xưởng)
+  const directionOf = (t: MachineTransfer): 'out' | 'in' | null => {
+    if (myFactoryId == null) return null
+    if (t.fromFactoryId === myFactoryId) return 'out'
+    if (t.toFactoryId === myFactoryId) return 'in'
+    return null
+  }
+
+  const filtered = useMemo(() => {
+    if (!direction || myFactoryId == null) return rows
+    return rows.filter((t) => directionOf(t) === direction)
+  }, [rows, direction, myFactoryId])
+
+  return (
+    <>
+      {/* Bộ lọc */}
+      <div className="row g-2 mb-3">
+        {myFactoryId != null && (
+          <div className="col-auto">
+            <select className="form-select" value={direction} onChange={(e) => setDirection(e.target.value as Direction)}>
+              <option value="">Tất cả chiều</option>
+              <option value="out">Chuyển đi (xưởng mình gửi)</option>
+              <option value="in">Chuyển đến (xưởng mình nhận)</option>
+            </select>
+          </div>
+        )}
+        <div className="col-auto">
+          <select className="form-select" value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="">Tất cả trạng thái</option>
+            {(Object.entries(TRANSFER_STATUS_LABELS) as [TransferStatus, string][]).map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table table-hover table-vcenter mb-0">
+              <thead className="thead-light">
+                <tr>
+                  <th>Số lệnh</th>
+                  <th>Máy</th>
+                  <th>Từ xưởng</th>
+                  <th>Đến xưởng</th>
+                  {myFactoryId != null && <th>Chiều</th>}
+                  <th>Ngày chuyển</th>
+                  <th>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr><td colSpan={myFactoryId != null ? 7 : 6} className="text-center py-4 text-muted">Đang tải...</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={myFactoryId != null ? 7 : 6} className="text-center py-4 text-muted">Không có lịch sử điều chuyển</td></tr>
+                ) : (
+                  filtered.map((t) => {
+                    const dir = directionOf(t)
+                    return (
+                      <tr key={t.id}>
+                        <td><code>{t.transferOrderNo}</code></td>
+                        <td>
+                          <p className="fw-medium mb-0">{t.machine?.name}</p>
+                          <small className="text-muted">{t.machine?.code} · {t.machine?.type ? MACHINE_TYPE_LABELS[t.machine.type] : ''}</small>
+                        </td>
+                        <td>{t.fromFactory?.name ?? '—'}</td>
+                        <td>{t.toFactory?.name ?? '—'}</td>
+                        {myFactoryId != null && (
+                          <td>
+                            {dir === 'out' && <span className="badge bg-danger-transparent text-danger"><i className="fe fe-arrow-up-right me-1"></i>Chuyển đi</span>}
+                            {dir === 'in' && <span className="badge bg-success-transparent text-success"><i className="fe fe-arrow-down-left me-1"></i>Chuyển đến</span>}
+                          </td>
+                        )}
+                        <td className="text-muted">{new Date(t.transferDate).toLocaleDateString('vi-VN')}</td>
+                        <td><span className={STATUS_BADGE[t.status]}>{TRANSFER_STATUS_LABELS[t.status]}</span></td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {isCompanyLevel && (
+        <p className="text-muted small mt-2 mb-0">Bạn đang xem toàn bộ lệnh điều chuyển của công ty.</p>
+      )}
+    </>
+  )
+}
+
+// ===== Timeline điều chuyển theo từng máy (giữ nguyên) =====
+function MachineTimeline() {
   const [selectedMachineId, setSelectedMachineId] = useState<number | null>(null)
 
   const { data: machinesData } = useMachines({ pageSize: 200 })
@@ -28,10 +170,7 @@ export default function MachineHistoryPage() {
   const selectedMachine = machineList.find((m) => m.id === selectedMachineId)
 
   return (
-    <PageWrapper
-      title="Lịch sử di chuyển máy"
-      breadcrumbs={[{ label: 'Quản lý máy móc' }, { label: 'Lịch sử di chuyển' }]}
-    >
+    <>
       {/* Chọn máy */}
       <div className="card mb-4">
         <div className="card-body">
@@ -142,10 +281,10 @@ export default function MachineHistoryPage() {
                       <div className="col-md-6"><small className="text-muted">Người gửi: {t.sender?.fullName ?? '—'}</small></div>
                       <div className="col-md-6"><small className="text-muted">Người nhận: {t.receiver?.fullName ?? '—'}</small></div>
                       {t.senderConfirmedAt && (
-                        <div className="col-md-6"><small className="text-muted">Bên đưa XN: {new Date(t.senderConfirmedAt).toLocaleString('vi-VN')}</small></div>
+                        <div className="col-md-6"><small className="text-muted">Duyệt lúc: {new Date(t.senderConfirmedAt).toLocaleString('vi-VN')}</small></div>
                       )}
                       {t.receiverConfirmedAt && (
-                        <div className="col-md-6"><small className="text-muted">Bên nhận XN: {new Date(t.receiverConfirmedAt).toLocaleString('vi-VN')}</small></div>
+                        <div className="col-md-6"><small className="text-muted">Bên nhận đồng ý: {new Date(t.receiverConfirmedAt).toLocaleString('vi-VN')}</small></div>
                       )}
                     </div>
                     {t.rejectReason && (
@@ -158,6 +297,6 @@ export default function MachineHistoryPage() {
           </div>
         </div>
       )}
-    </PageWrapper>
+    </>
   )
 }

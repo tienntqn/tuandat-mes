@@ -13,6 +13,7 @@ const TABS = [
   { label: 'Bảo dưỡng', path: '/machines/maintenance', icon: 'fe fe-tool', end: false },
   { label: 'Đề xuất sửa chữa', path: '/machines/repairs', icon: 'fe fe-clipboard', end: false },
   { label: 'Điều chuyển', path: '/machines/transfers', icon: 'fe fe-repeat', end: false },
+  { label: 'Lịch sử di chuyển', path: '/machines/history', icon: 'fe fe-clock', end: false },
   { label: 'Phụ tùng', path: '/machines/spare-parts', icon: 'fe fe-package', end: false },
 ]
 
