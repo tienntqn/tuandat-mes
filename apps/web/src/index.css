@@ -151,10 +151,11 @@
   }
 }
 
-/* Thanh tab cơ điện: luôn cho xuống dòng (nhiều hàng) thay vì cuộn ngang */
+/* Thanh tab cơ điện: luôn cho xuống dòng (nhiều hàng) thay vì cuộn ngang, canh giữa */
 .section-tabs.mechanic-tabs {
   flex-wrap: wrap !important;
   overflow-x: visible !important;
+  justify-content: center;
 }
 @media print {
   .section-tabs { display: none !important; }
