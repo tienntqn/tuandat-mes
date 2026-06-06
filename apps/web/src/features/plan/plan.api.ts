@@ -29,6 +29,7 @@ export interface FactoryPlan {
   lineId: number
   plannedQuantity: number
   expectedFinishDate: string
+  lineUnitPrice?: number | null
   companyPlan?: CompanyPlan
   line?: { id: number; name: string; lineNumber: number; factoryId: number }
   createdAt: string
@@ -78,9 +79,10 @@ export type CreateFactoryPlanDto = {
   lineId: number
   plannedQuantity: number
   expectedFinishDate: string
+  unitPrice?: number | null
 }
 
-export type UpdateFactoryPlanDto = Partial<Pick<CreateFactoryPlanDto, 'plannedQuantity' | 'expectedFinishDate'>>
+export type UpdateFactoryPlanDto = Partial<Pick<CreateFactoryPlanDto, 'plannedQuantity' | 'expectedFinishDate' | 'unitPrice'>>
 
 export type BulkCreateFactoryPlanDto = { plans: CreateFactoryPlanDto[] }
 

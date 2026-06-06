@@ -1,5 +1,5 @@
-import { IsInt, IsDateString, IsArray, ValidateNested, Min } from 'class-validator'
-import { ApiProperty, PartialType } from '@nestjs/swagger'
+import { IsInt, IsDateString, IsArray, ValidateNested, IsNumber, IsOptional, Min } from 'class-validator'
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 
 export class CreateFactoryPlanDto {
@@ -19,6 +19,13 @@ export class CreateFactoryPlanDto {
   @ApiProperty()
   @IsDateString({}, { message: 'expectedFinishDate không hợp lệ' })
   expectedFinishDate: string
+
+  @ApiPropertyOptional({ description: 'Đơn giá gia công riêng của chuyền (để trống = theo PO)' })
+  @IsNumber({}, { message: 'Đơn giá không hợp lệ' })
+  @Min(0, { message: 'Đơn giá không được âm' })
+  @IsOptional()
+  @Type(() => Number)
+  unitPrice?: number
 }
 
 export class UpdateFactoryPlanDto extends PartialType(CreateFactoryPlanDto) {}

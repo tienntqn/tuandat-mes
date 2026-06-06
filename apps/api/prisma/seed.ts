@@ -437,7 +437,8 @@ async function main() {
       const line = linesByFactory[g.fIdx][ln.lineIdx]
       await prisma.factoryPlan.create({ data: { companyPlanId: companyPlan.id, lineId: line.id, plannedQuantity: ln.qty, expectedFinishDate: d(g.finishOff) } })
       fpCount++
-      await prisma.styleLine.create({ data: { lineId: line.id, styleId } })
+      // Demo: chuyền đầu mỗi nhóm có đơn giá riêng (vd thiếu công đoạn ép keo); còn lại lấy theo PO
+      await prisma.styleLine.create({ data: { lineId: line.id, styleId, unitPrice: ln.lineIdx === 0 ? 24000 : null } })
 
       const sewCum = Math.round(ln.progress * ln.qty)
       const cutCum = Math.min(ln.qty, Math.round(sewCum * 1.12))

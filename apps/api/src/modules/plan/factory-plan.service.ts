@@ -56,7 +56,28 @@ export class FactoryPlanService {
       this.prisma.factoryPlan.count({ where }),
     ])
 
-    return { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+    const enriched = await this.attachLineUnitPrice(data)
+    return { data: enriched, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+  }
+
+  // Gắn đơn giá riêng của chuyền (StyleLine.unitPrice) vào từng FactoryPlan để hiển thị/sửa
+  private async attachLineUnitPrice<
+    T extends { lineId: number; companyPlan: { styleId: number } },
+  >(plans: T[]): Promise<(T & { lineUnitPrice: number | null })[]> {
+    if (plans.length === 0) return [] as any
+    const pairs = plans.map((p) => ({ lineId: p.lineId, styleId: p.companyPlan.styleId }))
+    const styleLines = await this.prisma.styleLine.findMany({
+      where: { OR: pairs },
+      select: { lineId: true, styleId: true, unitPrice: true },
+    })
+    const map = new Map<string, number | null>()
+    for (const sl of styleLines) {
+      map.set(`${sl.lineId}:${sl.styleId}`, sl.unitPrice == null ? null : Number(sl.unitPrice))
+    }
+    return plans.map((p) => ({
+      ...p,
+      lineUnitPrice: map.get(`${p.lineId}:${p.companyPlan.styleId}`) ?? null,
+    }))
   }
 
   async findOne(id: number) {
@@ -126,8 +147,8 @@ export class FactoryPlanService {
       },
     })
 
-    // Tự động tạo liên kết StyleLine (chuyền nào đang may mã nào)
-    await this.upsertStyleLine(companyPlan.styleId, dto.lineId)
+    // Tự động tạo liên kết StyleLine (chuyền nào đang may mã nào) + đơn giá riêng của chuyền (nếu có)
+    await this.upsertStyleLine(companyPlan.styleId, dto.lineId, dto.unitPrice)
 
     return factoryPlan
   }
@@ -163,11 +184,11 @@ export class FactoryPlanService {
         })
         created.push(fp)
 
-        // Tự động tạo/cập nhật StyleLine
+        // Tự động tạo/cập nhật StyleLine (+ đơn giá riêng của chuyền nếu có)
         await tx.styleLine.upsert({
           where: { lineId_styleId: { lineId: plan.lineId, styleId: companyPlan.styleId } },
-          create: { lineId: plan.lineId, styleId: companyPlan.styleId },
-          update: {},
+          create: { lineId: plan.lineId, styleId: companyPlan.styleId, unitPrice: plan.unitPrice ?? null },
+          update: plan.unitPrice !== undefined ? { unitPrice: plan.unitPrice } : {},
         })
       }
       return created
@@ -184,6 +205,14 @@ export class FactoryPlanService {
 
     if (dto.plannedQuantity !== undefined) {
       await this.validateAllocation(plan.companyPlanId, dto.plannedQuantity, id)
+    }
+
+    // Cập nhật đơn giá riêng của chuyền cho mã hàng (StyleLine)
+    if (dto.unitPrice !== undefined) {
+      const companyPlan = await this.prisma.companyPlan.findUnique({ where: { id: plan.companyPlanId } })
+      if (companyPlan) {
+        await this.upsertStyleLine(companyPlan.styleId, plan.lineId, dto.unitPrice)
+      }
     }
 
     return this.prisma.factoryPlan.update({
@@ -237,12 +266,12 @@ export class FactoryPlanService {
     }
   }
 
-  // Upsert StyleLine: đảm bảo liên kết chuyền-mã hàng tồn tại
-  private async upsertStyleLine(styleId: number, lineId: number) {
+  // Upsert StyleLine: đảm bảo liên kết chuyền-mã hàng tồn tại (+ đơn giá riêng nếu có)
+  private async upsertStyleLine(styleId: number, lineId: number, unitPrice?: number) {
     await this.prisma.styleLine.upsert({
       where: { lineId_styleId: { lineId, styleId } },
-      create: { lineId, styleId },
-      update: {},
+      create: { lineId, styleId, unitPrice: unitPrice ?? null },
+      update: unitPrice !== undefined ? { unitPrice } : {},
     })
   }
 

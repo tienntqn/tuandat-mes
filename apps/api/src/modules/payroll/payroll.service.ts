@@ -167,6 +167,18 @@ export class PayrollService {
       ...new Set(outputs.map((o) => o.styleId)),
     ])
 
+    // Đơn giá riêng của từng chuyền cho mã hàng (override, nếu có) — ưu tiên hơn giá PO
+    const styleLines = await this.prisma.styleLine.findMany({
+      where: { lineId: { in: lineIds }, unitPrice: { not: null } },
+      select: { lineId: true, styleId: true, unitPrice: true },
+    })
+    const lineStylePrice = new Map<string, number>()
+    for (const sl of styleLines) {
+      if (sl.unitPrice != null) {
+        lineStylePrice.set(`${sl.lineId}:${sl.styleId}`, Number(sl.unitPrice))
+      }
+    }
+
     // Gom theo chuyền
     const agg = new Map<
       number,
@@ -174,7 +186,9 @@ export class PayrollService {
     >()
     for (const o of outputs) {
       const a = agg.get(o.lineId) ?? { qty: 0, money: 0, days: new Set<string>() }
-      const price = priceMap.get(o.styleId) ?? 0
+      // Ưu tiên đơn giá riêng của chuyền, fallback về đơn giá hiệu lực theo PO của mã hàng
+      const price =
+        lineStylePrice.get(`${o.lineId}:${o.styleId}`) ?? priceMap.get(o.styleId) ?? 0
       a.qty += o.quantity
       a.money += o.quantity * price
       a.days.add(o.outputDate.toISOString().slice(0, 10))

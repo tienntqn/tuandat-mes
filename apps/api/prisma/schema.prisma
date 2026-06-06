@@ -787,6 +787,9 @@ model RolePermission {
 model StyleLine {
   lineId  Int
   styleId Int
+  // Đơn giá gia công riêng của chuyền cho mã hàng này (vd chuyền thiếu công đoạn ép keo).
+  // Để trống = lấy theo đơn giá PO khi tính lương.
+  unitPrice Decimal? @db.Decimal(12, 2)
 
   line  ProductionLine @relation(fields: [lineId], references: [id])
   style Style          @relation(fields: [styleId], references: [id])

@@ -9,6 +9,7 @@ interface LineRow {
   lineId: string
   plannedQuantity: string
   expectedFinishDate: string
+  unitPrice: string
 }
 
 interface Props {
@@ -59,7 +60,7 @@ function AllocationSummary({ total, allocated, adding }: { total: number; alloca
 
 export function FactoryPlanAllocateDialog({ open, onClose, companyPlan }: Props) {
   const [rows, setRows] = useState<LineRow[]>([
-    { lineId: '', plannedQuantity: '', expectedFinishDate: '' },
+    { lineId: '', plannedQuantity: '', expectedFinishDate: '', unitPrice: '' },
   ])
   const [errors, setErrors] = useState<string[]>([])
 
@@ -77,7 +78,7 @@ export function FactoryPlanAllocateDialog({ open, onClose, companyPlan }: Props)
 
   useEffect(() => {
     if (open) {
-      setRows([{ lineId: '', plannedQuantity: '', expectedFinishDate: '' }])
+      setRows([{ lineId: '', plannedQuantity: '', expectedFinishDate: '', unitPrice: '' }])
       setErrors([])
       refetchProgress()
     }
@@ -95,7 +96,7 @@ export function FactoryPlanAllocateDialog({ open, onClose, companyPlan }: Props)
   const allocatedLineIds = new Set(existingPlans.map((fp) => fp.lineId))
 
   const addRow = () => {
-    setRows((prev) => [...prev, { lineId: '', plannedQuantity: '', expectedFinishDate: '' }])
+    setRows((prev) => [...prev, { lineId: '', plannedQuantity: '', expectedFinishDate: '', unitPrice: '' }])
   }
 
   const removeRow = (idx: number) => {
@@ -138,12 +139,14 @@ export function FactoryPlanAllocateDialog({ open, onClose, companyPlan }: Props)
           lineId: Number(r.lineId),
           plannedQuantity: Number(r.plannedQuantity),
           expectedFinishDate: r.expectedFinishDate,
+          // Đơn giá riêng của chuyền (để trống = theo PO)
+          unitPrice: r.unitPrice === '' ? undefined : Math.max(0, Number(r.unitPrice)),
         })),
       },
       {
         onSuccess: () => {
           refetchProgress()
-          setRows([{ lineId: '', plannedQuantity: '', expectedFinishDate: '' }])
+          setRows([{ lineId: '', plannedQuantity: '', expectedFinishDate: '', unitPrice: '' }])
           setErrors([])
         },
       },
@@ -236,7 +239,7 @@ export function FactoryPlanAllocateDialog({ open, onClose, companyPlan }: Props)
 
             <div className="space-y-2">
               {rows.map((row, idx) => (
-                <div key={idx} className="grid grid-cols-[1fr_120px_140px_32px] gap-2 items-start">
+                <div key={idx} className="grid grid-cols-[1fr_100px_130px_120px_32px] gap-2 items-start">
                   <div>
                     <select
                       value={row.lineId}
@@ -267,6 +270,17 @@ export function FactoryPlanAllocateDialog({ open, onClose, companyPlan }: Props)
                       type="date"
                       value={row.expectedFinishDate}
                       onChange={(e) => updateRow(idx, 'expectedFinishDate', e.target.value)}
+                      className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.unitPrice}
+                      onChange={(e) => updateRow(idx, 'unitPrice', e.target.value)}
+                      placeholder="Đơn giá CT"
+                      title="Đơn giá riêng của chuyền — để trống thì lấy theo PO"
                       className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
                     />
                   </div>

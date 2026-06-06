@@ -13,12 +13,14 @@ interface Props {
 export function FactoryPlanEditDialog({ open, onClose, factoryPlan, onSubmit, loading }: Props) {
   const [plannedQuantity, setPlannedQuantity] = useState('')
   const [expectedFinishDate, setExpectedFinishDate] = useState('')
+  const [unitPrice, setUnitPrice] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (open) {
       setPlannedQuantity(String(factoryPlan.plannedQuantity))
       setExpectedFinishDate(factoryPlan.expectedFinishDate.slice(0, 10))
+      setUnitPrice(factoryPlan.lineUnitPrice == null ? '' : String(factoryPlan.lineUnitPrice))
       setError('')
     }
   }, [open, factoryPlan])
@@ -34,6 +36,8 @@ export function FactoryPlanEditDialog({ open, onClose, factoryPlan, onSubmit, lo
     onSubmit({
       plannedQuantity: Number(plannedQuantity),
       expectedFinishDate,
+      // Để trống = revert về đơn giá PO
+      unitPrice: unitPrice === '' ? null : Math.max(0, Number(unitPrice)),
     })
   }
 
@@ -89,6 +93,21 @@ export function FactoryPlanEditDialog({ open, onClose, factoryPlan, onSubmit, lo
               onChange={(e) => setExpectedFinishDate(e.target.value)}
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
             />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium">Đơn giá riêng của chuyền (VNĐ)</label>
+            <input
+              type="number"
+              min={0}
+              value={unitPrice}
+              onChange={(e) => setUnitPrice(e.target.value)}
+              placeholder="Để trống = lấy theo đơn giá PO"
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dùng khi chuyền làm thiếu/thừa công đoạn so với đơn giá chung của PO.
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-2 border-t">
