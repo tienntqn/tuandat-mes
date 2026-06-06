@@ -190,9 +190,8 @@ export class MachineTransferService {
       throw new BadRequestException('Lệnh chuyển chưa được bên đưa xác nhận')
     }
 
-    // Chỉ đúng người nhận được chỉ định trong lệnh mới được xác nhận đã nhận (Admin có thể thay)
-    const isAdmin = user.roles.includes('ADMIN')
-    if (!isAdmin && user.employeeId !== transfer.receiverId) {
+    // CHỈ đúng người nhận được chỉ định trong lệnh mới được xác nhận đã nhận (kể cả Admin/BOD cũng không thay được)
+    if (user.employeeId !== transfer.receiverId) {
       throw new ForbiddenException('Chỉ người nhận trong lệnh chuyển mới được xác nhận đã nhận máy')
     }
 

@@ -22,8 +22,8 @@ export default function TransferPage() {
   // Tạo lệnh: GĐ xưởng/Cơ điện được phép. Duyệt bên đưa + từ chối: chỉ BOD/Admin.
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('MECHANIC')
   const canApprove = isAdmin() || hasRole('BOD')
-  // Xác nhận đã nhận: đúng người nhận trong lệnh (hoặc Admin)
-  const canReceive = (t: MachineTransfer) => isAdmin() || user?.employeeId === t.receiverId
+  // Xác nhận đã nhận: CHỈ đúng người nhận trong lệnh (BOD/Admin không thay được)
+  const canReceive = (t: MachineTransfer) => user?.employeeId === t.receiverId
 
   const { data, isLoading, refetch } = useTransfers({ status: filterStatus || undefined, page, pageSize: 20 } as any)
   const { data: machinesData } = useMachines({ pageSize: 200 })
