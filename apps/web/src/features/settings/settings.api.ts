@@ -6,6 +6,9 @@ export interface AppSettings {
   cuttingRatePct: number
   finishingRatePct: number
   payrollWorkingDays: number
+  qrPrinterName: string
+  qrLabelWidthMm: number
+  qrLabelHeightMm: number
 }
 
 export interface UpdateAppSettings {
@@ -13,6 +16,9 @@ export interface UpdateAppSettings {
   cuttingRatePct?: number
   finishingRatePct?: number
   payrollWorkingDays?: number
+  qrPrinterName?: string
+  qrLabelWidthMm?: number
+  qrLabelHeightMm?: number
 }
 
 export const settingsApi = {

@@ -25,12 +25,19 @@ export default function SettingsPage() {
 
   // Cấu hình tính lương (state cục bộ, lưu khi bấm nút)
   const [payroll, setPayroll] = useState({ cuttingRatePct: 8, finishingRatePct: 5, payrollWorkingDays: 26 })
+  // Cấu hình in tem QR
+  const [qr, setQr] = useState({ qrPrinterName: '', qrLabelWidthMm: 50, qrLabelHeightMm: 30 })
   useEffect(() => {
     if (appSettings) {
       setPayroll({
         cuttingRatePct: appSettings.cuttingRatePct,
         finishingRatePct: appSettings.finishingRatePct,
         payrollWorkingDays: appSettings.payrollWorkingDays,
+      })
+      setQr({
+        qrPrinterName: appSettings.qrPrinterName ?? '',
+        qrLabelWidthMm: appSettings.qrLabelWidthMm ?? 50,
+        qrLabelHeightMm: appSettings.qrLabelHeightMm ?? 30,
       })
     }
   }, [appSettings])
@@ -204,6 +211,50 @@ export default function SettingsPage() {
               onClick={() => updateSettings.mutate(payroll)}>
               {updateSettings.isPending ? 'Đang lưu...' : 'Lưu cấu hình lương'}
             </button>
+          </div>
+        </div>
+
+        {/* Cấu hình in tem QR máy móc */}
+        <div className="card mb-4">
+          <div className="card-header">
+            <div className="d-flex align-items-center gap-2">
+              <i className="fe fe-printer text-primary"></i>
+              <h6 className="card-title mb-0">Cấu hình in tem QR máy móc</h6>
+            </div>
+            <p className="text-muted small mb-0 mt-1">
+              Đặt tên máy in tem (đặt máy này làm máy in mặc định của máy tính để in trực tiếp) và khổ tem.
+            </p>
+          </div>
+          <div className="card-body">
+            <div className="mb-3">
+              <label className="form-label small text-muted">Tên máy in tem QR</label>
+              <input type="text" className="form-control" placeholder="VD: Xprinter XP-365B"
+                value={qr.qrPrinterName}
+                onChange={(e) => setQr((p) => ({ ...p, qrPrinterName: e.target.value }))} />
+            </div>
+            <div className="row g-3 mb-3">
+              <div className="col-6">
+                <label className="form-label small text-muted">Rộng tem (mm)</label>
+                <input type="number" min={10} max={300} className="form-control" value={qr.qrLabelWidthMm}
+                  onChange={(e) => setQr((p) => ({ ...p, qrLabelWidthMm: +e.target.value }))} />
+              </div>
+              <div className="col-6">
+                <label className="form-label small text-muted">Cao tem (mm)</label>
+                <input type="number" min={10} max={300} className="form-control" value={qr.qrLabelHeightMm}
+                  onChange={(e) => setQr((p) => ({ ...p, qrLabelHeightMm: +e.target.value }))} />
+              </div>
+            </div>
+            <button className="btn btn-primary btn-sm" disabled={updateSettings.isPending}
+              onClick={() => updateSettings.mutate(qr)}>
+              {updateSettings.isPending ? 'Đang lưu...' : 'Lưu cấu hình in QR'}
+            </button>
+            <div className="alert alert-info d-flex gap-2 mt-3 mb-0">
+              <i className="fe fe-info flex-shrink-0 mt-1"></i>
+              <p className="small mb-0">
+                Trình duyệt in qua hộp thoại in của hệ điều hành và dùng máy in mặc định. Để in thẳng ra máy in tem,
+                hãy đặt máy in tem ở trên làm <strong>máy in mặc định</strong> của máy tính.
+              </p>
+            </div>
           </div>
         </div>
         </div>{/* /CỘT PHẢI */}

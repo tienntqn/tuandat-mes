@@ -1,4 +1,4 @@
-import { IsBoolean, IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator'
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, MaxLength, Max, Min } from 'class-validator'
 
 export class UpdateSettingsDto {
   @IsOptional()
@@ -25,4 +25,23 @@ export class UpdateSettingsDto {
   @Min(1)
   @Max(31)
   payrollWorkingDays?: number
+
+  // Tên máy in tem QR (tham chiếu — đặt làm máy in mặc định của OS để in trực tiếp)
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  qrPrinterName?: string
+
+  // Khổ tem QR (mm)
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(300)
+  qrLabelWidthMm?: number
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(300)
+  qrLabelHeightMm?: number
 }

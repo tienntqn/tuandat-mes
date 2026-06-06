@@ -9,6 +9,9 @@ export const SETTING_KEYS = {
   CUTTING_RATE_PCT: 'CUTTING_RATE_PCT',
   FINISHING_RATE_PCT: 'FINISHING_RATE_PCT',
   PAYROLL_WORKING_DAYS: 'PAYROLL_WORKING_DAYS',
+  QR_PRINTER_NAME: 'QR_PRINTER_NAME',
+  QR_LABEL_WIDTH_MM: 'QR_LABEL_WIDTH_MM',
+  QR_LABEL_HEIGHT_MM: 'QR_LABEL_HEIGHT_MM',
 } as const
 
 // Giá trị mặc định khi chưa cấu hình
@@ -16,6 +19,8 @@ const DEFAULTS = {
   CUTTING_RATE_PCT: 8,
   FINISHING_RATE_PCT: 5,
   PAYROLL_WORKING_DAYS: 26,
+  QR_LABEL_WIDTH_MM: 50,
+  QR_LABEL_HEIGHT_MM: 30,
 }
 
 @Injectable()
@@ -45,6 +50,12 @@ export class SettingsService {
     return Number.isFinite(n) ? n : fallback
   }
 
+  // Đọc 1 setting dạng chuỗi
+  async getString(key: string, fallback = ''): Promise<string> {
+    const row = await this.prisma.appSetting.findUnique({ where: { key } })
+    return row?.value ?? fallback
+  }
+
   private async setValue(key: string, value: string) {
     await this.prisma.appSetting.upsert({
       where: { key },
@@ -59,6 +70,9 @@ export class SettingsService {
       cuttingRatePct,
       finishingRatePct,
       payrollWorkingDays,
+      qrPrinterName,
+      qrLabelWidthMm,
+      qrLabelHeightMm,
     ] = await Promise.all([
       this.getBool(SETTING_KEYS.QC_REPORTING_ENABLED, false),
       this.getNumber(SETTING_KEYS.CUTTING_RATE_PCT, DEFAULTS.CUTTING_RATE_PCT),
@@ -70,6 +84,9 @@ export class SettingsService {
         SETTING_KEYS.PAYROLL_WORKING_DAYS,
         DEFAULTS.PAYROLL_WORKING_DAYS,
       ),
+      this.getString(SETTING_KEYS.QR_PRINTER_NAME, ''),
+      this.getNumber(SETTING_KEYS.QR_LABEL_WIDTH_MM, DEFAULTS.QR_LABEL_WIDTH_MM),
+      this.getNumber(SETTING_KEYS.QR_LABEL_HEIGHT_MM, DEFAULTS.QR_LABEL_HEIGHT_MM),
     ])
     return {
       cutoffHour: this.cutoffHour,
@@ -77,6 +94,9 @@ export class SettingsService {
       cuttingRatePct,
       finishingRatePct,
       payrollWorkingDays,
+      qrPrinterName,
+      qrLabelWidthMm,
+      qrLabelHeightMm,
     }
   }
 
@@ -104,6 +124,15 @@ export class SettingsService {
         SETTING_KEYS.PAYROLL_WORKING_DAYS,
         String(dto.payrollWorkingDays),
       )
+    }
+    if (dto.qrPrinterName !== undefined) {
+      await this.setValue(SETTING_KEYS.QR_PRINTER_NAME, dto.qrPrinterName)
+    }
+    if (dto.qrLabelWidthMm !== undefined) {
+      await this.setValue(SETTING_KEYS.QR_LABEL_WIDTH_MM, String(dto.qrLabelWidthMm))
+    }
+    if (dto.qrLabelHeightMm !== undefined) {
+      await this.setValue(SETTING_KEYS.QR_LABEL_HEIGHT_MM, String(dto.qrLabelHeightMm))
     }
     return this.get()
   }

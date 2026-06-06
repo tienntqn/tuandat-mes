@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMachines, useCreateMachine, useUpdateMachine, useDeleteMachine } from './machine.hooks'
 import { MachineFormDialog } from './MachineFormDialog'
+import { MachineQrPrintModal } from './MachineQrPrintModal'
+import { useAppSettings } from '@/features/settings/settings.hooks'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
 import { PageWrapper } from '@/components/layout/PageWrapper'
@@ -26,6 +28,8 @@ export default function MachinesPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Machine | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Machine | null>(null)
+  const [qrTarget, setQrTarget] = useState<Machine | null>(null)
+  const { data: appSettings } = useAppSettings()
 
   const { isAdmin, hasRole, isCompanyLevel } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('MECHANIC')
@@ -248,6 +252,13 @@ export default function MachinesPage() {
                           <td className="text-end">
                             <div className="d-flex justify-content-end gap-1">
                               <button
+                                onClick={() => setQrTarget(machine)}
+                                title="In tem QR"
+                                className="btn btn-sm btn-outline-primary"
+                              >
+                                <i className="fe fe-printer"></i>
+                              </button>
+                              <button
                                 onClick={() => { setEditTarget(machine); setFormOpen(true) }}
                                 title="Chỉnh sửa"
                                 className="btn btn-sm btn-outline-secondary"
@@ -298,6 +309,16 @@ export default function MachinesPage() {
         onConfirm={handleDelete}
         onClose={() => setDeleteTarget(null)}
       />
+
+      {qrTarget && (
+        <MachineQrPrintModal
+          machine={qrTarget}
+          printerName={appSettings?.qrPrinterName}
+          widthMm={appSettings?.qrLabelWidthMm}
+          heightMm={appSettings?.qrLabelHeightMm}
+          onClose={() => setQrTarget(null)}
+        />
+      )}
     </PageWrapper>
   )
 }
