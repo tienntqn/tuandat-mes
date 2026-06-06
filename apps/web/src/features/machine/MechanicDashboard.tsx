@@ -49,21 +49,13 @@ export default function MechanicDashboard() {
         <KpiCard label="Sắp đến hạn bảo dưỡng" value={dueMachines.length} icon="fe-clock" color="#eb5757" />
         <KpiCard label="Đề xuất chờ duyệt" value={pendingRepairs?.total ?? 0} icon="fe-clipboard" color="#2d9cdb" />
         <KpiCard label="Lệnh điều chuyển chờ" value={pendingTransfers?.total ?? 0} icon="fe-repeat" color="#9b51e0" />
-        <div className="col-6 col-lg-3">
-          <div className="card mb-3">
-            <div className="card-body d-flex flex-column gap-2 justify-content-center h-100">
-              <Link to="/machines/repairs" className="btn btn-sm btn-primary text-white">+ Đề xuất sửa chữa</Link>
-              <Link to="/machines/transfers" className="btn btn-sm btn-outline-secondary">+ Điều chuyển máy</Link>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Máy sắp / đã đến hạn bảo dưỡng */}
       <div className="card">
-        <div className="card-header d-flex align-items-center justify-content-between">
+        <div className="card-header d-flex align-items-center justify-content-between gap-2">
           <h6 className="card-title mb-0"><i className="fe fe-alert-triangle text-danger me-1"></i> Máy cần bảo dưỡng (≤14 ngày / quá hạn)</h6>
-          <Link to="/machines/maintenance" className="btn btn-sm btn-outline-secondary">Xem tất cả</Link>
+          <Link to="/machines/maintenance" className="btn btn-sm btn-outline-secondary text-nowrap flex-shrink-0">Xem tất cả</Link>
         </div>
         <div className="card-body p-0">
           <div className="table-responsive">

@@ -32,8 +32,8 @@ export default function MachineHistoryPage() {
 
   return (
     <PageWrapper
-      title="Lịch sử di chuyển máy"
-      breadcrumbs={[{ label: 'Quản lý máy móc' }, { label: 'Lịch sử di chuyển' }]}
+      title="Lịch sử điều chuyển máy"
+      breadcrumbs={[{ label: 'Quản lý máy móc' }, { label: 'Lịch sử điều chuyển' }]}
     >
       {/* Tabs */}
       <ul className="nav nav-tabs mb-3">

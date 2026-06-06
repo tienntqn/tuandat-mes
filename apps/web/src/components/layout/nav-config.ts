@@ -61,7 +61,7 @@ export const NAV_SECTIONS: NavSection[] = [
           { label: 'Bảo dưỡng', path: '/machines/maintenance', icon: 'fe fe-tool' },
           { label: 'Đề xuất sửa chữa', path: '/machines/repairs', icon: 'fe fe-clipboard' },
           { label: 'Điều chuyển', path: '/machines/transfers', icon: 'fe fe-repeat' },
-          { label: 'Lịch sử di chuyển', path: '/machines/history', icon: 'fe fe-clock' },
+          { label: 'Lịch sử điều chuyển', path: '/machines/history', icon: 'fe fe-clock' },
           { label: 'Thanh lý', path: '/machines/liquidation', icon: 'fe fe-trash' },
           { label: 'Hãng sản xuất', path: '/machines/brands', icon: 'fe fe-award' },
           { label: 'Chủng loại', path: '/machines/categories', icon: 'fe fe-grid' },
