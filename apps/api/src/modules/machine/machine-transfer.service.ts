@@ -39,11 +39,12 @@ export class MachineTransferService {
   ) {
     const where: any = {}
 
-    // MECHANIC/FACTORY_DIRECTOR chỉ thấy lệnh của xưởng mình (bên đưa hoặc bên nhận)
+    // MECHANIC/FACTORY_DIRECTOR chỉ thấy lệnh của xưởng mình.
+    // Xưởng NHẬN chỉ thấy lệnh SAU KHI đã được BOD/Admin duyệt (không thấy lệnh còn PENDING).
     if (user.dataScope.type === 'FACTORY') {
       where.OR = [
         { fromFactoryId: user.dataScope.factoryId },
-        { toFactoryId: user.dataScope.factoryId },
+        { toFactoryId: user.dataScope.factoryId, status: { not: 'PENDING' } },
       ]
     }
 
@@ -162,17 +163,12 @@ export class MachineTransferService {
     })
   }
 
-  // Bước 2: Bên ĐƯA xác nhận
-  async confirmSender(id: number, user: RequestUser) {
+  // Bước 2: BOD/Admin DUYỆT lệnh (chỉ duyệt, không thay bên đưa/nhận xác nhận)
+  async confirmSender(id: number, _user: RequestUser) {
     const transfer = await this.findOne(id)
 
     if (transfer.status !== 'PENDING') {
-      throw new BadRequestException('Lệnh chuyển không ở trạng thái chờ xác nhận')
-    }
-
-    // Kiểm tra người dùng hiện tại thuộc xưởng bên ĐƯA
-    if (user.dataScope.type === 'FACTORY' && user.dataScope.factoryId !== transfer.fromFactoryId) {
-      throw new ForbiddenException('Bạn không thuộc xưởng bên đưa máy')
+      throw new BadRequestException('Lệnh chuyển không ở trạng thái chờ duyệt')
     }
 
     return this.prisma.machineTransfer.update({
@@ -221,12 +217,25 @@ export class MachineTransferService {
     return updatedTransfer
   }
 
-  // Từ chối (ở bất kỳ bước nào)
+  // Từ chối / hủy lệnh:
+  //  - Khi PENDING (chờ duyệt): chỉ BOD/Admin được từ chối.
+  //  - Khi SENDER_CONFIRMED (đã duyệt, chờ nhận): chỉ ĐÚNG người nhận trong lệnh (hoặc Admin) được từ chối nhận.
   async reject(id: number, dto: RejectTransferDto, user: RequestUser) {
     const transfer = await this.findOne(id)
 
     if (transfer.status === 'COMPLETED' || transfer.status === 'REJECTED') {
       throw new BadRequestException('Lệnh chuyển đã hoàn thành hoặc đã bị từ chối')
+    }
+
+    const isAdmin = user.roles.includes('ADMIN')
+    if (transfer.status === 'PENDING') {
+      if (!isAdmin && !user.roles.includes('BOD')) {
+        throw new ForbiddenException('Chỉ BOD/Admin được từ chối lệnh khi chờ duyệt')
+      }
+    } else if (transfer.status === 'SENDER_CONFIRMED') {
+      if (!isAdmin && user.employeeId !== transfer.receiverId) {
+        throw new ForbiddenException('Chỉ người nhận trong lệnh mới được từ chối nhận máy')
+      }
     }
 
     return this.prisma.machineTransfer.update({

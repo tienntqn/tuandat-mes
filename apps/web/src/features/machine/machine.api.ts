@@ -190,8 +190,8 @@ export const MACHINE_STATUS_LABELS: Record<MachineStatus, string> = {
 }
 
 export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {
-  PENDING: 'Chờ xác nhận',
-  SENDER_CONFIRMED: 'Bên đưa đã xác nhận',
+  PENDING: 'Chờ duyệt',
+  SENDER_CONFIRMED: 'Đã duyệt — chờ bên nhận',
   COMPLETED: 'Hoàn thành',
   REJECTED: 'Đã từ chối',
 }

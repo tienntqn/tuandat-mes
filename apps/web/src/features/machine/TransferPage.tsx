@@ -65,11 +65,11 @@ export default function TransferPage() {
     >
       {/* Workflow guide */}
       <div className="alert alert-light d-flex align-items-center gap-3 flex-wrap mb-3">
-        <span className="badge bg-secondary-transparent text-secondary px-3 py-2">1 Tạo lệnh</span>
+        <span className="badge bg-secondary-transparent text-secondary px-3 py-2">1 Cơ điện tạo lệnh</span>
         <i className="fe fe-chevron-right text-muted"></i>
-        <span className="badge bg-warning-transparent text-warning px-3 py-2">2 Bên ĐƯA xác nhận</span>
+        <span className="badge bg-warning-transparent text-warning px-3 py-2">2 BOD/Admin duyệt</span>
         <i className="fe fe-chevron-right text-muted"></i>
-        <span className="badge bg-success-transparent text-success px-3 py-2">3 Bên NHẬN xác nhận → Máy đổi xưởng</span>
+        <span className="badge bg-success-transparent text-success px-3 py-2">3 Bên NHẬN đồng ý nhận → Máy đổi xưởng</span>
       </div>
 
       {/* Filter */}
@@ -137,7 +137,7 @@ export default function TransferPage() {
                                 disabled={confirmSender.isPending}
                                 className="btn btn-sm btn-warning text-white"
                               >
-                                XN Bên đưa
+                                Duyệt
                               </button>
                               <button
                                 onClick={() => setRejectTarget(t)}
@@ -147,25 +147,21 @@ export default function TransferPage() {
                               </button>
                             </>
                           )}
-                          {t.status === 'SENDER_CONFIRMED' && (
+                          {canReceive(t) && t.status === 'SENDER_CONFIRMED' && (
                             <>
-                              {canReceive(t) && (
-                                <button
-                                  onClick={() => confirmReceiver.mutate(t.id)}
-                                  disabled={confirmReceiver.isPending}
-                                  className="btn btn-sm btn-success text-white"
-                                >
-                                  XN Bên nhận
-                                </button>
-                              )}
-                              {canApprove && (
-                                <button
-                                  onClick={() => setRejectTarget(t)}
-                                  className="btn btn-sm btn-danger text-white"
-                                >
-                                  Từ chối
-                                </button>
-                              )}
+                              <button
+                                onClick={() => confirmReceiver.mutate(t.id)}
+                                disabled={confirmReceiver.isPending}
+                                className="btn btn-sm btn-success text-white"
+                              >
+                                Đồng ý nhận
+                              </button>
+                              <button
+                                onClick={() => setRejectTarget(t)}
+                                className="btn btn-sm btn-danger text-white"
+                              >
+                                Từ chối nhận
+                              </button>
                             </>
                           )}
                         </div>
@@ -271,10 +267,10 @@ function TransferDetailDialog({ transfer, onClose }: { transfer: MachineTransfer
               <dt className="col-4 text-muted">Người nhận</dt><dd className="col-8">{transfer.receiver?.fullName ?? '—'}</dd>
               <dt className="col-4 text-muted">Trạng thái</dt><dd className="col-8"><TransferStatusBadge status={transfer.status} /></dd>
               {transfer.senderConfirmedAt && (
-                <><dt className="col-4 text-muted">Bên đưa XN lúc</dt><dd className="col-8">{new Date(transfer.senderConfirmedAt).toLocaleString('vi-VN')}</dd></>
+                <><dt className="col-4 text-muted">BOD/Admin duyệt lúc</dt><dd className="col-8">{new Date(transfer.senderConfirmedAt).toLocaleString('vi-VN')}</dd></>
               )}
               {transfer.receiverConfirmedAt && (
-                <><dt className="col-4 text-muted">Bên nhận XN lúc</dt><dd className="col-8">{new Date(transfer.receiverConfirmedAt).toLocaleString('vi-VN')}</dd></>
+                <><dt className="col-4 text-muted">Bên nhận đồng ý lúc</dt><dd className="col-8">{new Date(transfer.receiverConfirmedAt).toLocaleString('vi-VN')}</dd></>
               )}
               {transfer.rejectReason && (
                 <><dt className="col-4 text-muted">Lý do từ chối</dt><dd className="col-8 text-danger">{transfer.rejectReason}</dd></>
