@@ -1,5 +1,6 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, MaxLength } from 'class-validator'
+import { IsString, IsNotEmpty, IsOptional, IsEnum, IsInt, Min, MaxLength } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
+import { Type } from 'class-transformer'
 import { FactoryStatus } from '@prisma/client'
 
 export class CreateFactoryDto {
@@ -24,6 +25,20 @@ export class CreateFactoryDto {
   @IsString()
   @IsOptional()
   phone?: string
+
+  @ApiPropertyOptional({ description: 'Số công nhân tổ Cắt (cấp xưởng)' })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  cuttingWorkerCount?: number
+
+  @ApiPropertyOptional({ description: 'Số công nhân tổ Hoàn thành (cấp xưởng)' })
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  @Type(() => Number)
+  finishingWorkerCount?: number
 
   @ApiPropertyOptional({ enum: FactoryStatus })
   @IsEnum(FactoryStatus, { message: 'Trạng thái không hợp lệ' })

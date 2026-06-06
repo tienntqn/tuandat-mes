@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsEnum, IsDateString, IsArray, ValidateNested, Min } from 'class-validator'
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsEnum, IsDateString, IsArray, ValidateNested, IsNumber, Min } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 import { POStatus } from '@prisma/client'
@@ -47,6 +47,20 @@ export class CreatePurchaseOrderDto {
   @ApiProperty()
   @IsDateString({}, { message: 'Ngày giao hàng không hợp lệ' })
   deliveryDate: string
+
+  @ApiPropertyOptional({ description: 'Đơn giá gia công / sản phẩm' })
+  @IsNumber({}, { message: 'Đơn giá không hợp lệ' })
+  @Min(0, { message: 'Đơn giá không được âm' })
+  @IsOptional()
+  @Type(() => Number)
+  unitPrice?: number
+
+  @ApiPropertyOptional({ description: 'Giá trợ giá do BOD duyệt (thay thế đơn giá khi tính lương)' })
+  @IsNumber({}, { message: 'Trợ giá không hợp lệ' })
+  @Min(0, { message: 'Trợ giá không được âm' })
+  @IsOptional()
+  @Type(() => Number)
+  subsidyPrice?: number
 
   @ApiPropertyOptional({ enum: POStatus })
   @IsEnum(POStatus, { message: 'Trạng thái không hợp lệ' })

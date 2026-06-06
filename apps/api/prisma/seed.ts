@@ -129,6 +129,8 @@ async function main() {
         address: 'KCN Đồng Văn, Hà Nam',
         phone: '0241 3825 000',
         status: FactoryStatus.ACTIVE,
+        cuttingWorkerCount: 20 + fc.lines,
+        finishingWorkerCount: 15 + fc.lines,
       },
     })
     factories.push(factory)
@@ -183,7 +185,7 @@ async function main() {
   console.log(`✓ Employee: ${3 + factories.length * 6} nhân viên`)
 
   // ── 4. ROLES & PERMISSIONS ──
-  const resources = ['company', 'factory', 'line', 'employee', 'machine', 'maintenance', 'transfer', 'machine_brand', 'machine_category', 'spare_part', 'repair_proposal', 'customer', 'style', 'order', 'purchase_order', 'company_plan', 'factory_plan', 'delivery_plan', 'daily_output', 'report', 'user', 'role']
+  const resources = ['company', 'factory', 'line', 'employee', 'machine', 'maintenance', 'transfer', 'machine_brand', 'machine_category', 'spare_part', 'repair_proposal', 'customer', 'style', 'order', 'purchase_order', 'company_plan', 'factory_plan', 'delivery_plan', 'daily_output', 'report', 'payroll', 'user', 'role']
   const actions = Object.values(PermissionAction)
   for (const resource of resources) {
     for (const action of actions) {
@@ -202,6 +204,7 @@ async function main() {
         { resource: 'order', actions: RW }, { resource: 'purchase_order', actions: RW },
         { resource: 'company_plan', actions: RWD }, { resource: 'delivery_plan', actions: RW },
         { resource: 'factory_plan', actions: [PermissionAction.READ] }, { resource: 'report', actions: [PermissionAction.READ] },
+        { resource: 'payroll', actions: [PermissionAction.READ] },
       ],
     },
     {
@@ -211,12 +214,14 @@ async function main() {
         { resource: 'machine_brand', actions: RW }, { resource: 'machine_category', actions: RW }, { resource: 'spare_part', actions: RW },
         { resource: 'repair_proposal', actions: [PermissionAction.READ, PermissionAction.APPROVE] },
         { resource: 'factory_plan', actions: RWD }, { resource: 'daily_output', actions: [PermissionAction.READ] }, { resource: 'report', actions: [PermissionAction.READ] },
+        { resource: 'payroll', actions: [PermissionAction.READ] },
       ],
     },
     {
       name: 'FACTORY_PLANNER', description: 'Kế hoạch xưởng', rules: [
         { resource: 'factory_plan', actions: RWD }, { resource: 'delivery_plan', actions: RWD },
         { resource: 'company_plan', actions: [PermissionAction.READ] }, { resource: 'report', actions: [PermissionAction.READ] },
+        { resource: 'payroll', actions: [PermissionAction.READ] },
       ],
     },
     { name: 'LINE_LEADER', description: 'Tổ trưởng', rules: [{ resource: 'daily_output', actions: RW }, { resource: 'factory_plan', actions: [PermissionAction.READ] }] },
@@ -266,6 +271,10 @@ async function main() {
   }
   // Cấu hình mặc định: KCS chưa tham gia báo cáo sản lượng
   await prisma.appSetting.create({ data: { key: 'QC_REPORTING_ENABLED', value: 'false' } })
+  // Cấu hình tính lương: % Cắt/Hoàn thành theo đơn giá may + số ngày công chuẩn/tháng
+  await prisma.appSetting.create({ data: { key: 'CUTTING_RATE_PCT', value: '8' } })
+  await prisma.appSetting.create({ data: { key: 'FINISHING_RATE_PCT', value: '5' } })
+  await prisma.appSetting.create({ data: { key: 'PAYROLL_WORKING_DAYS', value: '26' } })
   const enteredBy = adminUser.id
 
   // ── 6. CUSTOMERS ──
@@ -349,18 +358,18 @@ async function main() {
 
   // ── 9. PURCHASE ORDERS ──
   const poData = [
-    { number: 'PO-2026-001', styleIdx: 0, orderIdx: 0, qty: 12000, deliveryOff: 27, status: POStatus.IN_PROGRESS },
-    { number: 'PO-2026-002', styleIdx: 1, orderIdx: 0, qty: 8000, deliveryOff: 20, status: POStatus.IN_PROGRESS },
-    { number: 'PO-2026-003', styleIdx: 2, orderIdx: 1, qty: 15000, deliveryOff: 45, status: POStatus.IN_PROGRESS },
-    { number: 'PO-2026-004', styleIdx: 3, orderIdx: 1, qty: 6000, deliveryOff: 12, status: POStatus.IN_PROGRESS },
-    { number: 'PO-2026-005', styleIdx: 4, orderIdx: 2, qty: 10000, deliveryOff: 35, status: POStatus.OPEN },
-    { number: 'PO-2026-006', styleIdx: 5, orderIdx: 2, qty: 9000, deliveryOff: 6, status: POStatus.IN_PROGRESS },
-    { number: 'PO-2026-007', styleIdx: 6, orderIdx: 3, qty: 7000, deliveryOff: 50, status: POStatus.OPEN },
-    { number: 'PO-2026-008', styleIdx: 7, orderIdx: 3, qty: 11000, deliveryOff: -6, status: POStatus.COMPLETED },
+    { number: 'PO-2026-001', styleIdx: 0, orderIdx: 0, qty: 12000, deliveryOff: 27, status: POStatus.IN_PROGRESS, unitPrice: 28000, subsidyPrice: 30000 },
+    { number: 'PO-2026-002', styleIdx: 1, orderIdx: 0, qty: 8000, deliveryOff: 20, status: POStatus.IN_PROGRESS, unitPrice: 32000, subsidyPrice: null },
+    { number: 'PO-2026-003', styleIdx: 2, orderIdx: 1, qty: 15000, deliveryOff: 45, status: POStatus.IN_PROGRESS, unitPrice: 25000, subsidyPrice: null },
+    { number: 'PO-2026-004', styleIdx: 3, orderIdx: 1, qty: 6000, deliveryOff: 12, status: POStatus.IN_PROGRESS, unitPrice: 41000, subsidyPrice: 43000 },
+    { number: 'PO-2026-005', styleIdx: 4, orderIdx: 2, qty: 10000, deliveryOff: 35, status: POStatus.OPEN, unitPrice: 22000, subsidyPrice: null },
+    { number: 'PO-2026-006', styleIdx: 5, orderIdx: 2, qty: 9000, deliveryOff: 6, status: POStatus.IN_PROGRESS, unitPrice: 35000, subsidyPrice: null },
+    { number: 'PO-2026-007', styleIdx: 6, orderIdx: 3, qty: 7000, deliveryOff: 50, status: POStatus.OPEN, unitPrice: 38000, subsidyPrice: null },
+    { number: 'PO-2026-008', styleIdx: 7, orderIdx: 3, qty: 11000, deliveryOff: -6, status: POStatus.COMPLETED, unitPrice: 26000, subsidyPrice: null },
   ]
   const pos: { id: number }[] = []
   for (const p of poData) {
-    const po = await prisma.purchaseOrder.create({ data: { poNumber: p.number, styleId: styles[p.styleIdx].id, orderId: orders[p.orderIdx].id, totalQuantity: p.qty, deliveryDate: d(p.deliveryOff), status: p.status } })
+    const po = await prisma.purchaseOrder.create({ data: { poNumber: p.number, styleId: styles[p.styleIdx].id, orderId: orders[p.orderIdx].id, totalQuantity: p.qty, deliveryDate: d(p.deliveryOff), status: p.status, unitPrice: p.unitPrice, subsidyPrice: p.subsidyPrice } })
     pos.push(po)
     // Phân bổ ma trận màu×size: chia đều qty cho các ô (Σ = qty)
     const cs = styleColorIds[p.styleIdx]

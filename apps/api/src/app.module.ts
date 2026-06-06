@@ -20,6 +20,7 @@ import { MachineModule } from './modules/machine/machine.module'
 import { PlanModule } from './modules/plan/plan.module'
 import { OutputModule } from './modules/output/output.module'
 import { ReportModule } from './modules/report/report.module'
+import { PayrollModule } from './modules/payroll/payroll.module'
 import { SettingsModule } from './modules/settings/settings.module'
 import { UploadsModule } from './modules/uploads/uploads.module'
 import { MachineBrandModule } from './modules/machine-brand/machine-brand.module'
@@ -53,6 +54,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter'
     PlanModule,
     OutputModule,
     ReportModule,
+    PayrollModule,
     SettingsModule,
     UploadsModule,
     MachineBrandModule,

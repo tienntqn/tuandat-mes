@@ -14,6 +14,8 @@ export interface PurchaseOrder {
   orderId: number | null
   totalQuantity: number
   deliveryDate: string
+  unitPrice: number | null
+  subsidyPrice: number | null
   status: string
   style?: {
     id: number
@@ -48,6 +50,8 @@ export type CreatePODto = {
   orderId?: number | null
   totalQuantity: number
   deliveryDate: string
+  unitPrice?: number | null
+  subsidyPrice?: number | null
   status?: string
   items?: { colorId: number; sizeId: number; quantity: number }[]
 }

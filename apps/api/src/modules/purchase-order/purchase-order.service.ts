@@ -1,10 +1,17 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from './dto/purchase-order.dto'
+import type { RequestUser } from '../../common/types/request-user.type'
 
 @Injectable()
 export class PurchaseOrderService {
   constructor(private prisma: PrismaService) {}
+
+  // Chỉ BOD/ADMIN được nhập trợ giá; vai trò khác bỏ qua trường này
+  private canEditSubsidy(user?: RequestUser): boolean {
+    if (!user) return true
+    return user.roles.includes('ADMIN') || user.roles.includes('BOD')
+  }
 
   async findAll(search?: string, styleId?: number, status?: string, page = 1, pageSize = 20) {
     const where: any = { deletedAt: null }
@@ -57,7 +64,7 @@ export class PurchaseOrderService {
     return po
   }
 
-  async create(dto: CreatePurchaseOrderDto) {
+  async create(dto: CreatePurchaseOrderDto, user?: RequestUser) {
     const existing = await this.prisma.purchaseOrder.findFirst({
       where: { poNumber: dto.poNumber },
     })
@@ -69,6 +76,7 @@ export class PurchaseOrderService {
     if (!style) throw new NotFoundException('Mã hàng không tồn tại')
 
     const { items, ...poData } = dto
+    if (!this.canEditSubsidy(user)) delete poData.subsidyPrice
     // Nếu có phân bổ ma trận màu×size: tổng SL PO = tổng các ô
     if (items && items.length > 0) {
       poData.totalQuantity = items.reduce((s, it) => s + (it.quantity || 0), 0)
@@ -87,7 +95,7 @@ export class PurchaseOrderService {
     if (rows.length) await this.prisma.poItem.createMany({ data: rows, skipDuplicates: true })
   }
 
-  async update(id: number, dto: UpdatePurchaseOrderDto) {
+  async update(id: number, dto: UpdatePurchaseOrderDto, user?: RequestUser) {
     const po = await this.findOne(id)
 
     if (dto.poNumber && dto.poNumber !== po.poNumber) {
@@ -105,6 +113,7 @@ export class PurchaseOrderService {
     }
 
     const { items, ...poData } = dto
+    if (!this.canEditSubsidy(user)) delete poData.subsidyPrice
     if (items && items.length > 0) {
       poData.totalQuantity = items.reduce((s, it) => s + (it.quantity || 0), 0)
     }

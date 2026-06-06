@@ -13,6 +13,8 @@ import { ApiBearerAuth, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { PurchaseOrderService } from './purchase-order.service'
 import { CreatePurchaseOrderDto, UpdatePurchaseOrderDto } from './dto/purchase-order.dto'
 import { Roles } from '../../common/decorators/roles.decorator'
+import { CurrentUser } from '../../common/decorators/current-user.decorator'
+import type { RequestUser } from '../../common/types/request-user.type'
 
 @ApiTags('purchase-orders')
 @ApiBearerAuth()
@@ -46,15 +48,19 @@ export class PurchaseOrderController {
   @Post()
   @Roles('ADMIN', 'BOD', 'COMPANY_PLANNER')
   @ApiOperation({ summary: 'Tạo PO' })
-  create(@Body() dto: CreatePurchaseOrderDto) {
-    return this.poService.create(dto)
+  create(@Body() dto: CreatePurchaseOrderDto, @CurrentUser() user: RequestUser) {
+    return this.poService.create(dto, user)
   }
 
   @Patch(':id')
   @Roles('ADMIN', 'BOD', 'COMPANY_PLANNER')
   @ApiOperation({ summary: 'Cập nhật PO' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdatePurchaseOrderDto) {
-    return this.poService.update(id, dto)
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdatePurchaseOrderDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.poService.update(id, dto, user)
   }
 
   @Delete(':id')

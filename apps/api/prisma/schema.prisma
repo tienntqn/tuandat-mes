@@ -216,6 +216,9 @@ model Factory {
   address   String?
   phone     String?
   status    FactoryStatus @default(ACTIVE)
+  // Số công nhân tổ Cắt / Hoàn thành cấp xưởng (dùng để chia lương bình quân)
+  cuttingWorkerCount   Int @default(0)
+  finishingWorkerCount Int @default(0)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   deletedAt DateTime?
@@ -433,6 +436,9 @@ model PurchaseOrder {
   orderId       Int?
   totalQuantity Int
   deliveryDate  DateTime  @db.Date
+  // Đơn giá gia công / sản phẩm. subsidyPrice = giá thay thế do BOD trợ giá (ưu tiên khi tính lương)
+  unitPrice     Decimal?  @db.Decimal(12, 2)
+  subsidyPrice  Decimal?  @db.Decimal(12, 2)
   status        POStatus  @default(OPEN)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

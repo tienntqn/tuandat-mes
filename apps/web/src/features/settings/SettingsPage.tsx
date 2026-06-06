@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { useReportSettings } from '@/features/report/report.hooks'
 import { useAppSettings, useUpdateAppSettings } from './settings.hooks'
 import { PageWrapper } from '@/components/layout/PageWrapper'
@@ -22,6 +22,18 @@ export default function SettingsPage() {
 
   const isAdmin = user?.roles.includes('ADMIN') ?? false
   const qcEnabled = appSettings?.qcReportingEnabled ?? false
+
+  // Cấu hình tính lương (state cục bộ, lưu khi bấm nút)
+  const [payroll, setPayroll] = useState({ cuttingRatePct: 8, finishingRatePct: 5, payrollWorkingDays: 26 })
+  useEffect(() => {
+    if (appSettings) {
+      setPayroll({
+        cuttingRatePct: appSettings.cuttingRatePct,
+        finishingRatePct: appSettings.finishingRatePct,
+        payrollWorkingDays: appSettings.payrollWorkingDays,
+      })
+    }
+  }, [appSettings])
 
   if (!isAdmin) {
     return (
@@ -144,6 +156,48 @@ export default function SettingsPage() {
                 {qcEnabled ? 'Đang BẬT — KCS có báo cáo sản lượng' : 'Đang TẮT — KCS chưa báo cáo sản lượng'}
               </label>
             </div>
+          </div>
+        </div>
+
+        {/* Cấu hình tính lương */}
+        <div className="card mb-4">
+          <div className="card-header">
+            <div className="d-flex align-items-center gap-2">
+              <i className="fe fe-dollar-sign text-success"></i>
+              <h6 className="card-title mb-0">Cấu hình tính lương</h6>
+            </div>
+            <p className="text-muted small mb-0 mt-1">
+              Tổ Cắt và Hoàn thành ăn theo % đơn giá chuyền may. Số ngày công dùng để dự đoán lương cuối tháng.
+            </p>
+          </div>
+          <div className="card-body">
+            <div className="row g-3 mb-3">
+              <div className="col-md-4">
+                <label className="form-label small text-muted">% Tổ Cắt</label>
+                <div className="input-group">
+                  <input type="number" min={0} max={100} className="form-control" value={payroll.cuttingRatePct}
+                    onChange={(e) => setPayroll((p) => ({ ...p, cuttingRatePct: +e.target.value }))} />
+                  <span className="input-group-text">%</span>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label small text-muted">% Tổ Hoàn thành</label>
+                <div className="input-group">
+                  <input type="number" min={0} max={100} className="form-control" value={payroll.finishingRatePct}
+                    onChange={(e) => setPayroll((p) => ({ ...p, finishingRatePct: +e.target.value }))} />
+                  <span className="input-group-text">%</span>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label small text-muted">Số ngày công / tháng</label>
+                <input type="number" min={1} max={31} className="form-control" value={payroll.payrollWorkingDays}
+                  onChange={(e) => setPayroll((p) => ({ ...p, payrollWorkingDays: +e.target.value }))} />
+              </div>
+            </div>
+            <button className="btn btn-primary btn-sm" disabled={updateSettings.isPending}
+              onClick={() => updateSettings.mutate(payroll)}>
+              {updateSettings.isPending ? 'Đang lưu...' : 'Lưu cấu hình lương'}
+            </button>
           </div>
         </div>
 

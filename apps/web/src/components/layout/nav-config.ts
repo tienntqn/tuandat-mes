@@ -122,6 +122,16 @@ export const NAV_SECTIONS: NavSection[] = [
         icon: 'fe fe-clipboard',
         roles: ['ADMIN', 'BOD', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER', 'LINE_LEADER', 'LINE_DEPUTY'],
       },
+      {
+        label: 'Bảng lương',
+        path: '/payroll',
+        icon: 'fe fe-dollar-sign',
+        roles: R_REPORT,
+        children: [
+          { label: 'Lương chuyền may', path: '/payroll/lines', icon: 'fe fe-git-branch', roles: R_REPORT },
+          { label: 'Lương Cắt / Hoàn thành', path: '/payroll/sections', icon: 'fe fe-scissors', roles: R_REPORT },
+        ],
+      },
     ],
   },
   {

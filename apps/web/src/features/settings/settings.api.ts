@@ -3,10 +3,16 @@ import api from '@/lib/axios'
 export interface AppSettings {
   cutoffHour: number
   qcReportingEnabled: boolean
+  cuttingRatePct: number
+  finishingRatePct: number
+  payrollWorkingDays: number
 }
 
 export interface UpdateAppSettings {
   qcReportingEnabled?: boolean
+  cuttingRatePct?: number
+  finishingRatePct?: number
+  payrollWorkingDays?: number
 }
 
 export const settingsApi = {

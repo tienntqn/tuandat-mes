@@ -10,7 +10,7 @@ interface Props {
   isPending?: boolean
 }
 
-const EMPTY: CreateFactoryDto = { name: '', address: '', phone: '', status: 'ACTIVE' }
+const EMPTY: CreateFactoryDto = { name: '', address: '', phone: '', status: 'ACTIVE', cuttingWorkerCount: 0, finishingWorkerCount: 0 }
 
 export function FactoryFormDialog({ open, factory, onClose, onSubmit, isPending }: Props) {
   const [form, setForm] = useState<CreateFactoryDto>(EMPTY)
@@ -19,7 +19,7 @@ export function FactoryFormDialog({ open, factory, onClose, onSubmit, isPending 
   useEffect(() => {
     if (open) {
       setForm(factory
-        ? { name: factory.name, address: factory.address ?? '', phone: factory.phone ?? '', status: factory.status }
+        ? { name: factory.name, address: factory.address ?? '', phone: factory.phone ?? '', status: factory.status, cuttingWorkerCount: factory.cuttingWorkerCount ?? 0, finishingWorkerCount: factory.finishingWorkerCount ?? 0 }
         : EMPTY)
       setErrors({})
     }
@@ -80,6 +80,26 @@ export function FactoryFormDialog({ open, factory, onClose, onSubmit, isPending 
               onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
           </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Số CN tổ Cắt">
+              <input
+                type="number"
+                min={0}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={form.cuttingWorkerCount ?? 0}
+                onChange={(e) => setForm({ ...form, cuttingWorkerCount: Math.max(0, +e.target.value) })}
+              />
+            </FormField>
+            <FormField label="Số CN tổ Hoàn thành">
+              <input
+                type="number"
+                min={0}
+                className="w-full rounded-lg border px-3 py-2 text-sm"
+                value={form.finishingWorkerCount ?? 0}
+                onChange={(e) => setForm({ ...form, finishingWorkerCount: Math.max(0, +e.target.value) })}
+              />
+            </FormField>
+          </div>
           <FormField label="Trạng thái">
             <select
               className="w-full rounded-lg border px-3 py-2 text-sm bg-background"

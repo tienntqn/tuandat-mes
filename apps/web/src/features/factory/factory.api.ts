@@ -7,6 +7,8 @@ export interface Factory {
   address: string | null
   phone: string | null
   status: 'ACTIVE' | 'INACTIVE'
+  cuttingWorkerCount: number
+  finishingWorkerCount: number
   companyId: number
   createdAt: string
   updatedAt: string
@@ -28,7 +30,7 @@ export interface FactoryParams {
   pageSize?: number
 }
 
-export type CreateFactoryDto = Partial<Pick<Factory, 'code'>> & Pick<Factory, 'name'> & Partial<Pick<Factory, 'address' | 'phone' | 'status'>>
+export type CreateFactoryDto = Partial<Pick<Factory, 'code'>> & Pick<Factory, 'name'> & Partial<Pick<Factory, 'address' | 'phone' | 'status' | 'cuttingWorkerCount' | 'finishingWorkerCount'>>
 export type UpdateFactoryDto = Partial<CreateFactoryDto>
 
 export const factoryApi = {

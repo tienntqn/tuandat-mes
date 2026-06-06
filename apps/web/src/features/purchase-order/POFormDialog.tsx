@@ -6,6 +6,7 @@ import { PO_STATUS_LABELS, poApi } from './po.api'
 import { useStylesActive } from '@/features/style/style.hooks'
 import { useOrdersActive } from '@/features/order/order.hooks'
 import { styleApi } from '@/features/style/style.api'
+import { useAuthStore } from '@/stores/auth.store'
 
 interface Props {
   open: boolean
@@ -20,7 +21,11 @@ const cellKey = (colorId: number, sizeId: number) => `${colorId}:${sizeId}`
 export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) {
   const { data: styles = [] } = useStylesActive()
   const { data: orders = [] } = useOrdersActive()
-  const [form, setForm] = useState<CreatePODto>({ poNumber: '', styleId: 0, orderId: null, totalQuantity: 0, deliveryDate: '', status: 'OPEN' })
+  const isAdmin = useAuthStore((s) => s.isAdmin)
+  const hasRole = useAuthStore((s) => s.hasRole)
+  // Chỉ BOD/ADMIN được nhập trợ giá
+  const canEditSubsidy = isAdmin() || hasRole('BOD')
+  const [form, setForm] = useState<CreatePODto>({ poNumber: '', styleId: 0, orderId: null, totalQuantity: 0, deliveryDate: '', unitPrice: null, subsidyPrice: null, status: 'OPEN' })
   const [qty, setQty] = useState<Record<string, number>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -55,8 +60,8 @@ export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) 
     if (open) {
       setForm(
         po
-          ? { poNumber: po.poNumber, styleId: po.styleId, orderId: po.orderId, totalQuantity: po.totalQuantity, deliveryDate: po.deliveryDate.split('T')[0], status: po.status }
-          : { poNumber: '', styleId: 0, orderId: null, totalQuantity: 0, deliveryDate: '', status: 'OPEN' },
+          ? { poNumber: po.poNumber, styleId: po.styleId, orderId: po.orderId, totalQuantity: po.totalQuantity, deliveryDate: po.deliveryDate.split('T')[0], unitPrice: po.unitPrice, subsidyPrice: po.subsidyPrice, status: po.status }
+          : { poNumber: '', styleId: 0, orderId: null, totalQuantity: 0, deliveryDate: '', unitPrice: null, subsidyPrice: null, status: 'OPEN' },
       )
       setQty({})
       setErrors({})
@@ -142,6 +147,17 @@ export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) 
               <select className="w-full rounded-lg border px-3 py-2 text-sm bg-background" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
                 {Object.entries(PO_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
+            </Field>
+          </div>
+
+          {/* Đơn giá gia công — dùng để tính lương công nhân */}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Đơn giá / SP (VNĐ)">
+              <input type="number" min={0} className="w-full rounded-lg border px-3 py-2 text-sm" value={form.unitPrice ?? ''} onChange={(e) => setForm({ ...form, unitPrice: e.target.value === '' ? null : Math.max(0, +e.target.value) })} />
+            </Field>
+            <Field label="Trợ giá BOD (VNĐ)">
+              <input type="number" min={0} className="w-full rounded-lg border px-3 py-2 text-sm disabled:bg-muted disabled:opacity-60" value={form.subsidyPrice ?? ''} disabled={!canEditSubsidy} onChange={(e) => setForm({ ...form, subsidyPrice: e.target.value === '' ? null : Math.max(0, +e.target.value) })} />
+              <p className="text-xs text-muted-foreground mt-1">{canEditSubsidy ? 'Có trợ giá thì dùng trợ giá để tính lương thay đơn giá.' : 'Chỉ Ban Giám đốc được nhập trợ giá.'}</p>
             </Field>
           </div>
 
