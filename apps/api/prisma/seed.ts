@@ -167,12 +167,14 @@ async function main() {
   const finishingEmpByFactory: { id: number }[] = []
   const directorEmpByFactory: { id: number }[] = []
   const mechanicEmpByFactory: { id: number }[] = []
+  const plannerEmpByFactory: { id: number }[] = []
   for (let fi = 0; fi < factories.length; fi++) {
     const f = factories[fi]
     const n = fi + 1
     const director = await prisma.employee.create({ data: { code: `NV-${n}01`, fullName: `Giám đốc Xưởng ${n}`, position: EmployeePosition.FACTORY_DIRECTOR, factoryId: f.id } })
     directorEmpByFactory.push(director)
-    await prisma.employee.create({ data: { code: `NV-${n}02`, fullName: `Kế hoạch Xưởng ${n}`, position: EmployeePosition.FACTORY_PLANNER, factoryId: f.id } })
+    const planner = await prisma.employee.create({ data: { code: `NV-${n}02`, fullName: `Kế hoạch Xưởng ${n}`, position: EmployeePosition.FACTORY_PLANNER, factoryId: f.id } })
+    plannerEmpByFactory.push(planner)
     const mechanic = await prisma.employee.create({ data: { code: `NV-${n}03`, fullName: `Cơ điện Xưởng ${n}`, position: EmployeePosition.MECHANIC, factoryId: f.id } })
     mechanicEmpByFactory.push(mechanic)
     const leader = await prisma.employee.create({ data: { code: `NV-${n}11`, fullName: `Tổ trưởng X${n}-C1`, position: EmployeePosition.LINE_LEADER, factoryId: f.id, lineId: linesByFactory[fi][0].id } })
@@ -253,6 +255,11 @@ async function main() {
   const leaderHash = await bcrypt.hash('Leader@123', 10)
   const adminUser = await prisma.user.create({ data: { employeeId: empCreated['NV-001'].id, username: 'admin', passwordHash: adminHash, isActive: true } })
   await prisma.userRole.create({ data: { userId: adminUser.id, roleId: roles['ADMIN'].id } })
+  // BOD công ty (username: bod) + Kế hoạch công ty (username: kh) — mật khẩu Leader@123
+  const bodUser = await prisma.user.create({ data: { employeeId: empCreated['NV-002'].id, username: 'bod', passwordHash: leaderHash, isActive: true } })
+  await prisma.userRole.create({ data: { userId: bodUser.id, roleId: roles['BOD'].id } })
+  const khctUser = await prisma.user.create({ data: { employeeId: empCreated['NV-003'].id, username: 'kh', passwordHash: leaderHash, isActive: true } })
+  await prisma.userRole.create({ data: { userId: khctUser.id, roleId: roles['COMPANY_PLANNER'].id } })
   // Tổ trưởng Xưởng 1 - Chuyền 1 (quy ước: tt.x{xưởng}c{chuyền})
   const leaderUser = await prisma.user.create({ data: { employeeId: leaderEmpByFactory[0].id, username: 'tt.x1c1', passwordHash: leaderHash, isActive: true } })
   await prisma.userRole.create({ data: { userId: leaderUser.id, roleId: roles['LINE_LEADER'].id } })
@@ -262,6 +269,9 @@ async function main() {
     const n = fi + 1
     const gdxUser = await prisma.user.create({ data: { employeeId: directorEmpByFactory[fi].id, username: `gdx.x${n}`, passwordHash: leaderHash, isActive: true } })
     await prisma.userRole.create({ data: { userId: gdxUser.id, roleId: roles['FACTORY_DIRECTOR'].id } })
+    // Kế hoạch xưởng (quy ước: kh.x{n})
+    const khUser = await prisma.user.create({ data: { employeeId: plannerEmpByFactory[fi].id, username: `kh.x${n}`, passwordHash: leaderHash, isActive: true } })
+    await prisma.userRole.create({ data: { userId: khUser.id, roleId: roles['FACTORY_PLANNER'].id } })
     const cdUser = await prisma.user.create({ data: { employeeId: mechanicEmpByFactory[fi].id, username: `cd.x${n}`, passwordHash: leaderHash, isActive: true } })
     await prisma.userRole.create({ data: { userId: cdUser.id, roleId: roles['MECHANIC'].id } })
     const cutUser = await prisma.user.create({ data: { employeeId: cuttingEmpByFactory[fi].id, username: `cat.x${n}`, passwordHash: leaderHash, isActive: true } })
