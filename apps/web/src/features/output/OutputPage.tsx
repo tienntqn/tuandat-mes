@@ -5,6 +5,7 @@ import { useMyStyles, useTodayOutput, useUpsertOutput, useOfflineSync } from './
 import { OutputMatrixCard, TOTAL_KEY, type MatrixCell } from './OutputMatrixCard'
 import { type DailyOutput } from './output.api'
 import { getOfflineQueueCount } from './lib/offline-store'
+import { toast } from '@/lib/toast'
 import { useAppSettings } from '@/features/settings/settings.hooks'
 import { useAuthStore } from '@/stores/auth.store'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
@@ -67,6 +68,7 @@ function LineOutputPage() {
       }
       await refetchToday()
       setOfflineCount(await getOfflineQueueCount())
+      if (cells.length > 0) toast.success('Đã lưu sản lượng May')
     },
     [upsert, refetchToday],
   )

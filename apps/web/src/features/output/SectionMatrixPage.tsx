@@ -3,6 +3,7 @@ import { AlertTriangle, Clock, RefreshCw, CheckCircle2 } from 'lucide-react'
 import { useFactoryStyles, useSectionToday, useUpsertSection } from './output.hooks'
 import { OutputMatrixCard, TOTAL_KEY, type MatrixCell } from './OutputMatrixCard'
 import type { FactorySection } from './output.api'
+import { toast } from '@/lib/toast'
 
 const cellKey = (colorId: number, sizeId: number) => `${colorId}:${sizeId}`
 
@@ -38,6 +39,7 @@ export default function SectionMatrixPage({ section, title }: Props) {
       await upsert.mutateAsync({ section, styleId, colorId: cell.colorId ?? undefined, sizeId: cell.sizeId ?? undefined, quantity: cell.quantity })
     }
     await refetch()
+    if (cells.length > 0) toast.success(`Đã lưu sản lượng ${title}`)
   }
 
   if (stylesLoading || todayLoading) {

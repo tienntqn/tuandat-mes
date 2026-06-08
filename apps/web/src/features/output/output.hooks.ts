@@ -80,9 +80,9 @@ export function useUpsertOutput() {
       }
     },
     onSuccess: () => {
+      // Không toast ở đây — màn lưu nhiều ô cùng lúc sẽ tự toast 1 lần sau khi xong
       queryClient.invalidateQueries({ queryKey: outputKeys.today })
       queryClient.invalidateQueries({ queryKey: outputKeys.history(7) })
-      toast({ title: 'Đã lưu sản lượng thành công' })
     },
     onError: (err: Error) => {
       if (err.message === 'OFFLINE_QUEUED') {
@@ -124,8 +124,8 @@ export function useUpsertSection(section: FactorySection) {
   return useMutation({
     mutationFn: (payload: CreateSectionPayload) => outputApi.upsertSection(payload),
     onSuccess: () => {
+      // Không toast ở đây — trang sẽ toast 1 lần sau khi lưu xong cả lô
       queryClient.invalidateQueries({ queryKey: outputKeys.sectionToday(section) })
-      toast({ title: 'Đã lưu sản lượng thành công' })
     },
     onError: (err: any) => {
       toast({
