@@ -161,7 +161,7 @@ export function useUpsertFinishing() {
     mutationFn: (payload: CreateFinishingPayload) => outputApi.upsertFinishing(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: outputKeys.finishingToday })
-      toast({ title: 'Đã lưu sản lượng thành công' })
+      toast({ title: 'Lưu sản lượng thành công!' })
     },
     onError: (err: any) => {
       toast({

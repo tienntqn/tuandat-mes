@@ -68,7 +68,7 @@ function LineOutputPage() {
       }
       await refetchToday()
       setOfflineCount(await getOfflineQueueCount())
-      if (cells.length > 0) toast.success('Đã lưu sản lượng May')
+      if (cells.length > 0) toast.success('Lưu sản lượng thành công!')
     },
     [upsert, refetchToday],
   )

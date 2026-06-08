@@ -162,6 +162,31 @@ export class OutputService {
       },
     })
 
+    // Validate: tổng sản lượng May (cộng dồn mọi ngày + mọi màu/size) không vượt
+    // số cần may theo kế hoạch chuyền (tổng FactoryPlan của mã hàng trên chuyền này).
+    const planAgg = await this.prisma.factoryPlan.aggregate({
+      where: { lineId, companyPlan: { styleId: dto.styleId } },
+      _sum: { plannedQuantity: true },
+    })
+    const planned = planAgg._sum.plannedQuantity ?? 0
+    if (planned > 0) {
+      const otherAgg = await this.prisma.dailyOutput.aggregate({
+        where: {
+          lineId,
+          styleId: dto.styleId,
+          stage: 'SEWING',
+          ...(existing ? { id: { not: existing.id } } : {}),
+        },
+        _sum: { quantity: true },
+      })
+      const others = otherAgg._sum.quantity ?? 0
+      if (others + dto.quantity > planned) {
+        throw new BadRequestException(
+          `Tổng sản lượng May (${others + dto.quantity}) vượt số cần may theo kế hoạch (${planned}) của mã hàng này trên chuyền.`,
+        )
+      }
+    }
+
     let dailyOutput: { id: number }
     if (existing) {
       // Cập nhật ghi đè

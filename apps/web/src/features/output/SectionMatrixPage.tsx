@@ -39,7 +39,7 @@ export default function SectionMatrixPage({ section, title }: Props) {
       await upsert.mutateAsync({ section, styleId, colorId: cell.colorId ?? undefined, sizeId: cell.sizeId ?? undefined, quantity: cell.quantity })
     }
     await refetch()
-    if (cells.length > 0) toast.success(`Đã lưu sản lượng ${title}`)
+    if (cells.length > 0) toast.success('Lưu sản lượng thành công!')
   }
 
   if (stylesLoading || todayLoading) {
