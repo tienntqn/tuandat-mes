@@ -84,16 +84,17 @@ export function useUpsertOutput() {
       queryClient.invalidateQueries({ queryKey: outputKeys.today })
       queryClient.invalidateQueries({ queryKey: outputKeys.history(7) })
     },
-    onError: (err: Error) => {
-      if (err.message === 'OFFLINE_QUEUED') {
+    onError: (err: any) => {
+      if (err?.message === 'OFFLINE_QUEUED') {
         toast({
           title: 'Đã lưu offline',
           description: 'Sẽ tự động đồng bộ khi có mạng',
         })
       } else {
+        // Ưu tiên message tiếng Việt từ backend (vd vượt kế hoạch) thay vì lỗi chung của axios
         toast({
           title: 'Lỗi',
-          description: err.message || 'Không thể lưu sản lượng',
+          description: err?.response?.data?.message || err?.message || 'Không thể lưu sản lượng',
           variant: 'destructive',
         })
       }
