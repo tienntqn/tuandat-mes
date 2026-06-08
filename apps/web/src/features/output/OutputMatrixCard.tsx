@@ -3,10 +3,12 @@ import { CheckCircle2 } from 'lucide-react'
 import type { StyleForLine } from './output.api'
 
 const cellKey = (colorId: number, sizeId: number) => `${colorId}:${sizeId}`
+// Khóa giá trị cho chế độ nhập TỔNG (không theo màu/size)
+export const TOTAL_KEY = 'total'
 
 export interface MatrixCell {
-  colorId: number
-  sizeId: number
+  colorId: number | null
+  sizeId: number | null
   quantity: number
 }
 
@@ -28,6 +30,8 @@ export function OutputMatrixCard({ style, initialValues, isPastCutoff, isSaving,
     .map((ss) => ss.size)
     .filter((s): s is NonNullable<typeof s> => !!s)
     .sort((a, b) => a.sortOrder - b.sortOrder)
+  // Chế độ TỔNG: mã hàng tắt quản lý theo màu/size → chỉ nhập 1 ô tổng/ngày
+  const totalMode = style.trackByColorSize === false
   const hasMatrix = colors.length > 0 && sizes.length > 0
 
   const [values, setValues] = useState<Record<string, string>>(initialValues)
@@ -39,6 +43,40 @@ export function OutputMatrixCard({ style, initialValues, isPastCutoff, isSaving,
     setSaved(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [style.id, JSON.stringify(initialValues)])
+
+  const markSaved = () => {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  // ----- Chế độ TỔNG -----
+  if (totalMode) {
+    const handleSaveTotal = async () => {
+      const q = parseInt(values[TOTAL_KEY] || '0') || 0
+      await onSave([{ colorId: null, sizeId: null, quantity: q }])
+      markSaved()
+    }
+    return (
+      <div className="card mb-3">
+        <div className="card-header py-2">
+          <div className="fw-bold small">{style.code}</div>
+          <div className="text-muted" style={{ fontSize: '0.75rem' }}>{style.name}</div>
+        </div>
+        <div className="card-body py-3">
+          <label className="form-label small text-muted">Tổng sản lượng hôm nay</label>
+          <input type="number" inputMode="numeric" min={0} disabled={isPastCutoff}
+            className="form-control form-control-lg text-center"
+            value={values[TOTAL_KEY] ?? ''}
+            onChange={(e) => setValues((v) => ({ ...v, [TOTAL_KEY]: e.target.value.replace(/[^\d]/g, '') }))} />
+          {!isPastCutoff && (
+            <button className="btn btn-primary w-100 mt-3" disabled={isSaving} onClick={handleSaveTotal}>
+              {saved ? <span className="d-flex align-items-center justify-content-center gap-1"><CheckCircle2 size={16} /> Đã lưu</span> : isSaving ? 'Đang lưu...' : saveLabel}
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   if (!hasMatrix) {
     return (
@@ -62,8 +100,7 @@ export function OutputMatrixCard({ style, initialValues, isPastCutoff, isSaving,
       .filter((x) => x.raw !== undefined && x.raw !== '')
       .map((x) => ({ colorId: x.colorId, sizeId: x.sizeId, quantity: parseInt(x.raw || '0') || 0 }))
     await onSave(cells)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    markSaved()
   }
 
   return (

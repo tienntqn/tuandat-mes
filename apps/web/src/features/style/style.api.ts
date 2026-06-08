@@ -9,6 +9,7 @@ export interface Style {
   image: string | null
   description: string | null
   sam: string | null
+  trackByColorSize: boolean
   customer?: { id: number; code: string; name: string }
   styleColors?: { colorId: number; color?: { id: number; code: string; name: string; hex: string | null } }[]
   styleSizes?: { sizeId: number; size?: { id: number; code: string; name: string; sortOrder: number } }[]
@@ -32,6 +33,7 @@ export type CreateStyleDto = {
   image?: string
   description?: string
   sam?: number
+  trackByColorSize?: boolean
   colorIds?: number[]
   sizeIds?: number[]
 }

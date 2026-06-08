@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional, IsInt, IsNumber, IsArray, Min } from 'class-validator'
+import { IsString, IsNotEmpty, IsOptional, IsInt, IsNumber, IsArray, IsBoolean, Min } from 'class-validator'
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
 
@@ -39,6 +39,11 @@ export class CreateStyleDto {
   @IsOptional()
   @Type(() => Number)
   sam?: number
+
+  @ApiPropertyOptional({ description: 'Quản lý sản lượng theo Màu×Size (mặc định true)' })
+  @IsBoolean()
+  @IsOptional()
+  trackByColorSize?: boolean
 
   @ApiPropertyOptional({ description: 'Danh sách id màu của mã hàng', type: [Number] })
   @IsArray()

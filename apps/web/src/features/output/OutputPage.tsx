@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { AlertTriangle, Clock, Wifi, WifiOff, RefreshCw, CheckCircle2, History } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useMyStyles, useTodayOutput, useUpsertOutput, useOfflineSync } from './output.hooks'
-import { OutputMatrixCard, type MatrixCell } from './OutputMatrixCard'
+import { OutputMatrixCard, TOTAL_KEY, type MatrixCell } from './OutputMatrixCard'
 import { type DailyOutput } from './output.api'
 import { getOfflineQueueCount } from './lib/offline-store'
 import { useAppSettings } from '@/features/settings/settings.hooks'
@@ -45,12 +45,16 @@ function LineOutputPage() {
   const outputs = today?.outputs ?? []
   const hasOutput = (styleId: number) => outputs.some((o) => o.styleId === styleId && o.stage === 'SEWING' && o.quantity > 0)
 
-  // Giá trị ban đầu của ma trận May cho 1 mã hàng
+  // Giá trị ban đầu của ma trận (hoặc ô tổng) May cho 1 mã hàng
   const buildInitial = (styleId: number): Record<string, string> => {
     const v: Record<string, string> = {}
     for (const o of outputs as DailyOutput[]) {
-      if (o.styleId === styleId && o.stage === 'SEWING' && o.colorId != null && o.sizeId != null) {
+      if (o.styleId !== styleId || o.stage !== 'SEWING') continue
+      if (o.colorId != null && o.sizeId != null) {
         v[cellKey(o.colorId, o.sizeId)] = String(o.quantity)
+      } else {
+        // Chế độ tổng (không màu/size)
+        v[TOTAL_KEY] = String(o.quantity)
       }
     }
     return v
@@ -59,7 +63,7 @@ function LineOutputPage() {
   const handleSave = useCallback(
     async (styleId: number, cells: MatrixCell[]) => {
       for (const cell of cells) {
-        await upsert.mutateAsync({ styleId, colorId: cell.colorId, sizeId: cell.sizeId, stage: 'SEWING', quantity: cell.quantity })
+        await upsert.mutateAsync({ styleId, colorId: cell.colorId ?? undefined, sizeId: cell.sizeId ?? undefined, stage: 'SEWING', quantity: cell.quantity })
       }
       await refetchToday()
       setOfflineCount(await getOfflineQueueCount())

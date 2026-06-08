@@ -363,29 +363,36 @@ export class OutputService {
       throw new BadRequestException('Mã hàng không thuộc xưởng của bạn')
     }
 
-    // Trần hợp lý: 1 ô màu×size không vượt tổng đã đặt của mã hàng (nếu đã khai báo PoItem)
-    const ordered = await this.prisma.poItem.aggregate({
-      where: {
-        colorId: dto.colorId,
-        sizeId: dto.sizeId,
-        po: { styleId: dto.styleId, deletedAt: null },
-      },
-      _sum: { quantity: true },
-    })
-    const orderedQty = ordered._sum.quantity ?? 0
-    if (orderedQty > 0 && dto.quantity > orderedQty) {
-      throw new BadRequestException(
-        `Số lượng (${dto.quantity}) vượt tổng đã đặt (${orderedQty}) của màu/size này`,
-      )
+    // Chế độ tổng (mã hàng không theo màu/size) → colorId/sizeId = null, bỏ qua kiểm tra trần PoItem
+    const colorId = dto.colorId ?? null
+    const sizeId = dto.sizeId ?? null
+
+    // Trần hợp lý: 1 ô màu×size không vượt tổng đã đặt của mã hàng (chỉ khi có màu/size)
+    if (colorId != null && sizeId != null) {
+      const ordered = await this.prisma.poItem.aggregate({
+        where: {
+          colorId,
+          sizeId,
+          po: { styleId: dto.styleId, deletedAt: null },
+        },
+        _sum: { quantity: true },
+      })
+      const orderedQty = ordered._sum.quantity ?? 0
+      if (orderedQty > 0 && dto.quantity > orderedQty) {
+        throw new BadRequestException(
+          `Số lượng (${dto.quantity}) vượt tổng đã đặt (${orderedQty}) của màu/size này`,
+        )
+      }
     }
 
+    // Dùng findFirst để upsert đúng cả khi colorId/sizeId là null
     const existing = await this.prisma.factorySectionOutput.findFirst({
       where: {
         factoryId,
         section: dto.section,
         styleId: dto.styleId,
-        colorId: dto.colorId,
-        sizeId: dto.sizeId,
+        colorId,
+        sizeId,
         outputDate,
       },
     })
@@ -402,8 +409,8 @@ export class OutputService {
           factoryId,
           section: dto.section,
           styleId: dto.styleId,
-          colorId: dto.colorId,
-          sizeId: dto.sizeId,
+          colorId,
+          sizeId,
           outputDate,
           quantity: dto.quantity,
           enteredBy: user.employeeId,

@@ -28,6 +28,7 @@ export interface StyleForLine {
   code: string
   name: string
   sam: number | null
+  trackByColorSize?: boolean
   customer?: { id: number; name: string }
   styleColors?: { colorId: number; color?: ColorRef }[]
   styleSizes?: { sizeId: number; size?: SizeRef }[]
@@ -95,8 +96,8 @@ export interface SectionOutput {
   factoryId: number
   section: FactorySection
   styleId: number
-  colorId: number
-  sizeId: number
+  colorId: number | null
+  sizeId: number | null
   outputDate: string
   quantity: number
   enteredAt: string
@@ -116,8 +117,8 @@ export interface SectionTodayResult {
 export interface CreateSectionPayload {
   section: FactorySection
   styleId: number
-  colorId: number
-  sizeId: number
+  colorId?: number | null
+  sizeId?: number | null
   quantity: number
   outputDate?: string
 }

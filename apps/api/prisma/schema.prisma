@@ -412,6 +412,8 @@ model Style {
   image       String?
   description String?
   sam         Decimal?  @db.Decimal(10, 4)
+  // Có quản lý sản lượng theo Màu×Size không. Tắt = chỉ nhập tổng/ngày cho May & Cắt.
+  trackByColorSize Boolean @default(true)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -629,8 +631,9 @@ model FactorySectionOutput {
   factoryId  Int
   section    FactorySection
   styleId    Int
-  colorId    Int
-  sizeId     Int
+  // Cho phép NULL khi mã hàng ở chế độ chỉ nhập tổng (không theo màu/size)
+  colorId    Int?
+  sizeId     Int?
   outputDate DateTime       @db.Date
   quantity   Int
   enteredBy  Int
@@ -641,8 +644,8 @@ model FactorySectionOutput {
 
   factory Factory                   @relation(fields: [factoryId], references: [id])
   style   Style                     @relation(fields: [styleId], references: [id])
-  color   Color                     @relation(fields: [colorId], references: [id])
-  size    Size                      @relation(fields: [sizeId], references: [id])
+  color   Color?                    @relation(fields: [colorId], references: [id])
+  size    Size?                     @relation(fields: [sizeId], references: [id])
   logs    FactorySectionOutputLog[]
 
   @@unique([factoryId, section, styleId, colorId, sizeId, outputDate])

@@ -306,11 +306,11 @@ async function main() {
     { code: 'GS-2601', name: 'Áo Hoodie Nỉ AW26', customerIdx: 2, sam: 19.0, season: 'AW26' },
     { code: 'GS-2602', name: 'Quần Short Kaki SS26', customerIdx: 2, sam: 10.5, season: 'SS26' },
     { code: 'SC-2601', name: 'Đầm Maxi Nữ SS26', customerIdx: 3, sam: 22.0, season: 'SS26' },
-    { code: 'SC-2602', name: 'Áo Sơ Mi Nữ SS26', customerIdx: 3, sam: 14.0, season: 'SS26' },
+    { code: 'SC-2602', name: 'Áo Sơ Mi Nữ SS26', customerIdx: 3, sam: 14.0, season: 'SS26', trackByColorSize: false },
   ]
   const styles: { id: number }[] = []
   for (const s of styleData) {
-    styles.push(await prisma.style.create({ data: { code: s.code, name: s.name, customerId: customers[s.customerIdx].id, sam: s.sam, season: s.season } }))
+    styles.push(await prisma.style.create({ data: { code: s.code, name: s.name, customerId: customers[s.customerIdx].id, sam: s.sam, season: s.season, trackByColorSize: (s as any).trackByColorSize ?? true } }))
   }
   console.log(`✓ Customer: 4 (SOHO, GLORIA JEANS, GS, SOCO) | Style: ${styles.length}`)
 

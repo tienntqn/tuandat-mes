@@ -23,7 +23,7 @@ export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: P
   const { data: customers = [] } = useCustomersActive()
   const { data: colors = [] } = useColorsActive()
   const { data: sizes = [] } = useSizesActive()
-  const [form, setForm] = useState<CreateStyleDto>({ name: '', customerId: 0, season: '', image: '', description: '', sam: undefined, colorIds: [], sizeIds: [] })
+  const [form, setForm] = useState<CreateStyleDto>({ name: '', customerId: 0, season: '', image: '', description: '', sam: undefined, trackByColorSize: true, colorIds: [], sizeIds: [] })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   // Reset form khi mở dialog/đổi style. KHÔNG để `customers` trong deps để tránh
@@ -34,10 +34,11 @@ export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: P
         style
           ? {
               name: style.name, customerId: style.customerId, season: style.season ?? '', image: style.image ?? '', description: style.description ?? '', sam: style.sam ? +style.sam : undefined,
+              trackByColorSize: style.trackByColorSize ?? true,
               colorIds: (style.styleColors ?? []).map((sc) => sc.colorId),
               sizeIds: (style.styleSizes ?? []).map((ss) => ss.sizeId),
             }
-          : { name: '', customerId: 0, season: '', image: '', description: '', sam: undefined, colorIds: [], sizeIds: [] },
+          : { name: '', customerId: 0, season: '', image: '', description: '', sam: undefined, trackByColorSize: true, colorIds: [], sizeIds: [] },
       )
       setErrors({})
     }
@@ -101,36 +102,54 @@ export function StyleFormDialog({ open, style, onClose, onSubmit, isPending }: P
             <textarea className="w-full rounded-lg border px-3 py-2 text-sm" rows={2} value={form.description ?? ''} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
 
-          <Field label="Màu của mã hàng">
-            <div className="d-flex flex-wrap gap-2">
-              {colors.length === 0 && <span className="text-muted small">Chưa có màu trong danh mục</span>}
-              {colors.map((c) => {
-                const active = (form.colorIds ?? []).includes(c.id)
-                return (
-                  <button type="button" key={c.id} onClick={() => setForm({ ...form, colorIds: toggleId(form.colorIds, c.id) })}
-                    className={`btn btn-sm d-inline-flex align-items-center gap-1 ${active ? 'btn-primary text-white' : 'btn-outline-secondary'}`}>
-                    <span style={{ width: 12, height: 12, borderRadius: 3, border: '1px solid #ccc', background: c.hex ?? '#fff', display: 'inline-block' }} />
-                    {c.name}
-                  </button>
-                )
-              })}
-            </div>
-          </Field>
+          {/* Cờ quản lý theo Màu/Size — quyết định cách nhập sản lượng May & Cắt */}
+          <div className="rounded-lg border px-3 py-2">
+            <label className="d-flex align-items-center gap-2 mb-0" style={{ cursor: 'pointer' }}>
+              <input type="checkbox" className="form-check-input mt-0" checked={form.trackByColorSize ?? true}
+                onChange={(e) => setForm({ ...form, trackByColorSize: e.target.checked })} />
+              <span className="text-sm font-medium">Quản lý sản lượng theo Màu × Size</span>
+            </label>
+            <p className="text-xs text-muted-foreground mb-0 mt-1">
+              {form.trackByColorSize ?? true
+                ? 'Chuyền may & Tổ cắt nhập sản lượng theo ma trận màu/size.'
+                : 'Tắt: Chuyền may & Tổ cắt chỉ nhập 1 ô TỔNG sản lượng/ngày (không theo màu/size).'}
+            </p>
+          </div>
 
-          <Field label="Size của mã hàng">
-            <div className="d-flex flex-wrap gap-2">
-              {sizes.length === 0 && <span className="text-muted small">Chưa có size trong danh mục</span>}
-              {sizes.map((s) => {
-                const active = (form.sizeIds ?? []).includes(s.id)
-                return (
-                  <button type="button" key={s.id} onClick={() => setForm({ ...form, sizeIds: toggleId(form.sizeIds, s.id) })}
-                    className={`btn btn-sm ${active ? 'btn-primary text-white' : 'btn-outline-secondary'}`}>
-                    {s.code}
-                  </button>
-                )
-              })}
-            </div>
-          </Field>
+          {(form.trackByColorSize ?? true) && (
+            <>
+              <Field label="Màu của mã hàng">
+                <div className="d-flex flex-wrap gap-2">
+                  {colors.length === 0 && <span className="text-muted small">Chưa có màu trong danh mục</span>}
+                  {colors.map((c) => {
+                    const active = (form.colorIds ?? []).includes(c.id)
+                    return (
+                      <button type="button" key={c.id} onClick={() => setForm({ ...form, colorIds: toggleId(form.colorIds, c.id) })}
+                        className={`btn btn-sm d-inline-flex align-items-center gap-1 ${active ? 'btn-primary text-white' : 'btn-outline-secondary'}`}>
+                        <span style={{ width: 12, height: 12, borderRadius: 3, border: '1px solid #ccc', background: c.hex ?? '#fff', display: 'inline-block' }} />
+                        {c.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
+
+              <Field label="Size của mã hàng">
+                <div className="d-flex flex-wrap gap-2">
+                  {sizes.length === 0 && <span className="text-muted small">Chưa có size trong danh mục</span>}
+                  {sizes.map((s) => {
+                    const active = (form.sizeIds ?? []).includes(s.id)
+                    return (
+                      <button type="button" key={s.id} onClick={() => setForm({ ...form, sizeIds: toggleId(form.sizeIds, s.id) })}
+                        className={`btn btn-sm ${active ? 'btn-primary text-white' : 'btn-outline-secondary'}`}>
+                        {s.code}
+                      </button>
+                    )
+                  })}
+                </div>
+              </Field>
+            </>
+          )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-lg border px-4 py-2 text-sm hover:bg-accent">Hủy</button>

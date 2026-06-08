@@ -53,7 +53,8 @@ export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) 
       ),
     [styleDetail],
   )
-  const hasMatrix = colors.length > 0 && sizes.length > 0
+  // Chỉ hiện ma trận khi mã hàng bật quản lý theo Màu/Size VÀ đã khai báo đủ màu+size
+  const hasMatrix = (styleDetail?.trackByColorSize ?? true) && colors.length > 0 && sizes.length > 0
 
   // Reset form khi mở/đổi PO (không phụ thuộc styles)
   useEffect(() => {
@@ -221,7 +222,11 @@ export function POFormDialog({ open, po, onClose, onSubmit, isPending }: Props) 
             ) : (
               <Field label="Số lượng *" error={errors.totalQuantity}>
                 <input type="number" min={1} className="w-full rounded-lg border px-3 py-2 text-sm" value={form.totalQuantity || ''} onChange={(e) => setForm({ ...form, totalQuantity: +e.target.value })} />
-                <p className="text-xs text-muted-foreground mt-1">Mã hàng chưa khai báo Màu/Size — vào Danh mục → Mã hàng để thêm, hoặc nhập tổng số lượng.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {styleDetail && styleDetail.trackByColorSize === false
+                    ? 'Mã hàng quản lý theo TỔNG (không tách màu/size) — nhập tổng số lượng PO.'
+                    : 'Mã hàng chưa khai báo Màu/Size — vào Danh mục → Mã hàng để thêm, hoặc nhập tổng số lượng.'}
+                </p>
               </Field>
             )
           )}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle, Clock, RefreshCw, CheckCircle2 } from 'lucide-react'
 import { useFactoryStyles, useSectionToday, useUpsertSection } from './output.hooks'
-import { OutputMatrixCard, type MatrixCell } from './OutputMatrixCard'
+import { OutputMatrixCard, TOTAL_KEY, type MatrixCell } from './OutputMatrixCard'
 import type { FactorySection } from './output.api'
 
 const cellKey = (colorId: number, sizeId: number) => `${colorId}:${sizeId}`
@@ -26,14 +26,16 @@ export default function SectionMatrixPage({ section, title }: Props) {
   const buildInitial = (styleId: number): Record<string, string> => {
     const v: Record<string, string> = {}
     for (const o of outputs) {
-      if (o.styleId === styleId) v[cellKey(o.colorId, o.sizeId)] = String(o.quantity)
+      if (o.styleId !== styleId) continue
+      if (o.colorId != null && o.sizeId != null) v[cellKey(o.colorId, o.sizeId)] = String(o.quantity)
+      else v[TOTAL_KEY] = String(o.quantity) // chế độ tổng
     }
     return v
   }
 
   const handleSave = async (styleId: number, cells: MatrixCell[]) => {
     for (const cell of cells) {
-      await upsert.mutateAsync({ section, styleId, colorId: cell.colorId, sizeId: cell.sizeId, quantity: cell.quantity })
+      await upsert.mutateAsync({ section, styleId, colorId: cell.colorId ?? undefined, sizeId: cell.sizeId ?? undefined, quantity: cell.quantity })
     }
     await refetch()
   }

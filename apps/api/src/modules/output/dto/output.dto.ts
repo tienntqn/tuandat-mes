@@ -41,11 +41,14 @@ export class CreateSectionOutputDto {
   @IsInt()
   styleId: number
 
+  // Bỏ trống khi mã hàng ở chế độ chỉ nhập tổng (không theo màu/size)
   @IsInt()
-  colorId: number
+  @IsOptional()
+  colorId?: number
 
   @IsInt()
-  sizeId: number
+  @IsOptional()
+  sizeId?: number
 
   @IsInt()
   @Min(0)
