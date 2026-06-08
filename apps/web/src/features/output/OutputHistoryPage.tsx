@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useOutputHistory } from './output.hooks'
 import { useMyStyles } from './output.hooks'
-import { STAGE_LABELS, STAGE_COLORS, type DailyOutput } from './output.api'
+import { type DailyOutput } from './output.api'
 import { BarChart2 } from 'lucide-react'
 
 type DateFilter = '7days' | '14days' | '30days' | 'this_week' | 'last_week' | 'this_month'
@@ -195,12 +195,22 @@ export default function OutputHistoryPage() {
                         className="d-flex align-items-center justify-content-between bg-light px-3 py-2 mb-2" style={{ borderRadius: 4 }}
                       >
                         <div className="d-flex align-items-center gap-2 flex-grow-1 overflow-hidden">
-                          <span className={`badge flex-shrink-0 ${STAGE_COLORS[o.stage]}`}>
-                            {STAGE_LABELS[o.stage]}
-                          </span>
                           <span className="fw-medium text-truncate small">
                             {o.style?.code ?? `Style #${o.styleId}`}
                           </span>
+                          {/* Hiện màu/size nếu nhập theo màu/size */}
+                          {(o.color || o.size) && (
+                            <span className="badge bg-secondary-transparent text-secondary flex-shrink-0 d-inline-flex align-items-center gap-1">
+                              {o.color && (
+                                <>
+                                  <span style={{ width: 10, height: 10, borderRadius: 2, border: '1px solid #ccc', background: o.color.hex ?? '#fff', display: 'inline-block' }} />
+                                  {o.color.name}
+                                </>
+                              )}
+                              {o.color && o.size && <span className="text-muted">·</span>}
+                              {o.size && <span>{o.size.code}</span>}
+                            </span>
+                          )}
                         </div>
                         <span className="fw-bold ms-2">{o.quantity.toLocaleString('vi-VN')}</span>
                       </div>

@@ -218,6 +218,8 @@ export class OutputService {
       },
       include: {
         style: true,
+        color: true,
+        size: true,
       },
       orderBy: [{ outputDate: 'desc' }, { stage: 'asc' }],
     })
