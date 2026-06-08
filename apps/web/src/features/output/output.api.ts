@@ -182,6 +182,15 @@ export const outputApi = {
   upsert: (payload: CreateOutputPayload) =>
     api.post<DailyOutput>('/output', payload).then((r) => r.data),
 
+  // Kiểm tra trước khi lưu cả lô: tổng May trong ngày có vượt kế hoạch không
+  validateTotal: (payload: { styleId: number; total: number; outputDate?: string }) =>
+    api
+      .post<{ ok: boolean; planned: number; otherDays: number; total: number; wouldBe: number }>(
+        '/output/validate-total',
+        payload,
+      )
+      .then((r) => r.data),
+
   // Tổ cấp xưởng (Cắt / KCS)
   getFactoryStyles: () =>
     api.get<StyleForLine[]>('/output/section/styles').then((r) => r.data),

@@ -77,6 +77,20 @@ export class CreateFinishingDto {
   outputDate?: string
 }
 
+// Kiểm tra trước khi lưu cả lô: tổng sản lượng May dự kiến của 1 mã hàng trong ngày
+export class ValidateSewingTotalDto {
+  @IsInt()
+  styleId: number
+
+  @IsInt()
+  @Min(0)
+  total: number
+
+  @IsOptional()
+  @IsDateString()
+  outputDate?: string
+}
+
 export class QueryOutputDto {
   @IsOptional()
   @IsInt()

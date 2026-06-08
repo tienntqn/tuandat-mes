@@ -15,6 +15,7 @@ import {
   CreateDailyOutputDto,
   CreateSectionOutputDto,
   CreateFinishingDto,
+  ValidateSewingTotalDto,
 } from './dto/output.dto'
 import { FactorySection } from '@prisma/client'
 import type { RequestUser } from '../../common/types/request-user.type'
@@ -124,6 +125,15 @@ export class OutputController {
     @CurrentUser() user: RequestUser,
   ) {
     return this.outputService.getOutputLogs(id, user)
+  }
+
+  // Kiểm tra trước khi lưu cả lô (tổng May trong ngày không vượt kế hoạch)
+  @Post('validate-total')
+  validateTotal(
+    @CurrentUser() user: RequestUser,
+    @Body() dto: ValidateSewingTotalDto,
+  ) {
+    return this.outputService.validateSewingTotal(user, dto)
   }
 
   // Nhập / upsert sản lượng

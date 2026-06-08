@@ -111,6 +111,52 @@ export class OutputService {
   }
 
   // UPSERT sản lượng (Rule 1: lấy lần cuối; Rule 2: audit log)
+  // Kế hoạch may của 1 mã hàng trên chuyền = tổng FactoryPlan của chuyền cho mã hàng
+  private async plannedForLineStyle(lineId: number, styleId: number): Promise<number> {
+    const agg = await this.prisma.factoryPlan.aggregate({
+      where: { lineId, companyPlan: { styleId } },
+      _sum: { plannedQuantity: true },
+    })
+    return agg._sum.plannedQuantity ?? 0
+  }
+
+  // Tổng sản lượng May đã có của mã hàng trên chuyền, KHÔNG tính ngày `excludeDate`
+  // (dùng để cộng với tổng nhập mới trong ngày → so với kế hoạch)
+  private async sewnExcludingDate(
+    lineId: number,
+    styleId: number,
+    excludeDate: Date,
+  ): Promise<number> {
+    const agg = await this.prisma.dailyOutput.aggregate({
+      where: {
+        lineId,
+        styleId,
+        stage: 'SEWING',
+        outputDate: { not: excludeDate },
+      },
+      _sum: { quantity: true },
+    })
+    return agg._sum.quantity ?? 0
+  }
+
+  // Kiểm tra trước khi lưu cả lô: tổng May (các ngày khác + tổng mới trong ngày) ≤ kế hoạch
+  async validateSewingTotal(
+    user: RequestUser,
+    dto: { styleId: number; total: number; outputDate?: string },
+  ) {
+    const lineId = user.lineId
+    if (!lineId) throw new ForbiddenException('Tài khoản chưa được gán chuyền')
+
+    const outputDate = dto.outputDate ? new Date(dto.outputDate) : new Date()
+    outputDate.setHours(0, 0, 0, 0)
+
+    const planned = await this.plannedForLineStyle(lineId, dto.styleId)
+    const otherDays = await this.sewnExcludingDate(lineId, dto.styleId, outputDate)
+    const wouldBe = otherDays + dto.total
+    const ok = planned === 0 || wouldBe <= planned
+    return { ok, planned, otherDays, total: dto.total, wouldBe }
+  }
+
   async upsertOutput(user: RequestUser, dto: CreateDailyOutputDto) {
     const lineId = user.lineId
     if (!lineId) {

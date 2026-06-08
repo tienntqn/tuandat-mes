@@ -3,7 +3,7 @@ import { AlertTriangle, Clock, Wifi, WifiOff, RefreshCw, CheckCircle2, History }
 import { useNavigate } from 'react-router-dom'
 import { useMyStyles, useTodayOutput, useUpsertOutput, useOfflineSync } from './output.hooks'
 import { OutputMatrixCard, TOTAL_KEY, type MatrixCell } from './OutputMatrixCard'
-import { type DailyOutput } from './output.api'
+import { outputApi, type DailyOutput } from './output.api'
 import { getOfflineQueueCount } from './lib/offline-store'
 import { toast } from '@/lib/toast'
 import { useAppSettings } from '@/features/settings/settings.hooks'
@@ -63,12 +63,26 @@ function LineOutputPage() {
 
   const handleSave = useCallback(
     async (styleId: number, cells: MatrixCell[]) => {
+      if (cells.length === 0) return
+      // Chặn nguyên lô TRƯỚC khi lưu: tổng nhập trong ngày không được vượt kế hoạch chuyền
+      const total = cells.reduce((s, c) => s + (c.quantity || 0), 0)
+      try {
+        const v = await outputApi.validateTotal({ styleId, total })
+        if (!v.ok) {
+          toast.error(
+            `Vượt kế hoạch: đã may ${v.otherDays.toLocaleString('vi-VN')} + nhập ${total.toLocaleString('vi-VN')} = ${v.wouldBe.toLocaleString('vi-VN')} > kế hoạch ${v.planned.toLocaleString('vi-VN')}. Vui lòng nhập lại.`,
+          )
+          return
+        }
+      } catch {
+        // Nếu API kiểm tra lỗi (vd offline) → bỏ qua, để backend chặn khi lưu
+      }
       for (const cell of cells) {
         await upsert.mutateAsync({ styleId, colorId: cell.colorId ?? undefined, sizeId: cell.sizeId ?? undefined, stage: 'SEWING', quantity: cell.quantity })
       }
       await refetchToday()
       setOfflineCount(await getOfflineQueueCount())
-      if (cells.length > 0) toast.success('Lưu sản lượng thành công!')
+      toast.success('Lưu sản lượng thành công!')
     },
     [upsert, refetchToday],
   )
