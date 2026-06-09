@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/stores/auth.store'
 import { useLogout } from '@/features/auth/auth.hooks'
 import { useAlerts } from '@/features/report/report.hooks'
+import { InstallPwaButton } from '@/components/shared/InstallPwaButton'
 
 export function Topbar() {
   const { user } = useAuthStore()
@@ -48,6 +49,9 @@ export function Topbar() {
 
           {/* Right icons — luôn hiển thị, không dùng collapse */}
           <div className="d-flex align-items-center ms-auto gap-1 header-right-icons">
+
+            {/* Cài đặt PWA */}
+            <InstallPwaButton className="btn btn-sm btn-primary text-white d-inline-flex align-items-center gap-1 me-1" />
 
             {/* Dark/Light mode toggle */}
             <div className="dropdown">

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { LoadingScreen } from './LoadingScreen'
 import { useAuthStore } from '@/stores/auth.store'
+import { InstallPwaButton } from '@/components/shared/InstallPwaButton'
 
 const OutputLayout = lazy(() => import('@/features/output/OutputLayout'))
 
@@ -21,10 +22,11 @@ export default function ShopFloorLayout() {
         style={{ position: 'sticky', top: 0, zIndex: 10 }}
       >
         <span style={{ fontWeight: 700, color: '#6259ca' }}>Tuấn Đạt MES — Nhập sản lượng</span>
-        <div className="d-flex align-items-center gap-3">
-          <span className="text-muted small">{user?.fullName ?? user?.username}</span>
+        <div className="d-flex align-items-center gap-2 gap-md-3">
+          <InstallPwaButton className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" />
+          <span className="text-muted small d-none d-sm-inline">{user?.fullName ?? user?.username}</span>
           <button className="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-1" onClick={logout}>
-            <LogOut size={14} /> Đăng xuất
+            <LogOut size={14} /> <span className="d-none d-sm-inline">Đăng xuất</span>
           </button>
         </div>
       </header>

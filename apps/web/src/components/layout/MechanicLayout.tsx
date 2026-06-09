@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react'
 import { LoadingScreen } from './LoadingScreen'
 import { useAuthStore } from '@/stores/auth.store'
 import { ScanMachineButton } from '@/features/machine/ScanMachineButton'
+import { InstallPwaButton } from '@/components/shared/InstallPwaButton'
 
 const MechanicDashboard = lazy(() => import('@/features/machine/MechanicDashboard'))
 const MachineLayout = lazy(() => import('@/features/machine/MachineLayout'))
@@ -34,6 +35,7 @@ export default function MechanicLayout() {
       >
         <span style={{ fontWeight: 700, color: '#6259ca' }}>Tuấn Đạt MES — Cơ điện</span>
         <div className="d-flex align-items-center gap-2 gap-md-3">
+          <InstallPwaButton className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" />
           <ScanMachineButton />
           <span className="text-muted small d-none d-sm-inline">{user?.fullName ?? user?.username}</span>
           <button className="btn btn-outline-danger btn-sm d-inline-flex align-items-center gap-1" onClick={logout}>

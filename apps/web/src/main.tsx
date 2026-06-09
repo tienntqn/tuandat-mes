@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { queryClient } from './lib/query-client'
 import './lib/i18n'
+import './lib/pwa-install' // bắt sự kiện cài đặt PWA sớm
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
