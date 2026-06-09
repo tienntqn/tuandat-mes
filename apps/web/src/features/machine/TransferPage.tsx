@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   useTransfers, useCreateTransfer, useConfirmSender, useConfirmReceiver, useRejectTransfer,
   useMachines, useTransferFormOptions,
@@ -17,6 +18,19 @@ export default function TransferPage() {
   const [detailTarget, setDetailTarget] = useState<MachineTransfer | null>(null)
   const [rejectTarget, setRejectTarget] = useState<MachineTransfer | null>(null)
   const [rejectReason, setRejectReason] = useState('')
+  // Mở sẵn form tạo lệnh với máy được chọn (vd điều hướng từ trang chi tiết máy sau khi quét QR)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [presetMachineId, setPresetMachineId] = useState<number | undefined>(undefined)
+  useEffect(() => {
+    const pid = (location.state as any)?.presetMachineId as number | undefined
+    if (pid) {
+      setPresetMachineId(pid)
+      setFormOpen(true)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { isAdmin, hasRole, user } = useAuthStore()
   // Tạo lệnh: GĐ xưởng/Cơ điện được phép. Duyệt bên đưa + từ chối: chỉ BOD/Admin.
@@ -184,8 +198,9 @@ export default function TransferPage() {
         <TransferFormDialog
           machines={machineList}
           options={formOptions}
-          onClose={() => setFormOpen(false)}
-          onSubmit={(dto) => createTransfer.mutate(dto, { onSuccess: () => setFormOpen(false) })}
+          initialMachineId={presetMachineId}
+          onClose={() => { setFormOpen(false); setPresetMachineId(undefined) }}
+          onSubmit={(dto) => createTransfer.mutate(dto, { onSuccess: () => { setFormOpen(false); setPresetMachineId(undefined) } })}
           isPending={createTransfer.isPending}
         />
       )}
@@ -299,10 +314,11 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 const POS_SHORT: Record<string, string> = { FACTORY_DIRECTOR: 'GĐ xưởng', MECHANIC: 'Cơ điện' }
 
 function TransferFormDialog({
-  machines, options, onClose, onSubmit, isPending,
+  machines, options, initialMachineId, onClose, onSubmit, isPending,
 }: {
   machines: any[]
   options?: TransferFormOptions
+  initialMachineId?: number
   onClose: () => void
   onSubmit: (dto: CreateTransferDto) => void
   isPending?: boolean
@@ -312,13 +328,25 @@ function TransferFormDialog({
   const factories = options?.factories ?? []
   const people = options?.people ?? []
 
+  const presetMachine = initialMachineId ? machines.find((m) => m.id === initialMachineId) : undefined
   const [form, setForm] = useState<Partial<CreateTransferDto>>({
     transferDate: new Date().toISOString().substring(0, 10),
+    // Máy chọn sẵn (từ QR) → xưởng gửi = xưởng của máy
+    machineId: initialMachineId,
     // Cơ điện: mặc định xưởng gửi = xưởng mình, người đưa = chính mình
-    fromFactoryId: isMech ? user?.factoryId ?? undefined : undefined,
+    fromFactoryId: presetMachine?.factoryId ?? (isMech ? user?.factoryId ?? undefined : undefined),
     senderId: isMech ? user?.employeeId : undefined,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Khi danh sách máy tải xong sau khi mở form, đồng bộ lại máy/xưởng preset
+  useEffect(() => {
+    if (initialMachineId && machines.length) {
+      const m = machines.find((mm) => mm.id === initialMachineId)
+      if (m) setForm((f) => ({ ...f, machineId: initialMachineId, fromFactoryId: f.fromFactoryId ?? m.factoryId }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMachineId, machines.length])
 
   const fromFactoryName = factories.find((f) => f.id === form.fromFactoryId)?.name
   const sendersList = people.filter((p) => p.factoryId === form.fromFactoryId)

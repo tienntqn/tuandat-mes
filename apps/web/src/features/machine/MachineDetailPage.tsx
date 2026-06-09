@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Edit2, Trash, AlertTriangle, X } from 'lucide-react'
+import { ArrowLeft, Edit2, Trash, AlertTriangle, X, Wrench, Package, Repeat } from 'lucide-react'
 import { useMachine, useUpdateMachine, useLiquidateMachine } from './machine.hooks'
 import { MachineFormDialog } from './MachineFormDialog'
+import { RepairProposalDialog } from './RepairProposalDialog'
+import { useCreateRepairProposal } from './repair.hooks'
+import type { RepairProposalType } from './repair.api'
 import { PageWrapper } from '@/components/layout/PageWrapper'
 import { QRCode } from '@/components/shared/QRCode'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -23,6 +26,9 @@ export default function MachineDetailPage() {
   const liquidate = useLiquidateMachine()
   const [editOpen, setEditOpen] = useState(false)
   const [liqOpen, setLiqOpen] = useState(false)
+  const [repairOpen, setRepairOpen] = useState(false)
+  const [repairType, setRepairType] = useState<RepairProposalType>('REPAIR')
+  const createRepair = useCreateRepairProposal()
 
   const { isAdmin, hasRole } = useAuthStore()
   const canWrite = isAdmin() || hasRole('BOD') || hasRole('FACTORY_DIRECTOR') || hasRole('MECHANIC')
@@ -141,10 +147,24 @@ export default function MachineDetailPage() {
             </div>
           </div>
           <div className="card">
+            <div className="card-header"><h6 className="card-title mb-0">Thao tác nhanh</h6></div>
             <div className="card-body d-flex flex-column gap-2">
+              {canWrite && !machine.liquidatedAt && (
+                <>
+                  <button onClick={() => { setRepairType('REPAIR'); setRepairOpen(true) }} className="btn btn-primary btn-sm text-white d-inline-flex align-items-center justify-content-center gap-2">
+                    <Wrench size={15} /> Đề xuất sửa chữa
+                  </button>
+                  <button onClick={() => { setRepairType('REPLACEMENT'); setRepairOpen(true) }} className="btn btn-outline-primary btn-sm d-inline-flex align-items-center justify-content-center gap-2">
+                    <Package size={15} /> Thay thế linh kiện
+                  </button>
+                  <button onClick={() => navigate('/machines/transfers', { state: { presetMachineId: machine.id } })} className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center justify-content-center gap-2">
+                    <Repeat size={15} /> Điều chuyển máy
+                  </button>
+                  <hr className="my-1" />
+                </>
+              )}
               <Link to="/machines/maintenance" className="btn btn-outline-secondary btn-sm">Lịch sử bảo dưỡng</Link>
-              <Link to="/machines/repairs" className="btn btn-outline-secondary btn-sm">Đề xuất sửa chữa</Link>
-              <Link to="/machines/transfers" className="btn btn-outline-secondary btn-sm">Điều chuyển</Link>
+              <Link to="/machines/repairs" className="btn btn-outline-secondary btn-sm">Danh sách đề xuất</Link>
             </div>
           </div>
         </div>
@@ -165,6 +185,15 @@ export default function MachineDetailPage() {
         onClose={() => setLiqOpen(false)}
         isPending={liquidate.isPending}
         onSubmit={(dto) => liquidate.mutate({ id: machine.id, dto }, { onSuccess: () => { setLiqOpen(false); navigate('/machines') } })}
+      />
+
+      <RepairProposalDialog
+        open={repairOpen}
+        defaultMachineId={machine.id}
+        defaultType={repairType}
+        onClose={() => setRepairOpen(false)}
+        isPending={createRepair.isPending}
+        onSubmit={(dto) => createRepair.mutate(dto, { onSuccess: () => setRepairOpen(false) })}
       />
 
       <style>{`@media print { .app-sidebar, .app-header, .page-header, .card-header, .btn, .alert { display: none !important; } .qr-print { border: none !important; } body * { visibility: hidden; } .qr-print, .qr-print * { visibility: visible; } .qr-print { position: absolute; left: 0; top: 0; } }`}</style>

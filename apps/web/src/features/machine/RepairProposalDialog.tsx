@@ -10,6 +10,7 @@ interface Props {
   open: boolean
   proposal?: RepairProposal | null
   defaultMachineId?: number
+  defaultType?: RepairProposalType
   onClose: () => void
   onSubmit: (dto: CreateRepairProposalDto) => void
   isPending?: boolean
@@ -17,7 +18,7 @@ interface Props {
 
 interface ItemRow { sparePartId?: number; name: string; quantity: number; unit?: string; note?: string }
 
-export function RepairProposalDialog({ open, proposal, defaultMachineId, onClose, onSubmit, isPending }: Props) {
+export function RepairProposalDialog({ open, proposal, defaultMachineId, defaultType, onClose, onSubmit, isPending }: Props) {
   const [machineId, setMachineId] = useState<number | ''>('')
   const [type, setType] = useState<RepairProposalType>('REPAIR')
   const [title, setTitle] = useState('')
@@ -43,7 +44,7 @@ export function RepairProposalDialog({ open, proposal, defaultMachineId, onClose
       setAttachments((proposal.attachments ?? []).map((a) => ({ url: a.url, type: a.type, filename: a.filename ?? undefined })))
     } else {
       setMachineId(defaultMachineId ?? '')
-      setType('REPAIR')
+      setType(defaultType ?? 'REPAIR')
       setTitle('')
       setDescription('')
       setEstimatedCost('')
@@ -51,7 +52,7 @@ export function RepairProposalDialog({ open, proposal, defaultMachineId, onClose
       setAttachments([])
     }
     setError('')
-  }, [open, proposal, defaultMachineId])
+  }, [open, proposal, defaultMachineId, defaultType])
 
   const addItem = () => setItems((r) => [...r, { name: '', quantity: 1 }])
   const removeItem = (i: number) => setItems((r) => r.filter((_, idx) => idx !== i))

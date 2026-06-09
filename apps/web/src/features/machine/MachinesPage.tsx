@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useMachines, useCreateMachine, useUpdateMachine, useDeleteMachine } from './machine.hooks'
 import { MachineFormDialog } from './MachineFormDialog'
 import { MachineQrPrintModal } from './MachineQrPrintModal'
+import { ScanMachineButton } from './ScanMachineButton'
 import { useAppSettings } from '@/features/settings/settings.hooks'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Pagination } from '@/components/shared/Pagination'
@@ -125,6 +126,7 @@ export default function MachinesPage() {
           <button onClick={() => refetch()} className="btn btn-outline-secondary btn-icon">
             <span><i className="fe fe-rotate-ccw"></i></span>
           </button>
+          <ScanMachineButton className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1" />
           <ExcelToolbar
             sheetName="Máy móc"
             fileBase="may-moc"
