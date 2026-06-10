@@ -78,6 +78,12 @@
    hơn toàn bộ nội dung khi đang mở (chỉ áp dụng <992px).
    ============================================================ */
 @media (max-width: 991px) {
+  /* Wrapper .sticky bọc sidebar: nâng cả stacking-context của nhánh
+     sidebar lên trên nội dung, phòng trường hợp bị "nhốt" context. */
+  .sticky:has(> .app-sidebar) {
+    position: relative;
+    z-index: 1045;
+  }
   .app-sidebar {
     z-index: 1045 !important;
   }
