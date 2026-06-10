@@ -68,6 +68,24 @@
   overflow-x: hidden;
 }
 
+/* ============================================================
+   MOBILE: sidebar trái bị các component trên main page đè lên
+   ------------------------------------------------------------
+   Template gốc đặt .app-sidebar z-index:99 và overlay z-index:9,
+   trong khi nhiều thành phần main page (app-header, sticky table
+   header, dropdown...) có z-index 999–1030 nên khi mở menu trên
+   mobile sidebar bị che. Nâng z-index sidebar + overlay lên cao
+   hơn toàn bộ nội dung khi đang mở (chỉ áp dụng <992px).
+   ============================================================ */
+@media (max-width: 991px) {
+  .app-sidebar {
+    z-index: 1045 !important;
+  }
+  .app-sidebar__overlay {
+    z-index: 1044 !important;
+  }
+}
+
 /* Breadcrumb: ép màu chữ dễ đọc (tránh chữ trắng gần trùng nền) */
 .page-header .breadcrumb .breadcrumb-item {
   color: #6e7687 !important;
