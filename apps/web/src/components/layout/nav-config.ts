@@ -142,6 +142,9 @@ export const NAV_SECTIONS: NavSection[] = [
         path: '/accounting',
         icon: 'fe fe-credit-card',
         roles: ['ADMIN', 'BOD', 'ACCOUNTANT'],
+        children: [
+          { label: 'Gửi bảng lương', path: '/accounting', icon: 'fe fe-send', roles: ['ADMIN', 'BOD', 'ACCOUNTANT'] },
+        ],
       },
     ],
   },

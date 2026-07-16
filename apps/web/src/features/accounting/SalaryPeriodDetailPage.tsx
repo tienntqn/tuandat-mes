@@ -38,7 +38,6 @@ export default function SalaryPeriodDetailPage() {
     })
   }
 
-  const unmatchedCount = useMemo(() => slips.filter((s) => s.employeeId == null).length, [slips])
   const noEmailCount = useMemo(() => slips.filter((s) => !s.email).length, [slips])
 
   const statusBadge = (s: SalarySlip) => {
@@ -55,12 +54,12 @@ export default function SalaryPeriodDetailPage() {
   }
 
   if (isLoading) {
-    return <PageWrapper title="Chi tiết kỳ lương" breadcrumbs={[{ label: 'Kế toán' }, { label: 'Kỳ lương' }]}>
+    return <PageWrapper title="Chi tiết kỳ lương" breadcrumbs={[{ label: 'Kế toán' }, { label: 'Gửi bảng lương' }]}>
       <div className="text-center text-muted py-5">Đang tải...</div>
     </PageWrapper>
   }
   if (isError || !period) {
-    return <PageWrapper title="Chi tiết kỳ lương" breadcrumbs={[{ label: 'Kế toán' }, { label: 'Kỳ lương' }]}>
+    return <PageWrapper title="Chi tiết kỳ lương" breadcrumbs={[{ label: 'Kế toán' }, { label: 'Gửi bảng lương' }]}>
       <div className="text-center text-danger py-5">Không tải được kỳ lương này.</div>
     </PageWrapper>
   }
@@ -68,7 +67,7 @@ export default function SalaryPeriodDetailPage() {
   return (
     <PageWrapper
       title={`Bảng lương tháng ${period.month}/${period.year}`}
-      breadcrumbs={[{ label: 'Kế toán', href: '/accounting' }, { label: `Tháng ${period.month}/${period.year}` }]}
+      breadcrumbs={[{ label: 'Gửi bảng lương', href: '/accounting' }, { label: `Tháng ${period.month}/${period.year}` }]}
       actions={
         canWrite && (
           <div className="d-flex gap-2">
@@ -96,9 +95,6 @@ export default function SalaryPeriodDetailPage() {
       <div className="mb-3 d-flex gap-4 small text-muted">
         <span><Link to="/accounting">&larr; Danh sách kỳ lương</Link></span>
         <span>File nguồn: <strong>{period.sourceFileName}</strong></span>
-        {unmatchedCount > 0 && (
-          <span className="text-warning">⚠ {unmatchedCount} dòng không khớp nhân viên trong hệ thống</span>
-        )}
         {noEmailCount > 0 && (
           <span className="text-warning">⚠ {noEmailCount} dòng không có email</span>
         )}
@@ -130,12 +126,7 @@ export default function SalaryPeriodDetailPage() {
                     <tr key={s.id}>
                       <td><input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleOne(s.id)} /></td>
                       <td><code>{s.employeeCode}</code></td>
-                      <td className="fw-medium">
-                        {s.fullName}
-                        {s.employeeId == null && (
-                          <span className="badge bg-warning-transparent text-warning ms-2">Không khớp NV hệ thống</span>
-                        )}
-                      </td>
+                      <td className="fw-medium">{s.fullName}</td>
                       <td className="text-muted small">{s.department}</td>
                       <td className="text-muted small">{s.email ?? '—'}</td>
                       <td className="text-end">{money(s.totalSalary)}</td>

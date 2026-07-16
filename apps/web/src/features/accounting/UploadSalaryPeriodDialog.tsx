@@ -10,10 +10,17 @@ interface Props {
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
 
-export function UploadSalaryPeriodDialog({ open, onClose, onUploaded }: Props) {
+// Mặc định chọn kỳ lương THÁNG TRƯỚC — công ty chốt và thanh toán lương tháng trước
+// vào ngày 10 tháng hiện tại, nên khi kế toán mở form upload thường là để nộp lương tháng trước.
+function defaultPeriod(): { month: number; year: number } {
   const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
+  const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  return { month: prev.getMonth() + 1, year: prev.getFullYear() }
+}
+
+export function UploadSalaryPeriodDialog({ open, onClose, onUploaded }: Props) {
+  const [month, setMonth] = useState(() => defaultPeriod().month)
+  const [year, setYear] = useState(() => defaultPeriod().year)
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
 

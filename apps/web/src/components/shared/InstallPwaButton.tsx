@@ -32,7 +32,7 @@ export function InstallPwaButton({ className, label = 'Cài đặt ứng dụng'
         onClick={onClick}
         title="Cài đặt ứng dụng lên thiết bị"
       >
-        <Download size={15} /> {label}
+        <Download size={15} /> <span className="d-none d-lg-inline">{label}</span>
       </button>
 
       {showIos && (

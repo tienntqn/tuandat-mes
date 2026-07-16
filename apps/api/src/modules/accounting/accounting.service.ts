@@ -165,7 +165,7 @@ export class AccountingService {
       const period = await tx.salaryPeriod.upsert({
         where: { month_year: { month, year } },
         create: { month, year, sourceFileName: originalFileName, uploadedBy: userId },
-        update: { sourceFileName: originalFileName, uploadedBy: userId, uploadedAt: new Date() },
+        update: { sourceFileName: originalFileName, uploadedBy: userId, uploadedAt: new Date(), deletedAt: null },
       })
       await tx.salarySlip.deleteMany({ where: { periodId: period.id } })
       await tx.salarySlip.createMany({

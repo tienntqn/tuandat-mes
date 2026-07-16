@@ -92,6 +92,13 @@
   }
 }
 
+/* Topbar: khoá không cho các icon/nút bên phải bị co lại khi thiếu chỗ —
+   trước đây flex-shrink mặc định làm nút "Cài đặt ứng dụng" co nhỏ nhưng
+   chữ bên trong vẫn tràn ra ngoài, đè lên avatar và các icon lân cận. */
+.header-right-icons > * {
+  flex-shrink: 0;
+}
+
 /* Breadcrumb: ép màu chữ dễ đọc (tránh chữ trắng gần trùng nền) */
 .page-header .breadcrumb .breadcrumb-item {
   color: #6e7687 !important;

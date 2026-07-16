@@ -18,8 +18,8 @@ export default function SalaryPeriodsPage() {
 
   return (
     <PageWrapper
-      title="Phân hệ Kế toán — Bảng lương"
-      breadcrumbs={[{ label: 'Kế toán' }, { label: 'Kỳ lương' }]}
+      title="Gửi bảng lương"
+      breadcrumbs={[{ label: 'Kế toán' }, { label: 'Gửi bảng lương' }]}
       actions={
         canWrite && (
           <button onClick={() => setUploadOpen(true)} className="btn btn-primary btn-icon text-white">
