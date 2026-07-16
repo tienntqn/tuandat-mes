@@ -32,6 +32,7 @@ enum EmployeePosition {
   CUTTING_LEADER // Tổ trưởng Cắt (cấp xưởng)
   FINISHING_LEADER // Tổ trưởng Hoàn thành (cấp xưởng)
   QC_LEADER // Tổ trưởng KCS (cấp xưởng)
+  ACCOUNTANT // Kế toán (cấp công ty)
 }
 
 // Tổ cấp xưởng nhập sản lượng theo ma trận màu × size (Cắt, KCS)
@@ -281,6 +282,7 @@ model Employee {
   user              User?
   transfersSent     MachineTransfer[] @relation("TransferSender")
   transfersReceived MachineTransfer[] @relation("TransferReceiver")
+  salarySlips       SalarySlip[]
 
   @@index([factoryId])
   @@index([lineId])
@@ -623,6 +625,82 @@ model DailyOutputLog {
 }
 
 // ============================================================
+// KẾ TOÁN — BẢNG LƯƠNG (upload Excel + gửi email nhân viên)
+// ============================================================
+
+// 1 kỳ lương = 1 file Excel được kế toán upload cho 1 tháng/năm
+model SalaryPeriod {
+  id             Int       @id @default(autoincrement())
+  month          Int // 1-12, do kế toán chọn khi upload
+  year           Int
+  sourceFileName String
+  uploadedBy     Int
+  uploadedAt     DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  uploader User         @relation(fields: [uploadedBy], references: [id])
+  slips    SalarySlip[]
+
+  @@unique([month, year])
+  @@index([deletedAt])
+}
+
+// 1 dòng lương của 1 nhân viên trong kỳ — map trực tiếp cột B..AH của file Excel gốc
+model SalarySlip {
+  id           Int     @id @default(autoincrement())
+  periodId     Int
+  employeeId   Int? // null nếu MSNV không khớp nhân viên nào trong hệ thống
+  employeeCode String // MSNV (cột C) — giữ nguyên dù khớp hay không
+  fullName     String // D - Họ Tên
+  department   String? // B - Phòng
+  bankAccount  String? // E - STK
+  email        String? // AP - email nhận lương
+
+  workDays                Decimal @default(0) @db.Decimal(14, 2) // F  Ngày công
+  otSundayNight           Decimal @default(0) @db.Decimal(14, 2) // G  Tăng ca CN, đêm
+  otNormalHours           Decimal @default(0) @db.Decimal(14, 2) // I  Tăng ca bình thường (giờ)
+  totalWorkHours          Decimal @default(0) @db.Decimal(14, 2) // J  Tổng giờ làm việc
+  convertedWorkDays       Decimal @default(0) @db.Decimal(14, 2) // K  Ngày công quy đổi
+  workCoefficient         Decimal @default(0) @db.Decimal(14, 2) // L  Hệ số làm việc
+  salaryRate              Decimal @default(0) @db.Decimal(14, 2) // M  Mức lương
+  otNormalPay             Decimal @default(0) @db.Decimal(14, 2) // N  Tiền lương tăng ca bình thường
+  performanceCoefficient  Decimal @default(0) @db.Decimal(14, 2) // O  Hệ số phụ cấp gắn KQCV
+  salarySupport           Decimal @default(0) @db.Decimal(14, 2) // P  Hỗ trợ lương
+  fuelAllowance           Decimal @default(0) @db.Decimal(14, 2) // Q  PC xăng xe
+  attendanceBonus         Decimal @default(0) @db.Decimal(14, 2) // R  Tiền chuyên cần
+  incentiveBonus          Decimal @default(0) @db.Decimal(14, 2) // S  Tiền thi đua
+  holidayPay              Decimal @default(0) @db.Decimal(14, 2) // T  Tiền lương ngày lễ, tết
+  paidPersonalLeave       Decimal @default(0) @db.Decimal(14, 2) // U  Việc riêng có lương
+  leaveSupport            Decimal @default(0) @db.Decimal(14, 2) // V  Hỗ trợ ngày phép
+  leaveDays               Decimal @default(0) @db.Decimal(14, 2) // W  Ngày phép
+  leavePay                Decimal @default(0) @db.Decimal(14, 2) // X  Tiền phép
+  trainingDays            Decimal @default(0) @db.Decimal(14, 2) // Y  Công HL
+  menstrualHours          Decimal @default(0) @db.Decimal(14, 2) // Z  Giờ hành kinh
+  womenSpecialPay         Decimal @default(0) @db.Decimal(14, 2) // AA Lương phụ nữ ngày HK, huấn luyện
+  totalSalary             Decimal @default(0) @db.Decimal(14, 2) // AB Tổng cộng tiền lương
+  unemploymentInsurance   Decimal @default(0) @db.Decimal(14, 2) // AC BHTNg
+  socialInsurance         Decimal @default(0) @db.Decimal(14, 2) // AD 9.5% BHXH
+  otherDeduction          Decimal @default(0) @db.Decimal(14, 2) // AE Trừ khác
+  advanceDeduction        Decimal @default(0) @db.Decimal(14, 2) // AF Trừ ứng ngoài
+  personalIncomeTax       Decimal @default(0) @db.Decimal(14, 2) // AG Trừ thuế TNCN
+  netSalary               Decimal @default(0) @db.Decimal(14, 2) // AH Tiền lương thực nhận cuối kỳ
+
+  emailSentAt DateTime?
+  emailError  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  period   SalaryPeriod @relation(fields: [periodId], references: [id])
+  employee Employee?    @relation(fields: [employeeId], references: [id])
+
+  @@unique([periodId, employeeCode])
+  @@index([periodId])
+  @@index([employeeId])
+}
+
+// ============================================================
 // SẢN LƯỢNG TỔ CẤP XƯỞNG (Cắt, KCS) — theo ma trận màu × size
 // Throughput của tổ ≈ tổng các chuyền của xưởng; nhập trực tiếp ở cấp xưởng.
 // ============================================================
@@ -734,8 +812,9 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  employee  Employee   @relation(fields: [employeeId], references: [id])
-  userRoles UserRole[]
+  employee            Employee       @relation(fields: [employeeId], references: [id])
+  userRoles           UserRole[]
+  uploadedSalaryPeriods SalaryPeriod[]
 
   @@index([isActive])
 }

@@ -20,6 +20,7 @@ const PlanningLayout = lazy(() => import('@/features/planning/PlanningLayout'))
 const OutputLayout = lazy(() => import('@/features/output/OutputLayout'))
 const ReportPage = lazy(() => import('@/features/report/ReportPage'))
 const PayrollLayout = lazy(() => import('@/features/payroll/PayrollLayout'))
+const AccountingLayout = lazy(() => import('@/features/accounting/AccountingLayout'))
 const SettingsPage = lazy(() => import('@/features/settings/SettingsPage'))
 const ForbiddenPage = lazy(() => import('./ForbiddenPage'))
 const NotFoundPage = lazy(() => import('./NotFoundPage'))
@@ -127,6 +128,14 @@ export default function AppLayout() {
                   element={
                     <ProtectedRoute roles={['ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER']}>
                       <PayrollLayout />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/accounting/*"
+                  element={
+                    <ProtectedRoute roles={['ADMIN', 'BOD', 'ACCOUNTANT']}>
+                      <AccountingLayout />
                     </ProtectedRoute>
                   }
                 />

@@ -12,6 +12,7 @@ export const POSITION_LABELS: Record<string, string> = {
   CUTTING_LEADER: 'Tổ trưởng Cắt',
   FINISHING_LEADER: 'Tổ trưởng Hoàn thành',
   QC_LEADER: 'Tổ trưởng KCS',
+  ACCOUNTANT: 'Kế toán',
 }
 
 export interface Employee {

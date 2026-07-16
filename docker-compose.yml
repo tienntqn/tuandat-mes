@@ -39,6 +39,12 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
       OUTPUT_CUTOFF_TIME: ${OUTPUT_CUTOFF_TIME:-19:00}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
     ports:
       - '${API_PORT:-3000}:3000'
     volumes:

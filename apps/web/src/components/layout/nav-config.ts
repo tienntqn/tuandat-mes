@@ -135,6 +135,17 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
   {
+    category: 'KẾ TOÁN',
+    items: [
+      {
+        label: 'Phân hệ Kế toán',
+        path: '/accounting',
+        icon: 'fe fe-credit-card',
+        roles: ['ADMIN', 'BOD', 'ACCOUNTANT'],
+      },
+    ],
+  },
+  {
     category: 'HỆ THỐNG',
     items: [
       {

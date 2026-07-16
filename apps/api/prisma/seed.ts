@@ -52,6 +52,8 @@ function spread(total: number, nDays: number): number[] {
 
 async function wipe() {
   // Xóa theo thứ tự FK (con trước, cha sau)
+  await prisma.salarySlip.deleteMany()
+  await prisma.salaryPeriod.deleteMany()
   await prisma.factorySectionOutputLog.deleteMany()
   await prisma.factorySectionOutput.deleteMany()
   await prisma.finishingOutputLog.deleteMany()
@@ -156,6 +158,7 @@ async function main() {
     { code: 'NV-001', fullName: 'Nguyễn Văn Admin', position: EmployeePosition.ADMIN },
     { code: 'NV-002', fullName: 'Trần Thị Giám đốc', position: EmployeePosition.BOD },
     { code: 'NV-003', fullName: 'Lê Văn Kế hoạch', position: EmployeePosition.COMPANY_PLANNER },
+    { code: 'NV-004', fullName: 'Phạm Thị Kế toán', position: EmployeePosition.ACCOUNTANT, email: 'ketoan@tuandat.vn' },
   ]
   const empCreated: Record<string, { id: number }> = {}
   for (const e of companyEmps) {
@@ -184,10 +187,10 @@ async function main() {
     const finishing = await prisma.employee.create({ data: { code: `NV-${n}22`, fullName: `Tổ trưởng Hoàn thành X${n}`, position: EmployeePosition.FINISHING_LEADER, factoryId: f.id } })
     finishingEmpByFactory.push(finishing)
   }
-  console.log(`✓ Employee: ${3 + factories.length * 6} nhân viên`)
+  console.log(`✓ Employee: ${4 + factories.length * 6} nhân viên`)
 
   // ── 4. ROLES & PERMISSIONS ──
-  const resources = ['company', 'factory', 'line', 'employee', 'machine', 'maintenance', 'transfer', 'machine_brand', 'machine_category', 'spare_part', 'repair_proposal', 'customer', 'style', 'order', 'purchase_order', 'company_plan', 'factory_plan', 'delivery_plan', 'daily_output', 'report', 'payroll', 'user', 'role']
+  const resources = ['company', 'factory', 'line', 'employee', 'machine', 'maintenance', 'transfer', 'machine_brand', 'machine_category', 'spare_part', 'repair_proposal', 'customer', 'style', 'order', 'purchase_order', 'company_plan', 'factory_plan', 'delivery_plan', 'daily_output', 'report', 'payroll', 'salary', 'user', 'role']
   const actions = Object.values(PermissionAction)
   for (const resource of resources) {
     for (const action of actions) {
@@ -236,6 +239,7 @@ async function main() {
     { name: 'CUTTING_LEADER', description: 'Tổ trưởng Cắt', rules: [{ resource: 'daily_output', actions: RW }] },
     { name: 'FINISHING_LEADER', description: 'Tổ trưởng Hoàn thành', rules: [{ resource: 'daily_output', actions: RW }] },
     { name: 'QC_LEADER', description: 'Tổ trưởng KCS', rules: [{ resource: 'daily_output', actions: RW }] },
+    { name: 'ACCOUNTANT', description: 'Kế toán', rules: [{ resource: 'salary', actions: RWD }] },
   ]
   const roles: Record<string, { id: number }> = {}
   for (const def of roleDefs) {
@@ -260,6 +264,9 @@ async function main() {
   await prisma.userRole.create({ data: { userId: bodUser.id, roleId: roles['BOD'].id } })
   const khctUser = await prisma.user.create({ data: { employeeId: empCreated['NV-003'].id, username: 'kh', passwordHash: leaderHash, isActive: true } })
   await prisma.userRole.create({ data: { userId: khctUser.id, roleId: roles['COMPANY_PLANNER'].id } })
+  // Kế toán công ty (username: ketoan) — chỉ thấy Phân hệ Kế toán
+  const ketoanUser = await prisma.user.create({ data: { employeeId: empCreated['NV-004'].id, username: 'ketoan', passwordHash: leaderHash, isActive: true } })
+  await prisma.userRole.create({ data: { userId: ketoanUser.id, roleId: roles['ACCOUNTANT'].id } })
   // Tổ trưởng Xưởng 1 - Chuyền 1 (quy ước: tt.x{xưởng}c{chuyền})
   const leaderUser = await prisma.user.create({ data: { employeeId: leaderEmpByFactory[0].id, username: 'tt.x1c1', passwordHash: leaderHash, isActive: true } })
   await prisma.userRole.create({ data: { userId: leaderUser.id, roleId: roles['LINE_LEADER'].id } })
@@ -648,6 +655,7 @@ async function main() {
 ║  Giao hàng: đã giao · trễ · một phần · chờ · quá hạn     ║
 ╠══════════════════════════════════════════════════════════╣
 ║  🔑 admin    / Admin@123   (ADMIN)                        ║
+║  🔑 ketoan   / Leader@123  (Kế toán — chỉ thấy Phân hệ KT) ║
 ║  🔑 gdx.x1   / Leader@123  (Giám đốc Xưởng 1)             ║
 ║  🔑 cd.x1    / Leader@123  (Cơ điện Xưởng 1)              ║
 ║  🔑 tt.x1c1  / Leader@123  (Tổ trưởng X1 - Chuyền 1)      ║
