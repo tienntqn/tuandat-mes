@@ -69,20 +69,6 @@ export class AccountingService {
     userId: number,
     originalFileName: string,
   ) {
-    const existing = await this.prisma.salaryPeriod.findUnique({
-      where: { month_year: { month, year } },
-    })
-    if (existing) {
-      const sentCount = await this.prisma.salarySlip.count({
-        where: { periodId: existing.id, emailSentAt: { not: null } },
-      })
-      if (sentCount > 0) {
-        throw new BadRequestException(
-          `Kỳ lương tháng ${month}/${year} đã gửi email cho ${sentCount} nhân viên, không thể upload lại. Vui lòng xoá kỳ lương cũ nếu muốn nhập lại từ đầu.`,
-        )
-      }
-    }
-
     let workbook: XLSX.WorkBook
     try {
       workbook = XLSX.read(buffer, { type: 'buffer' })
@@ -162,16 +148,40 @@ export class AccountingService {
     })
 
     const period = await this.prisma.$transaction(async (tx) => {
-      const period = await tx.salaryPeriod.upsert({
-        where: { month_year: { month, year } },
-        create: { month, year, sourceFileName: originalFileName, uploadedBy: userId },
-        update: { sourceFileName: originalFileName, uploadedBy: userId, uploadedAt: new Date(), deletedAt: null },
+      const activePeriod = await tx.salaryPeriod.findFirst({
+        where: { month, year, deletedAt: null },
       })
-      await tx.salarySlip.deleteMany({ where: { periodId: period.id } })
+      if (activePeriod) {
+        const sentCount = await tx.salarySlip.count({
+          where: { periodId: activePeriod.id, emailSentAt: { not: null } },
+        })
+        if (sentCount > 0) {
+          throw new BadRequestException(
+            `Kỳ lương tháng ${month}/${year} đã gửi email cho ${sentCount} nhân viên, không thể upload lại. Vui lòng xoá kỳ lương cũ nếu muốn nhập lại từ đầu.`,
+          )
+        }
+      }
+
+      const deletedPeriod = await tx.salaryPeriod.findFirst({
+        where: { month, year, deletedAt: { not: null } },
+        orderBy: { updatedAt: 'desc' },
+      })
+
+      const targetPeriod = activePeriod ?? deletedPeriod
+      const periodRecord = targetPeriod
+        ? await tx.salaryPeriod.update({
+            where: { id: targetPeriod.id },
+            data: { sourceFileName: originalFileName, uploadedBy: userId, uploadedAt: new Date(), deletedAt: null },
+          })
+        : await tx.salaryPeriod.create({
+            data: { month, year, sourceFileName: originalFileName, uploadedBy: userId },
+          })
+
+      await tx.salarySlip.deleteMany({ where: { periodId: periodRecord.id } })
       await tx.salarySlip.createMany({
-        data: slipsData.map((s) => ({ ...s, periodId: period.id })),
+        data: slipsData.map((s) => ({ ...s, periodId: periodRecord.id })),
       })
-      return period
+      return periodRecord
     })
 
     const matched = slipsData.filter((s) => s.employeeId != null).length
