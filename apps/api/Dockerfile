@@ -1,7 +1,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN apk add openssl libc6-compat
+# Một số máy dev/CI có phần mềm diệt virus (vd AVG) chặn/soi HTTPS ra ngoài, khiến
+# apk không xác thực được cert của CDN Alpine ("TLS: server certificate not trusted").
+# apk vẫn xác thực chữ ký gói (APKINDEX) độc lập với TLS nên dùng mirror http là an toàn.
+RUN sed -i 's/https:\/\//http:\/\//' /etc/apk/repositories && \
+    apk add openssl libc6-compat
 RUN npm install
 COPY . .
 RUN npx prisma generate
@@ -12,7 +16,8 @@ RUN npx tsc prisma/seed.ts --outDir prisma-dist --rootDir prisma --module common
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache openssl libc6-compat python3 py3-pip
+RUN sed -i 's/https:\/\//http:\/\//' /etc/apk/repositories && \
+    apk add --no-cache openssl libc6-compat python3 py3-pip
 RUN python3 -m venv /opt/venv && \
     /opt/venv/bin/pip install --upgrade pip setuptools wheel && \
     /opt/venv/bin/pip install openpyxl
