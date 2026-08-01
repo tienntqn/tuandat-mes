@@ -12,13 +12,15 @@ RUN npx tsc prisma/seed.ts --outDir prisma-dist --rootDir prisma --module common
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache openssl libc6-compat
+RUN apk add --no-cache openssl libc6-compat python3 py3-pip
+RUN pip3 install openpyxl
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/prisma-dist ./prisma-dist
 COPY prisma ./prisma
+COPY soho-processor.py ./soho-processor.py
 
 EXPOSE 3000
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main"]

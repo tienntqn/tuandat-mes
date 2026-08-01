@@ -154,4 +154,16 @@ export const factoryPlanApi = {
 
   delete: (id: number) =>
     api.delete(`/factory-plans/${id}`).then((r) => r.data),
+
+  convertSoho: (file: File, factoryName: string) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('factoryName', factoryName)
+    return api
+      .post<Blob>('/plan/soho-converter/convert', formData, {
+        responseType: 'blob',
+        timeout: 120_000,
+      })
+      .then((r) => r.data)
+  },
 }
