@@ -13,7 +13,11 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache openssl libc6-compat python3 py3-pip
-RUN pip3 install openpyxl
+RUN python3 -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip setuptools wheel && \
+    /opt/venv/bin/pip install openpyxl
+ENV PATH="/opt/venv/bin:$PATH"
+ENV PYTHON_EXECUTABLE=/opt/venv/bin/python
 COPY package*.json ./
 RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
