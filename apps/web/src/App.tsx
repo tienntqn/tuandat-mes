@@ -4,7 +4,6 @@ import { useAuthStore } from '@/stores/auth.store'
 import { LoadingScreen } from '@/components/layout/LoadingScreen'
 import { Toaster } from '@/components/ui/toaster'
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
-import { InstallBanner } from '@/components/shared/InstallBanner'
 
 const LoginPage = lazy(() => import('@/features/auth/LoginPage'))
 const AppLayout = lazy(() => import('@/components/layout/AppLayout'))
@@ -26,7 +25,6 @@ export default function App() {
     <ErrorBoundary>
     <Suspense fallback={<LoadingScreen />}>
       <Toaster />
-      <InstallBanner />
       <Routes>
         <Route
           path="/login"
