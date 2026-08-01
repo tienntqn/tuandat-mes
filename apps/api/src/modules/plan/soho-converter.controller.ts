@@ -7,6 +7,7 @@ import {
   StreamableFile,
   UploadedFile,
   UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
