@@ -26,12 +26,6 @@ const ALLOWED_EXCEL = /\.(xlsx|xls)$/i
 export class SohoConverterController {
   constructor(private readonly service: SohoConverterService) {}
 
-@ApiBearerAuth()
-@Controller('plan/soho-converter')
-@Roles('ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER')
-export class SohoConverterController {
-  constructor(private readonly service: SohoConverterService) {}
-
   @Post('convert')
   @ApiOperation({ summary: 'Chuyển đổi file SOHO sang báo cáo Daily Production Report' })
   @ApiConsumes('multipart/form-data')
