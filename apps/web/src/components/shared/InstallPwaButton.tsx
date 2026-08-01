@@ -30,7 +30,6 @@ export function InstallPwaButton({ className, label = 'Cài đặt ứng dụng'
         type="button"
         className={className ?? 'btn btn-sm btn-primary text-white d-inline-flex align-items-center gap-1'}
         onClick={onClick}
-        title="Cài đặt ứng dụng lên thiết bị"
       >
         <Download size={15} /> <span className="d-none d-lg-inline">{label}</span>
       </button>
