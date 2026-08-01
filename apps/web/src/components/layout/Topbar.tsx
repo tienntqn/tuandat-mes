@@ -109,27 +109,6 @@ export function Topbar() {
               </div>
             </div>
 
-            {/* Message dropdown */}
-            <div className="dropdown d-none d-md-flex message">
-              <a className="nav-link icon text-center" data-bs-toggle="dropdown" href="javascript:void(0);">
-                <i className="fe fe-message-square"></i>
-                <span className="pulse-danger"></span>
-              </a>
-              <div className="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
-                <div className="drop-heading border-bottom">
-                  <div className="d-flex">
-                    <h6 className="mt-1 mb-0 fs-16 fw-semibold">Thông báo</h6>
-                    <div className="ms-auto">
-                      <span className="badge bg-danger rounded-pill">0</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="message-menu">
-                  <div className="dropdown-item text-muted text-center py-3">Không có thông báo mới</div>
-                </div>
-              </div>
-            </div>
-
             {/* User profile */}
             <div className="dropdown profile-1">
               <a
