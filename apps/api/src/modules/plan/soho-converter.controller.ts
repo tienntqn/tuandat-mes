@@ -4,10 +4,10 @@ import {
   Controller,
   Header,
   Post,
+  Req,
   StreamableFile,
   UploadedFile,
   UseInterceptors,
-  ValidationPipe,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
@@ -19,14 +19,13 @@ import { SohoConverterService } from './soho-converter.service'
 
 const ALLOWED_EXCEL = /\.(xlsx|xls)$/i
 
-class ConvertSohoDto {
-  @ApiProperty({ description: 'Tên xưởng hiển thị trên file đầu ra' })
-  @IsString({ message: 'factoryName phải là chuỗi' })
-  @IsNotEmpty({ message: 'factoryName không được để trống' })
-  factoryName: string
-}
-
 @ApiTags('plan')
+@ApiBearerAuth()
+@Controller('plan/soho-converter')
+@Roles('ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER')
+export class SohoConverterController {
+  constructor(private readonly service: SohoConverterService) {}
+
 @ApiBearerAuth()
 @Controller('plan/soho-converter')
 @Roles('ADMIN', 'BOD', 'COMPANY_PLANNER', 'FACTORY_DIRECTOR', 'FACTORY_PLANNER')
@@ -63,20 +62,18 @@ export class SohoConverterController {
   )
   async convert(
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Body(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: false,
-        transform: true,
-        transformOptions: { enableImplicitConversion: true },
-      }),
-    )
-    dto: ConvertSohoDto,
+    @Req() req: any,
   ) {
     if (!file) {
       throw new BadRequestException('Không có file được tải lên')
     }
-    const result = await this.service.convert(file.buffer, dto.factoryName)
+
+    const factoryName = req.body?.factoryName
+    if (!factoryName || typeof factoryName !== 'string' || !factoryName.trim()) {
+      throw new BadRequestException('Vui lòng nhập tên xưởng')
+    }
+
+    const result = await this.service.convert(file.buffer, factoryName.trim())
     return new StreamableFile(result)
   }
 }
