@@ -62,7 +62,15 @@ export class SohoConverterController {
   )
   async convert(
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Body() dto: ConvertSohoDto,
+    @Body(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: false,
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+      }),
+    )
+    dto: ConvertSohoDto,
   ) {
     if (!file) {
       throw new BadRequestException('Không có file được tải lên')
