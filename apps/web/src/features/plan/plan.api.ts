@@ -161,9 +161,23 @@ export const factoryPlanApi = {
     formData.append('factoryName', factoryName)
     return api
       .post<Blob>('/plan/soho-converter/convert', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
         responseType: 'blob',
         timeout: 120_000,
       })
       .then((r) => r.data)
+      .catch(async (err) => {
+        // responseType 'blob' khiến lỗi JSON từ server cũng bị trả về dạng Blob
+        // → parse lại thành object để hiển thị đúng thông báo lỗi tiếng Việt
+        const data = err?.response?.data
+        if (data instanceof Blob && data.type.includes('json')) {
+          try {
+            err.response.data = JSON.parse(await data.text())
+          } catch {
+            // giữ nguyên lỗi gốc nếu parse thất bại
+          }
+        }
+        throw err
+      })
   },
 }
