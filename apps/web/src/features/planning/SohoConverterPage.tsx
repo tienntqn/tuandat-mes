@@ -30,7 +30,8 @@ export default function SohoConverterPage() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `soho-output-${factoryName.trim().replace(/\s+/g, '_')}.xlsx`
+      const originalBaseName = file.name.replace(/\.(xlsx|xls)$/i, '')
+      link.download = `${originalBaseName}-daily-report.xlsx`
       document.body.appendChild(link)
       link.click()
       link.remove()
