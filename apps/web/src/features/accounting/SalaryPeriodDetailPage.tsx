@@ -100,10 +100,15 @@ export default function SalaryPeriodDetailPage() {
         )}
       </div>
 
-      <div className="card">
+      {/* Bảng co theo nội dung (fit-content) thay vì tràn hết màn hình desktop;
+          maxWidth 100% + table-responsive để vẫn cuộn ngang được trên màn hình nhỏ */}
+      <div className="card" style={{ width: 'fit-content', maxWidth: '100%' }}>
         <div className="card-body p-0">
           <div className="table-responsive">
-            <table className="table table-hover table-vcenter mb-0">
+            <table
+              className="table table-hover table-vcenter mb-0"
+              style={{ width: 'auto', whiteSpace: 'nowrap' }}
+            >
               <thead className="thead-light">
                 <tr>
                   <th style={{ width: 36 }}>
@@ -114,7 +119,7 @@ export default function SalaryPeriodDetailPage() {
                   <th>Phòng</th>
                   <th>Email</th>
                   <th className="text-end">Tổng lương</th>
-                  <th className="text-end">Thực nhận</th>
+                  <th className="text-end text-danger">Thực nhận</th>
                   <th>Trạng thái</th>
                 </tr>
               </thead>
@@ -130,7 +135,7 @@ export default function SalaryPeriodDetailPage() {
                       <td className="text-muted small">{s.department}</td>
                       <td className="text-muted small">{s.email ?? '—'}</td>
                       <td className="text-end">{money(s.totalSalary)}</td>
-                      <td className="text-end fw-semibold">{money(s.netSalary)}</td>
+                      <td className="text-end fw-semibold text-danger">{money(s.netSalary)}</td>
                       <td>{statusBadge(s)}</td>
                     </tr>
                   ))
