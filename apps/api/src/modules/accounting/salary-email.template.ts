@@ -41,9 +41,15 @@ const n = (v: unknown): string => fmt.format(Number(v ?? 0))
 const moneyFmt = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 })
 const money = (v: unknown): string => moneyFmt.format(Math.round(Number(v ?? 0)))
 
-function row(label: string, value: string, strong = false): string {
-  const style = strong ? 'font-weight:600;background:#f3f4f6' : ''
-  return `<tr style="${style}"><td style="padding:6px 10px;border:1px solid #e5e7eb">${label}</td><td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:right">${value}</td></tr>`
+// Outlook (engine Word) không kế thừa color/font-weight/background từ <tr> xuống <td>,
+// nên mọi style phải đặt thẳng trên từng ô. white-space:nowrap để nhãn không bị ngắt dòng —
+// nhờ đó bảng width:auto co đúng bằng dòng rộng nhất thay vì tràn hết màn hình.
+function row(label: string, value: string, strong = false, danger = false): string {
+  const cell =
+    'padding:6px 10px;border:1px solid #e5e7eb;white-space:nowrap' +
+    (strong ? ';font-weight:600;background:#f3f4f6' : '') +
+    (danger ? ';color:#dc2626' : '')
+  return `<tr><td style="${cell}">${label}</td><td style="${cell};text-align:right">${value}</td></tr>`
 }
 
 export function renderSalaryEmailHtml(slip: SalarySlipLike, month: number, year: number): string {
@@ -75,7 +81,7 @@ export function renderSalaryEmailHtml(slip: SalarySlipLike, month: number, year:
     row('Trừ khác', money(slip.otherDeduction)),
     row('Trừ ứng ngoài', money(slip.advanceDeduction)),
     row('Trừ thuế TNCN', money(slip.personalIncomeTax)),
-    row('Tiền lương thực nhận cuối kỳ', money(slip.netSalary), true),
+    row('Tiền lương thực nhận cuối kỳ', money(slip.netSalary), true, true),
   ].join('')
 
   return `
@@ -86,7 +92,7 @@ export function renderSalaryEmailHtml(slip: SalarySlipLike, month: number, year:
       Kính gửi <strong>${slip.fullName}</strong> (MSNV: ${slip.employeeCode}${slip.department ? `, ${slip.department}` : ''}),<br/>
       Phòng Kế toán Công ty Cổ phần Tuấn Đạt gửi bảng lương chi tiết tháng ${month}/${year} như sau:
     </p>
-    <table style="border-collapse:collapse;width:100%;font-size:14px">
+    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:auto;font-size:14px">
       ${rows}
     </table>
     <p style="color:#6b7280;font-size:12px;margin-top:16px">
