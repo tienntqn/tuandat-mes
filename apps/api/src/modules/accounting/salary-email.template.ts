@@ -42,14 +42,15 @@ const moneyFmt = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 })
 const money = (v: unknown): string => moneyFmt.format(Math.round(Number(v ?? 0)))
 
 // Outlook (engine Word) không kế thừa color/font-weight/background từ <tr> xuống <td>,
-// nên mọi style phải đặt thẳng trên từng ô. white-space:nowrap để nhãn không bị ngắt dòng —
-// nhờ đó bảng width:auto co đúng bằng dòng rộng nhất thay vì tràn hết màn hình.
+// nên mọi style phải đặt thẳng trên từng ô.
+// Cột nhãn cho phép xuống dòng (tránh tràn ngang trên điện thoại), cột số tiền thì nowrap
+// để con số không bị ngắt làm đôi.
 function row(label: string, value: string, strong = false, danger = false): string {
   const cell =
-    'padding:6px 10px;border:1px solid #e5e7eb;white-space:nowrap' +
+    'padding:6px 10px;border:1px solid #e5e7eb' +
     (strong ? ';font-weight:600;background:#f3f4f6' : '') +
     (danger ? ';color:#dc2626' : '')
-  return `<tr><td style="${cell}">${label}</td><td style="${cell};text-align:right">${value}</td></tr>`
+  return `<tr><td style="${cell}">${label}</td><td style="${cell};text-align:right;white-space:nowrap">${value}</td></tr>`
 }
 
 export function renderSalaryEmailHtml(slip: SalarySlipLike, month: number, year: number): string {
@@ -84,19 +85,30 @@ export function renderSalaryEmailHtml(slip: SalarySlipLike, month: number, year:
     row('Tiền lương thực nhận cuối kỳ', money(slip.netSalary), true, true),
   ].join('')
 
+  // Wrapper phải là <table width="70%"> chứ không phải <div>: Outlook (engine Word) bỏ qua
+  // max-width/width dạng % trên div, còn thuộc tính width của table thì hiểu đúng.
+  // Bảng chi tiết bên trong để width:100% => chiếm đúng 70% bề ngang màn hình.
+  // Dưới 600px (điện thoại) trả về 100% cho khỏi bị bóp quá hẹp.
   return `
-  <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;max-width:640px;margin:0 auto">
-    <h2 style="margin-bottom:4px">BẢNG THANH TOÁN TIỀN LƯƠNG</h2>
-    <p style="margin-top:0;color:#4b5563">Tháng ${month.toString().padStart(2, '0')}/${year}</p>
-    <p>
-      Kính gửi <strong>${slip.fullName}</strong> (MSNV: ${slip.employeeCode}${slip.department ? `, ${slip.department}` : ''}),<br/>
-      Phòng Kế toán Công ty Cổ phần Tuấn Đạt gửi bảng lương chi tiết tháng ${month}/${year} như sau:
-    </p>
-    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:auto;font-size:14px">
-      ${rows}
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#111827">
+    <style>@media only screen and (max-width:600px){.salary-wrap{width:100% !important}}</style>
+    <table class="salary-wrap" cellpadding="0" cellspacing="0" border="0" width="70%" align="center" style="width:70%;margin:0 auto">
+      <tr>
+        <td>
+          <h2 style="margin-bottom:4px">BẢNG THANH TOÁN TIỀN LƯƠNG</h2>
+          <p style="margin-top:0;color:#4b5563">Tháng ${month.toString().padStart(2, '0')}/${year}</p>
+          <p>
+            Kính gửi <strong>${slip.fullName}</strong> (MSNV: ${slip.employeeCode}${slip.department ? `, ${slip.department}` : ''}),<br/>
+            Phòng Kế toán Công ty Cổ phần Tuấn Đạt gửi bảng lương chi tiết tháng ${month}/${year} như sau:
+          </p>
+          <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:14px">
+            ${rows}
+          </table>
+          <p style="color:#6b7280;font-size:12px;margin-top:16px">
+            Đây là email tự động từ hệ thống Tuấn Đạt MES. Vui lòng liên hệ phòng Kế toán nếu có thắc mắc về bảng lương.
+          </p>
+        </td>
+      </tr>
     </table>
-    <p style="color:#6b7280;font-size:12px;margin-top:16px">
-      Đây là email tự động từ hệ thống Tuấn Đạt MES. Vui lòng liên hệ phòng Kế toán nếu có thắc mắc về bảng lương.
-    </p>
   </div>`
 }
