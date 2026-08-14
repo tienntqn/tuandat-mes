@@ -234,6 +234,16 @@ model Factory {
   factorySectionOutputs FactorySectionOutput[]
   finishingOutputs      FinishingOutput[]
   repairProposals       RepairProposal[]
+  // Phân hệ MMTB mở rộng
+  machineHandovers    MachineHandover[]
+  breakdownReports    BreakdownReport[]
+  incidentReports     IncidentReport[]
+  maintenanceRequests MaintenanceRequest[]
+  workPlans           WorkPlan[]
+  workOrders          WorkOrder[]
+  partRequests        PartRequest[]
+  sparePartStocks     SparePartStock[]
+  stockMovements      StockMovement[]
 
   @@index([companyId])
   @@index([status])
@@ -257,6 +267,8 @@ model ProductionLine {
   factoryPlans FactoryPlan[]
   dailyOutputs DailyOutput[]
   styleLines   StyleLine[]
+  breakdownReports BreakdownReport[]
+  machineHandovers MachineHandover[]
 
   @@unique([factoryId, lineNumber])
   @@index([factoryId])
@@ -325,6 +337,17 @@ model Machine {
   images          MachineImage[]
   liquidation     MachineLiquidation?
   repairProposals RepairProposal[]
+  // Phân hệ MMTB mở rộng
+  handovers           MachineHandover[]
+  certificates        MachineCertificate[]
+  documents           MachineDocument[]
+  norms               MaintenanceNorm[]
+  breakdownReports    BreakdownReport[]
+  incidentReports     IncidentReport[]
+  maintenanceRequests MaintenanceRequest[]
+  workPlanItems       WorkPlanItem[]
+  workOrders          WorkOrder[]
+  statusLogs          MachineStatusLog[]
 
   @@index([factoryId])
   @@index([lineId])
@@ -930,6 +953,7 @@ model MachineCategory {
 
   machines   Machine[]
   spareParts SparePart[]
+  norms      MaintenanceNorm[]
 
   @@index([deletedAt])
 }
@@ -948,6 +972,12 @@ model SparePart {
 
   category    MachineCategory?     @relation(fields: [categoryId], references: [id])
   repairItems RepairProposalItem[]
+  // Phân hệ MMTB mở rộng
+  normItems      MaintenanceNormItem[]
+  workOrderParts WorkOrderPart[]
+  requestItems   PartRequestItem[]
+  stocks         SparePartStock[]
+  movements      StockMovement[]
 
   @@index([categoryId])
   @@index([deletedAt])
@@ -1041,4 +1071,610 @@ model RepairProposalAttachment {
   proposal RepairProposal @relation(fields: [proposalId], references: [id])
 
   @@index([proposalId])
+}
+
+// ============================================================
+// PHÂN HỆ QUẢN LÝ MÁY MÓC THIẾT BỊ (MMTB)
+// Luồng: Khai báo → Sửa chữa / Bảo dưỡng → Theo dõi vật tư
+//        → Lý lịch máy → Hồ sơ máy
+// ============================================================
+
+// ---------- ENUMS ----------
+
+// Loại biên bản bàn giao máy
+enum HandoverType {
+  RECEIVE           // bàn giao nhận máy (khi khai báo máy mới)
+  AFTER_REPAIR      // bàn giao sau sửa chữa
+  AFTER_MAINTENANCE // bàn giao sau bảo dưỡng
+}
+
+enum HandoverStatus {
+  DRAFT
+  PENDING_RECEIVER // bên giao đã ký, chờ bên nhận xác nhận
+  COMPLETED
+  REJECTED
+}
+
+// Loại chứng chỉ / kiểm định của máy
+enum CertificateType {
+  INSPECTION  // kiểm định an toàn
+  CALIBRATION // hiệu chuẩn
+  QUALITY     // chứng nhận chất lượng (CO/CQ)
+  OTHER
+}
+
+// Mức độ nghiêm trọng của hỏng hóc
+enum BreakdownSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum BreakdownStatus {
+  REPORTED     // vừa báo hỏng, chờ cơ điện tiếp nhận
+  ACKNOWLEDGED // cơ điện đã tiếp nhận
+  IN_REPAIR    // đang sửa chữa
+  RESOLVED     // đã xử lý xong
+  CANCELLED
+}
+
+// Phân biệt 2 luồng dùng chung model (kế hoạch, phiếu, yêu cầu vật tư)
+enum WorkType {
+  MAINTENANCE // bảo dưỡng
+  REPAIR      // sửa chữa
+}
+
+// Trạng thái kế hoạch sửa chữa / bảo dưỡng — duyệt 2 cấp: GĐ xưởng → Công ty
+enum WorkPlanStatus {
+  DRAFT
+  PENDING_FACTORY // chờ giám đốc xưởng duyệt
+  PENDING_COMPANY // chờ công ty duyệt
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+// Trạng thái phiếu sửa chữa / phiếu bảo dưỡng MMTB
+enum WorkOrderStatus {
+  DRAFT
+  IN_PROGRESS // đang thực hiện
+  DONE        // xong việc, chờ bàn giao
+  HANDED_OVER // đã bàn giao lại cho bộ phận sử dụng
+  CANCELLED
+}
+
+// Trạng thái phiếu yêu cầu bảo dưỡng
+enum MaintenanceRequestStatus {
+  PENDING  // chờ cơ điện tiếp nhận
+  ACCEPTED // đã tiếp nhận
+  PLANNED  // đã đưa vào kế hoạch bảo dưỡng
+  DONE     // đã thực hiện xong
+  REJECTED
+}
+
+// Trạng thái yêu cầu mua vật tư — duyệt 2 cấp: GĐ xưởng → Công ty
+enum PartRequestStatus {
+  DRAFT
+  PENDING_FACTORY
+  PENDING_COMPANY
+  APPROVED
+  PURCHASED // đã mua và nhập kho
+  REJECTED
+  CANCELLED
+}
+
+// Loại biến động kho phụ tùng
+enum StockMovementType {
+  IN     // nhập kho
+  OUT    // xuất dùng cho sửa chữa / bảo dưỡng
+  ADJUST // điều chỉnh sau kiểm kê
+}
+
+// Loại tài liệu hồ sơ máy
+enum MachineDocumentType {
+  MANUAL      // tài liệu hướng dẫn sử dụng
+  INVOICE     // hóa đơn / chứng từ mua
+  CONTRACT    // hợp đồng
+  CERTIFICATE // chứng chỉ, kiểm định
+  DRAWING     // bản vẽ kỹ thuật
+  IMAGE
+  OTHER
+}
+
+// ---------- KHỐI 1: KHAI BÁO MÁY MÓC THIẾT BỊ ----------
+
+// Biên bản bàn giao máy (nhận máy mới / sau sửa chữa / sau bảo dưỡng).
+// Quy trình 2 bước xác nhận giống điều chuyển máy: bên giao ký → bên nhận ký.
+model MachineHandover {
+  id          Int          @id @default(autoincrement())
+  handoverNo  String       @unique
+  type        HandoverType
+  machineId   Int
+  factoryId   Int
+  lineId      Int? // bàn giao máy về chuyền nào (nếu có)
+  workOrderId Int?         @unique // biên bản bàn giao sau sửa chữa/bảo dưỡng gắn với 1 phiếu
+
+  handoverDate DateTime @db.Date
+  fromParty    String? // bên giao ngoài hệ thống (nhà cung cấp, đơn vị vận chuyển...)
+  senderId     Int? // employeeId bên giao (nội bộ)
+  receiverId   Int? // employeeId bên nhận
+  condition    String? // tình trạng máy tại thời điểm bàn giao
+  accessories  String? // phụ kiện, đồ nghề kèm theo
+  note         String?
+
+  status              HandoverStatus @default(DRAFT)
+  senderConfirmedAt   DateTime?
+  receiverConfirmedAt DateTime?
+  rejectReason        String?
+
+  createdBy Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  machine   Machine         @relation(fields: [machineId], references: [id])
+  factory   Factory         @relation(fields: [factoryId], references: [id])
+  line      ProductionLine? @relation(fields: [lineId], references: [id])
+  workOrder WorkOrder?      @relation(fields: [workOrderId], references: [id])
+
+  @@index([machineId])
+  @@index([factoryId])
+  @@index([type])
+  @@index([status])
+  @@index([handoverDate])
+}
+
+// Chứng chỉ / kiểm định của máy (theo dõi thời hạn)
+model MachineCertificate {
+  id         Int             @id @default(autoincrement())
+  machineId  Int
+  type       CertificateType @default(INSPECTION)
+  certNo     String?
+  name       String
+  issuedBy   String? // đơn vị cấp
+  issueDate  DateTime?       @db.Date
+  expiryDate DateTime?       @db.Date // hết hạn — dùng để cảnh báo
+  fileUrl    String?
+  note       String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  deletedAt  DateTime?
+
+  machine Machine @relation(fields: [machineId], references: [id])
+
+  @@index([machineId])
+  @@index([expiryDate])
+  @@index([deletedAt])
+}
+
+// Tài liệu đính kèm hồ sơ máy
+model MachineDocument {
+  id         Int                 @id @default(autoincrement())
+  machineId  Int
+  type       MachineDocumentType @default(OTHER)
+  name       String
+  url        String
+  filename   String?
+  note       String?
+  uploadedBy Int?
+  createdAt  DateTime            @default(now())
+  deletedAt  DateTime?
+
+  machine Machine @relation(fields: [machineId], references: [id])
+
+  @@index([machineId])
+  @@index([type])
+  @@index([deletedAt])
+}
+
+// Định mức bảo dưỡng: chu kỳ + hạng mục kiểm tra + vật tư tiêu hao chuẩn.
+// Áp theo chủng loại máy (categoryId) hoặc riêng cho 1 máy (machineId).
+model MaintenanceNorm {
+  id             Int       @id @default(autoincrement())
+  code           String    @unique
+  name           String
+  categoryId     Int?
+  machineId      Int?
+  intervalDays   Int // chu kỳ bảo dưỡng (ngày)
+  estimatedHours Decimal?  @db.Decimal(6, 2)
+  estimatedCost  Decimal?  @db.Decimal(15, 2)
+  checklist      String? // các hạng mục kiểm tra, mỗi dòng một mục
+  description    String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  category MachineCategory?      @relation(fields: [categoryId], references: [id])
+  machine  Machine?              @relation(fields: [machineId], references: [id])
+  items    MaintenanceNormItem[]
+
+  @@index([categoryId])
+  @@index([machineId])
+  @@index([deletedAt])
+}
+
+// Định mức vật tư cho 1 lần bảo dưỡng theo định mức
+model MaintenanceNormItem {
+  id          Int     @id @default(autoincrement())
+  normId      Int
+  sparePartId Int?
+  name        String
+  unit        String?
+  quantity    Decimal @default(1) @db.Decimal(12, 2)
+  note        String?
+
+  norm      MaintenanceNorm @relation(fields: [normId], references: [id], onDelete: Cascade)
+  sparePart SparePart?      @relation(fields: [sparePartId], references: [id])
+
+  @@index([normId])
+  @@index([sparePartId])
+}
+
+// ---------- KHỐI 2: SỬA CHỮA ----------
+
+// Phiếu báo hỏng — do cơ điện lập khi máy gặp sự cố
+model BreakdownReport {
+  id        Int    @id @default(autoincrement())
+  reportNo  String @unique
+  machineId Int
+  factoryId Int
+  lineId    Int?
+
+  severity          BreakdownSeverity @default(MEDIUM)
+  status            BreakdownStatus   @default(REPORTED)
+  symptom           String // hiện tượng hỏng
+  stoppedProduction Boolean           @default(false) // có làm dừng sản xuất không
+  imageUrls         String[] // ảnh hiện trạng
+
+  reportedBy     Int // employeeId người lập phiếu
+  reportedAt     DateTime  @default(now())
+  acknowledgedBy Int?
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+  note           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  machine        Machine         @relation(fields: [machineId], references: [id])
+  factory        Factory         @relation(fields: [factoryId], references: [id])
+  line           ProductionLine? @relation(fields: [lineId], references: [id])
+  incidentReport IncidentReport?
+  workOrders     WorkOrder[]
+  partRequests   PartRequest[]
+
+  @@index([machineId])
+  @@index([factoryId])
+  @@index([status])
+  @@index([reportedAt])
+}
+
+// Biên bản sự cố — lập cho hỏng hóc nghiêm trọng, ghi nguyên nhân & trách nhiệm
+model IncidentReport {
+  id                Int    @id @default(autoincrement())
+  incidentNo        String @unique
+  machineId         Int
+  factoryId         Int
+  breakdownReportId Int?   @unique
+
+  incidentDate     DateTime
+  description      String // diễn biến sự cố
+  cause            String? // nguyên nhân
+  consequence      String? // hậu quả
+  downtimeHours    Decimal? @db.Decimal(8, 2)
+  damageValue      Decimal? @db.Decimal(15, 2)
+  responsibleParty String? // bên chịu trách nhiệm
+  preventiveAction String? // biện pháp khắc phục, phòng ngừa
+  witnesses        String? // thành phần tham gia lập biên bản
+  imageUrls        String[]
+
+  createdBy Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  machine         Machine          @relation(fields: [machineId], references: [id])
+  factory         Factory          @relation(fields: [factoryId], references: [id])
+  breakdownReport BreakdownReport? @relation(fields: [breakdownReportId], references: [id])
+
+  @@index([machineId])
+  @@index([factoryId])
+  @@index([incidentDate])
+}
+
+// ---------- KHỐI 3: BẢO DƯỠNG ----------
+
+// Phiếu yêu cầu bảo dưỡng — đề nghị bảo dưỡng máy trước khi lập kế hoạch
+model MaintenanceRequest {
+  id          Int       @id @default(autoincrement())
+  requestNo   String    @unique
+  machineId   Int
+  factoryId   Int
+  requestedBy Int
+  requestedAt DateTime  @default(now())
+  desiredDate DateTime? @db.Date
+  reason      String
+
+  status       MaintenanceRequestStatus @default(PENDING)
+  handledBy    Int?
+  handledAt    DateTime?
+  rejectReason String?
+  note         String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  machine    Machine     @relation(fields: [machineId], references: [id])
+  factory    Factory     @relation(fields: [factoryId], references: [id])
+  workOrders WorkOrder[]
+
+  @@index([machineId])
+  @@index([factoryId])
+  @@index([status])
+}
+
+// ---------- KẾ HOẠCH SỬA CHỮA / BẢO DƯỠNG (duyệt 2 cấp) ----------
+
+model WorkPlan {
+  id         Int      @id @default(autoincrement())
+  planNo     String   @unique
+  type       WorkType
+  factoryId  Int
+  title      String
+  periodFrom DateTime @db.Date
+  periodTo   DateTime @db.Date
+
+  status             WorkPlanStatus @default(DRAFT)
+  totalEstimatedCost Decimal?       @db.Decimal(15, 2)
+  note               String?
+
+  createdBy         Int
+  factoryApprovedBy Int?
+  factoryApprovedAt DateTime?
+  companyApprovedBy Int?
+  companyApprovedAt DateTime?
+  rejectReason      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  factory      Factory        @relation(fields: [factoryId], references: [id])
+  items        WorkPlanItem[]
+  partRequests PartRequest[]
+
+  @@index([factoryId])
+  @@index([type])
+  @@index([status])
+  @@index([periodFrom])
+}
+
+// Một dòng trong kế hoạch: máy nào, làm gì, ngày nào, chi phí dự kiến
+model WorkPlanItem {
+  id            Int      @id @default(autoincrement())
+  planId        Int
+  machineId     Int
+  normId        Int?
+  plannedDate   DateTime @db.Date
+  content       String
+  estimatedCost Decimal? @db.Decimal(15, 2)
+  note          String?
+
+  plan      WorkPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  machine   Machine    @relation(fields: [machineId], references: [id])
+  workOrder WorkOrder? // phiếu thực hiện tương ứng (nếu đã làm)
+
+  @@index([planId])
+  @@index([machineId])
+  @@index([plannedDate])
+}
+
+// ---------- PHIẾU SỬA CHỮA / PHIẾU BẢO DƯỠNG MMTB ----------
+
+model WorkOrder {
+  id        Int      @id @default(autoincrement())
+  orderNo   String   @unique
+  type      WorkType
+  machineId Int
+  factoryId Int
+
+  // Nguồn phát sinh công việc (tối đa một trong các nguồn)
+  breakdownReportId    Int?
+  maintenanceRequestId Int?
+  planItemId           Int? @unique
+
+  status     WorkOrderStatus @default(DRAFT)
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  performedBy Int // employeeId cơ điện phụ trách
+  assistants  String? // người phối hợp
+  content     String // nội dung công việc
+  findings    String? // tình trạng phát hiện khi kiểm tra
+  result      String? // kết quả sau khi làm
+
+  downtimeHours Decimal?  @db.Decimal(8, 2)
+  laborCost     Decimal?  @db.Decimal(15, 2)
+  partsCost     Decimal?  @db.Decimal(15, 2) // tổng tiền vật tư, tính từ parts
+  totalCost     Decimal?  @db.Decimal(15, 2)
+  nextDueDate   DateTime? @db.Date // hạn bảo dưỡng kế tiếp
+  note          String?
+
+  createdBy Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  machine            Machine             @relation(fields: [machineId], references: [id])
+  factory            Factory             @relation(fields: [factoryId], references: [id])
+  breakdownReport    BreakdownReport?    @relation(fields: [breakdownReportId], references: [id])
+  maintenanceRequest MaintenanceRequest? @relation(fields: [maintenanceRequestId], references: [id])
+  planItem           WorkPlanItem?       @relation(fields: [planItemId], references: [id])
+  parts              WorkOrderPart[]
+  handover           MachineHandover?
+  stockMovements     StockMovement[]
+  partRequests       PartRequest[]
+
+  @@index([machineId])
+  @@index([factoryId])
+  @@index([type])
+  @@index([status])
+  @@index([finishedAt])
+}
+
+// Vật tư/phụ tùng tiêu hao trong một phiếu sửa chữa/bảo dưỡng
+model WorkOrderPart {
+  id          Int      @id @default(autoincrement())
+  workOrderId Int
+  sparePartId Int?
+  name        String
+  unit        String?
+  quantity    Decimal  @default(1) @db.Decimal(12, 2)
+  unitPrice   Decimal? @db.Decimal(15, 2)
+  amount      Decimal? @db.Decimal(15, 2)
+  fromStock   Boolean  @default(true) // true: xuất kho xưởng, false: mua ngoài
+  note        String?
+
+  workOrder WorkOrder  @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  sparePart SparePart? @relation(fields: [sparePartId], references: [id])
+
+  @@index([workOrderId])
+  @@index([sparePartId])
+}
+
+// ---------- KHỐI 4: VẬT TƯ, PHỤ TÙNG ----------
+
+// Yêu cầu mua vật tư phục vụ sửa chữa / bảo dưỡng (duyệt 2 cấp)
+model PartRequest {
+  id        Int      @id @default(autoincrement())
+  requestNo String   @unique
+  type      WorkType
+  factoryId Int
+
+  // Gắn với nguồn phát sinh nhu cầu (tùy chọn)
+  workPlanId        Int?
+  workOrderId       Int?
+  breakdownReportId Int?
+
+  title       String
+  reason      String?
+  requestDate DateTime  @db.Date
+  neededDate  DateTime? @db.Date
+
+  status      PartRequestStatus @default(DRAFT)
+  totalAmount Decimal?          @db.Decimal(15, 2)
+
+  requestedBy       Int
+  factoryApprovedBy Int?
+  factoryApprovedAt DateTime?
+  companyApprovedBy Int?
+  companyApprovedAt DateTime?
+  rejectReason      String?
+  note              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  factory         Factory           @relation(fields: [factoryId], references: [id])
+  workPlan        WorkPlan?         @relation(fields: [workPlanId], references: [id])
+  workOrder       WorkOrder?        @relation(fields: [workOrderId], references: [id])
+  breakdownReport BreakdownReport?  @relation(fields: [breakdownReportId], references: [id])
+  items           PartRequestItem[]
+  stockMovements  StockMovement[]
+
+  @@index([factoryId])
+  @@index([type])
+  @@index([status])
+  @@index([requestDate])
+}
+
+model PartRequestItem {
+  id          Int     @id @default(autoincrement())
+  requestId   Int
+  sparePartId Int?
+  name        String
+  unit        String?
+  quantity    Decimal @db.Decimal(12, 2)
+  // Tồn kho tại thời điểm lập yêu cầu (lưu lại để đối chiếu khi duyệt)
+  stockQuantity    Decimal? @db.Decimal(12, 2)
+  estimatedPrice   Decimal? @db.Decimal(15, 2)
+  amount           Decimal? @db.Decimal(15, 2)
+  receivedQuantity Decimal  @default(0) @db.Decimal(12, 2) // đã nhập kho
+  note             String?
+
+  request   PartRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  sparePart SparePart?  @relation(fields: [sparePartId], references: [id])
+
+  @@index([requestId])
+  @@index([sparePartId])
+}
+
+// Tồn kho phụ tùng theo từng xưởng
+model SparePartStock {
+  id          Int      @id @default(autoincrement())
+  sparePartId Int
+  factoryId   Int
+  quantity    Decimal  @default(0) @db.Decimal(12, 2)
+  minQuantity Decimal  @default(0) @db.Decimal(12, 2) // tồn tối thiểu, dưới mức này thì cảnh báo
+  location    String? // vị trí trong kho
+  updatedAt   DateTime @updatedAt
+
+  sparePart SparePart @relation(fields: [sparePartId], references: [id])
+  factory   Factory   @relation(fields: [factoryId], references: [id])
+
+  @@unique([sparePartId, factoryId])
+  @@index([factoryId])
+}
+
+// Sổ biến động kho phụ tùng (thẻ kho) — mọi lần nhập/xuất/kiểm kê
+model StockMovement {
+  id           Int               @id @default(autoincrement())
+  sparePartId  Int
+  factoryId    Int
+  type         StockMovementType
+  quantity     Decimal           @db.Decimal(12, 2) // luôn dương, hướng xác định bởi type
+  unitPrice    Decimal?          @db.Decimal(15, 2)
+  amount       Decimal?          @db.Decimal(15, 2)
+  balanceAfter Decimal           @db.Decimal(12, 2) // tồn sau biến động
+
+  movementDate  DateTime @default(now())
+  workOrderId   Int? // xuất dùng cho phiếu sửa chữa/bảo dưỡng nào
+  partRequestId Int? // nhập theo yêu cầu mua nào
+  supplier      String?
+  documentNo    String?
+  reason        String?
+  performedBy   Int?
+  note          String?
+
+  createdAt DateTime @default(now())
+
+  sparePart   SparePart    @relation(fields: [sparePartId], references: [id])
+  factory     Factory      @relation(fields: [factoryId], references: [id])
+  workOrder   WorkOrder?   @relation(fields: [workOrderId], references: [id])
+  partRequest PartRequest? @relation(fields: [partRequestId], references: [id])
+
+  @@index([sparePartId])
+  @@index([factoryId])
+  @@index([type])
+  @@index([movementDate])
+}
+
+// ---------- KHỐI 5: LÝ LỊCH MÁY ----------
+
+// Nhật ký thay đổi trạng thái máy — phục vụ "Theo dõi trạng thái MMTB"
+model MachineStatusLog {
+  id         Int            @id @default(autoincrement())
+  machineId  Int
+  fromStatus MachineStatus?
+  toStatus   MachineStatus
+  reason     String?
+  refType    String? // BREAKDOWN / WORK_ORDER / TRANSFER / HANDOVER / LIQUIDATION / MANUAL
+  refId      Int?
+  changedBy  Int?
+  changedAt  DateTime       @default(now())
+
+  machine Machine @relation(fields: [machineId], references: [id])
+
+  @@index([machineId])
+  @@index([changedAt])
 }

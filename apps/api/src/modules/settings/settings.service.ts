@@ -12,6 +12,11 @@ export const SETTING_KEYS = {
   QR_PRINTER_NAME: 'QR_PRINTER_NAME',
   QR_LABEL_WIDTH_MM: 'QR_LABEL_WIDTH_MM',
   QR_LABEL_HEIGHT_MM: 'QR_LABEL_HEIGHT_MM',
+  // Ngưỡng chi phí (đồng) mà từ đó kế hoạch / yêu cầu mua vật tư phải trình công ty duyệt.
+  // 0 nghĩa là mọi hồ sơ đều phải qua 2 cấp: giám đốc xưởng rồi công ty.
+  MACHINE_COMPANY_APPROVAL_THRESHOLD: 'MACHINE_COMPANY_APPROVAL_THRESHOLD',
+  // Số ngày báo trước khi chứng chỉ / kiểm định máy hết hạn
+  MACHINE_CERT_ALERT_DAYS: 'MACHINE_CERT_ALERT_DAYS',
 } as const
 
 // Giá trị mặc định khi chưa cấu hình
@@ -21,6 +26,8 @@ const DEFAULTS = {
   PAYROLL_WORKING_DAYS: 26,
   QR_LABEL_WIDTH_MM: 50,
   QR_LABEL_HEIGHT_MM: 30,
+  MACHINE_COMPANY_APPROVAL_THRESHOLD: 0,
+  MACHINE_CERT_ALERT_DAYS: 30,
 }
 
 @Injectable()
@@ -73,6 +80,8 @@ export class SettingsService {
       qrPrinterName,
       qrLabelWidthMm,
       qrLabelHeightMm,
+      machineCompanyApprovalThreshold,
+      machineCertAlertDays,
     ] = await Promise.all([
       this.getBool(SETTING_KEYS.QC_REPORTING_ENABLED, false),
       this.getNumber(SETTING_KEYS.CUTTING_RATE_PCT, DEFAULTS.CUTTING_RATE_PCT),
@@ -87,6 +96,11 @@ export class SettingsService {
       this.getString(SETTING_KEYS.QR_PRINTER_NAME, ''),
       this.getNumber(SETTING_KEYS.QR_LABEL_WIDTH_MM, DEFAULTS.QR_LABEL_WIDTH_MM),
       this.getNumber(SETTING_KEYS.QR_LABEL_HEIGHT_MM, DEFAULTS.QR_LABEL_HEIGHT_MM),
+      this.getNumber(
+        SETTING_KEYS.MACHINE_COMPANY_APPROVAL_THRESHOLD,
+        DEFAULTS.MACHINE_COMPANY_APPROVAL_THRESHOLD,
+      ),
+      this.getNumber(SETTING_KEYS.MACHINE_CERT_ALERT_DAYS, DEFAULTS.MACHINE_CERT_ALERT_DAYS),
     ])
     return {
       cutoffHour: this.cutoffHour,
@@ -97,6 +111,8 @@ export class SettingsService {
       qrPrinterName,
       qrLabelWidthMm,
       qrLabelHeightMm,
+      machineCompanyApprovalThreshold,
+      machineCertAlertDays,
     }
   }
 
@@ -133,6 +149,15 @@ export class SettingsService {
     }
     if (dto.qrLabelHeightMm !== undefined) {
       await this.setValue(SETTING_KEYS.QR_LABEL_HEIGHT_MM, String(dto.qrLabelHeightMm))
+    }
+    if (dto.machineCompanyApprovalThreshold !== undefined) {
+      await this.setValue(
+        SETTING_KEYS.MACHINE_COMPANY_APPROVAL_THRESHOLD,
+        String(dto.machineCompanyApprovalThreshold),
+      )
+    }
+    if (dto.machineCertAlertDays !== undefined) {
+      await this.setValue(SETTING_KEYS.MACHINE_CERT_ALERT_DAYS, String(dto.machineCertAlertDays))
     }
     return this.get()
   }

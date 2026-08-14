@@ -44,4 +44,17 @@ export class UpdateSettingsDto {
   @Min(10)
   @Max(300)
   qrLabelHeightMm?: number
+
+  // Ngưỡng chi phí phải trình công ty duyệt (0 = mọi hồ sơ đều qua 2 cấp)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  machineCompanyApprovalThreshold?: number
+
+  // Số ngày báo trước khi chứng chỉ/kiểm định máy hết hạn
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  machineCertAlertDays?: number
 }
