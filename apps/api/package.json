@@ -38,7 +38,6 @@
     "nodemailer": "^6.9.14",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "prisma": "^5.17.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.7.5",
@@ -55,6 +54,7 @@
     "@types/node": "^22.4.0",
     "@types/nodemailer": "^6.4.15",
     "@types/passport-jwt": "^4.0.1",
+    "prisma": "^5.17.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.3"
   }

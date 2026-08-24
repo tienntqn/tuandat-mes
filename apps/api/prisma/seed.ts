@@ -69,24 +69,6 @@ async function wipe() {
   await prisma.factoryPlan.deleteMany()
   await prisma.companyPlan.deleteMany()
   await prisma.styleLine.deleteMany()
-  // Phân hệ máy móc thiết bị — xóa từ chứng từ con lên máy (theo chiều khóa ngoại)
-  await prisma.stockMovement.deleteMany()
-  await prisma.sparePartStock.deleteMany()
-  await prisma.partRequestItem.deleteMany()
-  await prisma.partRequest.deleteMany()
-  await prisma.machineHandover.deleteMany()
-  await prisma.workOrderPart.deleteMany()
-  await prisma.workOrder.deleteMany()
-  await prisma.workPlanItem.deleteMany()
-  await prisma.workPlan.deleteMany()
-  await prisma.incidentReport.deleteMany()
-  await prisma.breakdownReport.deleteMany()
-  await prisma.maintenanceRequest.deleteMany()
-  await prisma.maintenanceNormItem.deleteMany()
-  await prisma.maintenanceNorm.deleteMany()
-  await prisma.machineStatusLog.deleteMany()
-  await prisma.machineCertificate.deleteMany()
-  await prisma.machineDocument.deleteMany()
   await prisma.machineMaintenance.deleteMany()
   await prisma.machineTransfer.deleteMany()
   await prisma.repairProposalAttachment.deleteMany()
@@ -662,87 +644,6 @@ async function main() {
     })
     console.log('✓ RepairProposal: 1 (mẫu, chờ duyệt)')
   }
-
-  // ── 12c. PHÂN HỆ MÁY MÓC THIẾT BỊ: định mức bảo dưỡng + tồn kho phụ tùng ──
-  // Định mức là dữ liệu nền để hệ thống dự tính kế hoạch bảo dưỡng và nhu cầu vật tư.
-  const partByCode: Record<string, { id: number; unit: string | null }> = {}
-  for (const p of await prisma.sparePart.findMany({ select: { id: true, code: true, unit: true } })) {
-    partByCode[p.code] = { id: p.id, unit: p.unit }
-  }
-
-  const normSeed = [
-    {
-      code: 'DM001', name: 'Bảo dưỡng định kỳ máy 1 kim — 3 tháng', categoryCode: 'CL1KIM',
-      intervalDays: 90, estimatedHours: 2, estimatedCost: 300000,
-      checklist: 'Vệ sinh tổng thể máy\nTra dầu, mỡ các khớp\nKiểm tra và căn chỉnh kim\nKiểm tra dây curoa\nKiểm tra hệ thống điện',
-      items: [{ code: 'PT005', quantity: 1 }, { code: 'PT002', quantity: 1 }],
-    },
-    {
-      code: 'DM002', name: 'Bảo dưỡng máy lập trình — 6 tháng', categoryCode: 'CLLT',
-      intervalDays: 180, estimatedHours: 4, estimatedCost: 800000,
-      checklist: 'Vệ sinh bo mạch và quạt tản nhiệt\nKiểm tra motor\nSao lưu chương trình\nCăn chỉnh trục X-Y',
-      items: [{ code: 'PT002', quantity: 1 }],
-    },
-    {
-      code: 'DM003', name: 'Bảo dưỡng máy cắt — 3 tháng', categoryCode: 'CLCAT',
-      intervalDays: 90, estimatedHours: 2, estimatedCost: 400000,
-      checklist: 'Vệ sinh bàn cắt\nMài / thay lưỡi dao\nTra dầu ray trượt\nKiểm tra an toàn dao',
-      items: [{ code: 'PT006', quantity: 1 }],
-    },
-  ]
-
-  for (const n of normSeed) {
-    await prisma.maintenanceNorm.create({
-      data: {
-        code: n.code, name: n.name, categoryId: catByCode[n.categoryCode] ?? null,
-        intervalDays: n.intervalDays, estimatedHours: n.estimatedHours, estimatedCost: n.estimatedCost,
-        checklist: n.checklist,
-        items: {
-          create: n.items
-            .filter((i) => partByCode[i.code])
-            .map((i) => {
-              const part = partByCode[i.code]
-              const info = sparePartSeed.find((s) => s.code === i.code)!
-              return { sparePartId: part.id, name: info.name, unit: part.unit, quantity: i.quantity }
-            }),
-        },
-      },
-    })
-  }
-
-  // Tồn kho phụ tùng ban đầu cho từng xưởng, kèm định mức tồn tối thiểu để cảnh báo
-  const stockSeed = [
-    { code: 'PT001', quantity: 4, minQuantity: 2 },
-    { code: 'PT002', quantity: 25, minQuantity: 10 },
-    { code: 'PT003', quantity: 3, minQuantity: 2 },
-    { code: 'PT004', quantity: 2, minQuantity: 1 },
-    { code: 'PT005', quantity: 40, minQuantity: 20 },
-    { code: 'PT006', quantity: 6, minQuantity: 4 },
-  ]
-  let stockRows = 0
-  for (const factory of factories) {
-    for (const s of stockSeed) {
-      const part = partByCode[s.code]
-      if (!part) continue
-      const stock = await prisma.sparePartStock.create({
-        data: {
-          sparePartId: part.id, factoryId: factory.id,
-          quantity: s.quantity, minQuantity: s.minQuantity, location: 'Kho cơ điện',
-        },
-      })
-      // Ghi thẻ kho cho số tồn đầu kỳ để lịch sử kho không bị hụt đầu
-      await prisma.stockMovement.create({
-        data: {
-          sparePartId: part.id, factoryId: factory.id, type: 'IN',
-          quantity: s.quantity, balanceAfter: s.quantity,
-          reason: 'Tồn đầu kỳ', movementDate: d(-30),
-        },
-      })
-      stockRows++
-      void stock
-    }
-  }
-  console.log(`✓ Định mức bảo dưỡng: ${normSeed.length} | Dòng tồn kho phụ tùng: ${stockRows}`)
 
   console.log(`
 ╔══════════════════════════════════════════════════════════╗

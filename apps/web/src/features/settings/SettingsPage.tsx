@@ -27,8 +27,6 @@ export default function SettingsPage() {
   const [payroll, setPayroll] = useState({ cuttingRatePct: 8, finishingRatePct: 5, payrollWorkingDays: 26 })
   // Cấu hình in tem QR
   const [qr, setQr] = useState({ qrPrinterName: '', qrLabelWidthMm: 50, qrLabelHeightMm: 30 })
-  // Cấu hình phân hệ máy móc thiết bị
-  const [machine, setMachine] = useState({ machineCompanyApprovalThreshold: 0, machineCertAlertDays: 30 })
   useEffect(() => {
     if (appSettings) {
       setPayroll({
@@ -40,10 +38,6 @@ export default function SettingsPage() {
         qrPrinterName: appSettings.qrPrinterName ?? '',
         qrLabelWidthMm: appSettings.qrLabelWidthMm ?? 50,
         qrLabelHeightMm: appSettings.qrLabelHeightMm ?? 30,
-      })
-      setMachine({
-        machineCompanyApprovalThreshold: appSettings.machineCompanyApprovalThreshold ?? 0,
-        machineCertAlertDays: appSettings.machineCertAlertDays ?? 30,
       })
     }
   }, [appSettings])
@@ -261,45 +255,6 @@ export default function SettingsPage() {
                 hãy đặt máy in tem ở trên làm <strong>máy in mặc định</strong> của máy tính.
               </p>
             </div>
-          </div>
-        </div>
-
-        {/* Cấu hình phân hệ máy móc thiết bị */}
-        <div className="card mb-4">
-          <div className="card-header">
-            <div className="d-flex align-items-center gap-2">
-              <i className="fe fe-hard-drive text-primary"></i>
-              <h6 className="card-title mb-0">Phân hệ máy móc thiết bị</h6>
-            </div>
-            <p className="text-muted small mb-0 mt-1">
-              Ngưỡng duyệt 2 cấp và thời điểm cảnh báo hạn chứng chỉ, kiểm định.
-            </p>
-          </div>
-          <div className="card-body">
-            <div className="mb-3">
-              <label className="form-label small text-muted">Ngưỡng chi phí phải trình công ty duyệt (đ)</label>
-              <input
-                type="number" min={0} step={100000} className="form-control"
-                value={machine.machineCompanyApprovalThreshold}
-                onChange={(e) => setMachine((p) => ({ ...p, machineCompanyApprovalThreshold: +e.target.value }))}
-              />
-              <div className="form-text small">
-                Kế hoạch sửa chữa/bảo dưỡng và yêu cầu mua vật tư có giá trị <strong>từ mức này trở lên</strong> phải
-                qua công ty duyệt sau khi giám đốc xưởng đã duyệt. Để <strong>0</strong> nghĩa là mọi hồ sơ đều duyệt 2 cấp.
-              </div>
-            </div>
-            <div className="mb-3">
-              <label className="form-label small text-muted">Báo trước hạn chứng chỉ / kiểm định (ngày)</label>
-              <input
-                type="number" min={1} max={365} className="form-control"
-                value={machine.machineCertAlertDays}
-                onChange={(e) => setMachine((p) => ({ ...p, machineCertAlertDays: +e.target.value }))}
-              />
-            </div>
-            <button className="btn btn-primary btn-sm" disabled={updateSettings.isPending}
-              onClick={() => updateSettings.mutate(machine)}>
-              {updateSettings.isPending ? 'Đang lưu...' : 'Lưu cấu hình máy móc'}
-            </button>
           </div>
         </div>
         </div>{/* /CỘT PHẢI */}

@@ -9,10 +9,6 @@ export interface AppSettings {
   qrPrinterName: string
   qrLabelWidthMm: number
   qrLabelHeightMm: number
-  // Ngưỡng chi phí phải trình công ty duyệt (0 = mọi hồ sơ đều qua 2 cấp)
-  machineCompanyApprovalThreshold: number
-  // Số ngày báo trước khi chứng chỉ / kiểm định máy hết hạn
-  machineCertAlertDays: number
 }
 
 export interface UpdateAppSettings {
@@ -23,8 +19,6 @@ export interface UpdateAppSettings {
   qrPrinterName?: string
   qrLabelWidthMm?: number
   qrLabelHeightMm?: number
-  machineCompanyApprovalThreshold?: number
-  machineCertAlertDays?: number
 }
 
 export const settingsApi = {

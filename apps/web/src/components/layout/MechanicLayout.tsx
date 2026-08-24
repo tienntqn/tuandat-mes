@@ -11,24 +11,11 @@ const MachineLayout = lazy(() => import('@/features/machine/MachineLayout'))
 const TABS = [
   { label: 'Dashboard', path: '/', icon: 'fe fe-home', end: true },
   { label: 'Máy', path: '/machines', icon: 'fe fe-hard-drive', end: true },
-  { label: 'Báo hỏng', path: '/machines/breakdowns', icon: 'fe fe-alert-octagon', end: false },
-  { label: 'Phiếu sửa chữa', path: '/machines/repair-orders', icon: 'fe fe-tool', end: false },
-  { label: 'Dự tính BD', path: '/machines/maintenance-forecast', icon: 'fe fe-trending-up', end: false },
-  { label: 'Yêu cầu BD', path: '/machines/maintenance-requests', icon: 'fe fe-inbox', end: false },
-  { label: 'Kế hoạch BD', path: '/machines/maintenance-plans', icon: 'fe fe-calendar', end: false },
-  { label: 'Phiếu bảo dưỡng', path: '/machines/maintenance-orders', icon: 'fe fe-settings', end: false },
-  { label: 'Bàn giao', path: '/machines/handovers', icon: 'fe fe-file-text', end: false },
-  { label: 'Sự cố', path: '/machines/incidents', icon: 'fe fe-alert-triangle', end: false },
-  { label: 'Chứng chỉ', path: '/machines/certificates', icon: 'fe fe-shield', end: false },
-  { label: 'Định mức BD', path: '/machines/norms', icon: 'fe fe-sliders', end: false },
-  { label: 'Lịch sử BD', path: '/machines/maintenance', icon: 'fe fe-clock', end: false },
+  { label: 'Bảo dưỡng', path: '/machines/maintenance', icon: 'fe fe-tool', end: false },
   { label: 'Đề xuất sửa chữa', path: '/machines/repairs', icon: 'fe fe-clipboard', end: false },
   { label: 'Điều chuyển', path: '/machines/transfers', icon: 'fe fe-repeat', end: false },
   { label: 'Lịch sử điều chuyển', path: '/machines/history', icon: 'fe fe-clock', end: false },
   { label: 'Phụ tùng', path: '/machines/spare-parts', icon: 'fe fe-package', end: false },
-  { label: 'Tồn kho', path: '/machines/stocks', icon: 'fe fe-database', end: false },
-  { label: 'Mua vật tư', path: '/machines/part-requests', icon: 'fe fe-shopping-cart', end: false },
-  { label: 'Thống kê', path: '/machines/statistics', icon: 'fe fe-bar-chart-2', end: false },
 ]
 
 /**

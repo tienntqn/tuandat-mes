@@ -4,8 +4,6 @@ import { ArrowLeft, Edit2, Trash, AlertTriangle, X, Wrench, Package, Repeat } fr
 import { useMachine, useUpdateMachine, useLiquidateMachine } from './machine.hooks'
 import { MachineFormDialog } from './MachineFormDialog'
 import { RepairProposalDialog } from './RepairProposalDialog'
-import { MachineDocumentsCard } from './MachineDocumentsCard'
-import { MachineTimelineCard } from './MachineTimelineCard'
 import { useCreateRepairProposal } from './repair.hooks'
 import type { RepairProposalType } from './repair.api'
 import { PageWrapper } from '@/components/layout/PageWrapper'
@@ -127,12 +125,6 @@ export default function MachineDetailPage() {
               ) : <div className="text-muted small">Chưa có hình ảnh</div>}
             </div>
           </div>
-
-          {/* Hồ sơ máy: tài liệu đính kèm (HDSD, hóa đơn, hợp đồng, chứng chỉ...) */}
-          <MachineDocumentsCard machineId={machine.id} canWrite={canWrite} />
-
-          {/* Lý lịch máy: toàn bộ sự kiện theo thời gian */}
-          <MachineTimelineCard machineId={machine.id} />
 
           {machine.liquidation && (
             <div className="card mb-3">

@@ -1,3 +1,0 @@
-# Prisma dùng file này để biết migrations được sinh cho hệ quản trị CSDL nào.
-# Không sửa bằng tay.
-provider = "postgresql"

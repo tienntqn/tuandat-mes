@@ -27,15 +27,6 @@ import { MachineBrandModule } from './modules/machine-brand/machine-brand.module
 import { MachineCategoryModule } from './modules/machine-category/machine-category.module'
 import { SparePartModule } from './modules/spare-part/spare-part.module'
 import { RepairProposalModule } from './modules/repair-proposal/repair-proposal.module'
-import { MaintenanceNormModule } from './modules/maintenance-norm/maintenance-norm.module'
-import { MachineRecordModule } from './modules/machine-record/machine-record.module'
-import { MachineHandoverModule } from './modules/machine-handover/machine-handover.module'
-import { StockModule } from './modules/stock/stock.module'
-import { BreakdownModule } from './modules/breakdown/breakdown.module'
-import { WorkOrderModule } from './modules/work-order/work-order.module'
-import { MaintenancePlanModule } from './modules/maintenance-plan/maintenance-plan.module'
-import { PartRequestModule } from './modules/part-request/part-request.module'
-import { MachineProfileModule } from './modules/machine-profile/machine-profile.module'
 import { MailModule } from './modules/mail/mail.module'
 import { AccountingModule } from './modules/accounting/accounting.module'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
@@ -72,15 +63,6 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter'
     MachineCategoryModule,
     SparePartModule,
     RepairProposalModule,
-    MaintenanceNormModule,
-    MachineRecordModule,
-    MachineHandoverModule,
-    StockModule,
-    BreakdownModule,
-    WorkOrderModule,
-    MaintenancePlanModule,
-    PartRequestModule,
-    MachineProfileModule,
     MailModule,
     AccountingModule,
   ],
