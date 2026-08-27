@@ -23,6 +23,7 @@ const SewingProgressPage = lazy(() => import('@/features/progress/SewingProgress
 const FinishingProgressPage = lazy(() => import('@/features/progress/FinishingProgressPage'))
 const ShippingProgressPage = lazy(() => import('@/features/progress/ShippingProgressPage'))
 const SohoConverterPage = lazy(() => import('@/features/planning/SohoConverterPage'))
+const ContainerLoadingPage = lazy(() => import('@/features/planning/container-loading/ContainerLoadingPage'))
 // Báo cáo
 const ReportPage = lazy(() => import('@/features/report/ReportPage'))
 
@@ -66,6 +67,7 @@ export default function PlanningLayout() {
         <Route path="progress/finishing" element={guard(R_PROGRESS, <FinishingProgressPage />)} />
         <Route path="progress/shipping" element={guard(R_PROGRESS, <ShippingProgressPage />)} />
         <Route path="soho-converter" element={guard(R_FACTORY_PLAN, <SohoConverterPage />)} />
+        <Route path="container-loading" element={guard(R_FACTORY_PLAN, <ContainerLoadingPage />)} />
         {/* Báo cáo */}
         <Route path="reports" element={guard(R_REPORT, <ReportPage />)} />
       </Routes>

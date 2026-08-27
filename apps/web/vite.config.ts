@@ -81,5 +81,11 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    // Chạy dev server trong Docker với source mount từ Windows: sự kiện filesystem (inotify) không
+    // xuyên qua bind-mount, nên watcher mặc định của Vite không thấy file thay đổi — phải dùng polling.
+    watch: {
+      usePolling: true,
+      interval: 300,
+    },
   },
 })

@@ -399,9 +399,29 @@ model Customer {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
 
-  styles Style[]
-  orders Order[]
+  styles     Style[]
+  orders     Order[]
+  cartonTypes CartonType[]
 
+  @@index([deletedAt])
+}
+
+// Loại thùng carton chuẩn của từng khách hàng (dùng cho Tiện ích Xếp container) —
+// mỗi khách hàng có bộ thùng riêng, chọn khách là ra danh sách thùng, chỉ cần nhập số lượng.
+model CartonType {
+  id         Int       @id @default(autoincrement())
+  customerId Int
+  label      String
+  length     Decimal   @db.Decimal(10, 3)
+  width      Decimal   @db.Decimal(10, 3)
+  height     Decimal   @db.Decimal(10, 3)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
   @@index([deletedAt])
 }
 
@@ -573,6 +593,33 @@ model FactoryPlan {
   @@index([companyPlanId])
   @@index([lineId])
   @@index([expectedFinishDate])
+}
+
+// ============================================================
+// TIỆN ÍCH: XẾP CONTAINER
+// ============================================================
+
+// Lịch sử các lần tính toán xếp thùng vào container (Tiện ích phân hệ Kế hoạch).
+// cartons/result lưu dạng Json vì là snapshot đầu vào/đầu ra của thuật toán tính ở frontend,
+// không cần chuẩn hóa từng thùng thành bảng riêng (không truy vấn theo thùng).
+model ContainerLoadingPlan {
+  id                 Int       @id @default(autoincrement())
+  name               String?
+  containerTypeCode  String
+  containerLength    Decimal   @db.Decimal(10, 3)
+  containerWidth     Decimal   @db.Decimal(10, 3)
+  containerHeight    Decimal   @db.Decimal(10, 3)
+  cartons            Json
+  result             Json
+  containersUsed     Int
+  overallUtilization Decimal   @db.Decimal(5, 2)
+  createdBy          Int?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  @@index([createdBy])
+  @@index([deletedAt])
 }
 
 // ============================================================

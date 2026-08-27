@@ -6,7 +6,13 @@ import { AppModule } from './app.module'
 import { AppValidationPipe } from './common/pipes/app-validation.pipe'
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule)
+  // bodyParser mặc định của Express giới hạn 100kb — quá nhỏ cho payload xếp container
+  // (kết quả tính toán có thể chứa hàng nghìn thùng đã xếp tọa độ), gây lỗi
+  // "PayloadTooLargeError: request entity too large" khi lưu. Tắt bodyParser mặc định
+  // để tự đăng ký lại với giới hạn lớn hơn.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false })
+  app.useBodyParser('json', { limit: '15mb' })
+  app.useBodyParser('urlencoded', { extended: true, limit: '15mb' })
 
   app.setGlobalPrefix('api/v1')
 

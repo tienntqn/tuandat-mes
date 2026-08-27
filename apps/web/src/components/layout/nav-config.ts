@@ -117,6 +117,7 @@ export const NAV_SECTIONS: NavSection[] = [
             label: 'Tiện ích',
             children: [
               { label: 'Chuyển đổi form SOHO', path: '/planning/soho-converter', icon: 'fe fe-file-text', roles: R_FACTORY_PLAN },
+              { label: 'Xếp container', path: '/planning/container-loading', icon: 'fe fe-box', roles: R_FACTORY_PLAN },
             ],
           },
           { label: 'Báo cáo', path: '/planning/reports', icon: 'fe fe-bar-chart-2', roles: R_REPORT },
