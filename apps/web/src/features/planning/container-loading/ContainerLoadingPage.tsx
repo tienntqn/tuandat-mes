@@ -28,6 +28,10 @@ const formatDate = (d: string) => new Date(d).toLocaleString('vi-VN')
 // Kích thước thùng carton nhập theo cm (trực quan hơn với carton thực tế), nhưng CartonInput.length/width/height
 // nội bộ vẫn lưu theo mét (khớp đơn vị container/thuật toán xếp) — quy đổi ngay tại biên nhập/hiển thị.
 const CM_PER_M = 100
+// Làm tròn khi quy đổi cm <-> m để tránh sai số dấu phẩy động (vd 24.1cm -> 0.241m -> 24.099999999999998cm
+// nếu không làm tròn) — 0.1mm dư thừa so với nhu cầu đo thùng carton nên làm tròn không ảnh hưởng thực tế.
+const cmToM = (cm: number) => Math.round(cm * 1e4) / 1e4
+const mToCm = (m: number) => Math.round(m * CM_PER_M * 10) / 10
 
 function SummaryCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -348,24 +352,24 @@ export default function ContainerLoadingPage() {
                               <input
                                 type="number" min={0} step={0.1}
                                 className="form-control form-control-sm"
-                                value={row.length ? row.length * CM_PER_M : ''}
-                                onChange={(e) => updateRow(row.id, { length: Number(e.target.value) / CM_PER_M })}
+                                value={row.length ? mToCm(row.length) : ''}
+                                onChange={(e) => updateRow(row.id, { length: cmToM(Number(e.target.value)) })}
                               />
                             </td>
                             <td>
                               <input
                                 type="number" min={0} step={0.1}
                                 className="form-control form-control-sm"
-                                value={row.width ? row.width * CM_PER_M : ''}
-                                onChange={(e) => updateRow(row.id, { width: Number(e.target.value) / CM_PER_M })}
+                                value={row.width ? mToCm(row.width) : ''}
+                                onChange={(e) => updateRow(row.id, { width: cmToM(Number(e.target.value)) })}
                               />
                             </td>
                             <td>
                               <input
                                 type="number" min={0} step={0.1}
                                 className="form-control form-control-sm"
-                                value={row.height ? row.height * CM_PER_M : ''}
-                                onChange={(e) => updateRow(row.id, { height: Number(e.target.value) / CM_PER_M })}
+                                value={row.height ? mToCm(row.height) : ''}
+                                onChange={(e) => updateRow(row.id, { height: cmToM(Number(e.target.value)) })}
                               />
                             </td>
                             <td>

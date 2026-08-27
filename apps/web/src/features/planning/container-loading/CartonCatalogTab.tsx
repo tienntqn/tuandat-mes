@@ -26,15 +26,19 @@ export function CartonCatalogTab({ customers, customerId, onCustomerChange }: Ca
   // Người dùng nhập kích thước thùng theo cm (trực quan hơn với carton thực tế), nhưng lưu trữ
   // và tính toán nội bộ vẫn theo mét (khớp đơn vị container) — quy đổi ngay tại biên nhập/hiển thị.
   const CM_PER_M = 100
+  // Làm tròn khi quy đổi cm -> m để tránh sai số dấu phẩy động (vd 24.1cm -> 0.241m nếu tính thẳng
+  // sẽ lưu thành 24.099999999999998 khi hiển thị lại ở nơi khác không dùng toFixed) — 0.1mm dư thừa
+  // so với nhu cầu đo thùng carton nên làm tròn không ảnh hưởng thực tế.
+  const cmToM = (cm: number) => Math.round(cm * 1e4) / 1e4
 
   function handleAdd() {
     if (!customerId) {
       toast.error('Vui lòng chọn khách hàng trước')
       return
     }
-    const length = Number(form.length) / CM_PER_M
-    const width = Number(form.width) / CM_PER_M
-    const height = Number(form.height) / CM_PER_M
+    const length = cmToM(Number(form.length))
+    const width = cmToM(Number(form.width))
+    const height = cmToM(Number(form.height))
     if (!form.label.trim()) {
       toast.error('Vui lòng nhập tên thùng')
       return
@@ -60,9 +64,9 @@ export function CartonCatalogTab({ customers, customerId, onCustomerChange }: Ca
   }
 
   function saveEdit(id: number) {
-    const length = Number(editForm.length) / CM_PER_M
-    const width = Number(editForm.width) / CM_PER_M
-    const height = Number(editForm.height) / CM_PER_M
+    const length = cmToM(Number(editForm.length))
+    const width = cmToM(Number(editForm.width))
+    const height = cmToM(Number(editForm.height))
     if (!editForm.label.trim() || !(length > 0) || !(width > 0) || !(height > 0)) {
       toast.error('Dữ liệu không hợp lệ')
       return
