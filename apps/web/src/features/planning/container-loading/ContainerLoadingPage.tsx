@@ -4,7 +4,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { toast } from '@/lib/toast'
 import { useCustomersActive } from '@/features/customer/customer.hooks'
 import { CONTAINER_GROUPS, findContainerPreset, colorForIndex } from './container-presets'
-import { packContainers } from './container-loading.utils'
+import { packContainers, cmToM, mToCm } from './container-loading.utils'
 import type { PackingMode } from './container-loading.utils'
 import type { CartonInput, PackingSummary } from './container-loading.types'
 import { ContainerScene } from './ContainerScene'
@@ -25,13 +25,8 @@ function newCartonRow(index: number): CartonInput {
 
 const formatDate = (d: string) => new Date(d).toLocaleString('vi-VN')
 
-// Kích thước thùng carton nhập theo cm (trực quan hơn với carton thực tế), nhưng CartonInput.length/width/height
-// nội bộ vẫn lưu theo mét (khớp đơn vị container/thuật toán xếp) — quy đổi ngay tại biên nhập/hiển thị.
-const CM_PER_M = 100
-// Làm tròn khi quy đổi cm <-> m để tránh sai số dấu phẩy động (vd 24.1cm -> 0.241m -> 24.099999999999998cm
-// nếu không làm tròn) — 0.1mm dư thừa so với nhu cầu đo thùng carton nên làm tròn không ảnh hưởng thực tế.
-const cmToM = (cm: number) => Math.round(cm * 1e4) / 1e4
-const mToCm = (m: number) => Math.round(m * CM_PER_M * 10) / 10
+// Kích thước thùng carton nhập theo cm, nội bộ lưu theo mét — quy đổi bằng cmToM/mToCm dùng chung
+// (định nghĩa ở container-loading.utils, xem ghi chú ở đó).
 
 function SummaryCard({ label, value }: { label: string; value: React.ReactNode }) {
   return (

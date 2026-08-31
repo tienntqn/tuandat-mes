@@ -1,5 +1,5 @@
 import { X, Printer } from 'lucide-react'
-import { buildLoadingSequence } from './container-loading.utils'
+import { buildLoadingSequence, mToCm } from './container-loading.utils'
 import type { PackingSummary } from './container-loading.types'
 
 interface Props {
@@ -9,8 +9,7 @@ interface Props {
 }
 
 const ROTATED_LABEL: Record<'true' | 'false', string> = { true: 'Xoay ngang', false: 'Bình thường' }
-// Kích thước thùng carton hiển thị theo cm cho dễ đọc với nhân viên — dữ liệu gốc lưu theo mét
-const CM_PER_M = 100
+// Kích thước thùng carton hiển thị theo cm cho dễ đọc với nhân viên — dữ liệu gốc lưu theo mét (mToCm)
 
 // Phiếu hướng dẫn xếp container theo vị trí chiều sâu (trong ra cửa) — mirror PackingListDialog/RepairProposalPrint.
 export function ContainerLoadingPrintDialog({ open, packingResult, onClose }: Props) {
@@ -80,7 +79,7 @@ export function ContainerLoadingPrintDialog({ open, packingResult, onClose }: Pr
                               {row.label}
                             </span>
                           </td>
-                          <td>{(row.length * CM_PER_M).toFixed(1)} × {(row.width * CM_PER_M).toFixed(1)} × {(row.height * CM_PER_M).toFixed(1)}</td>
+                          <td>{mToCm(row.length).toFixed(1)} × {mToCm(row.width).toFixed(1)} × {mToCm(row.height).toFixed(1)}</td>
                           <td>{ROTATED_LABEL[row.rotated ? 'true' : 'false']}</td>
                           <td className="text-center fw-medium">{row.count}</td>
                         </tr>

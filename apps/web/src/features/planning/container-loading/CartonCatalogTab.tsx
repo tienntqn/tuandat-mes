@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { toast } from '@/lib/toast'
 import { useCartonTypes, useCreateCartonType, useUpdateCartonType, useDeleteCartonType } from './carton-type.hooks'
+import { cmToM, mToCm } from './container-loading.utils'
 import type { CartonType } from './carton-type.api'
 
 interface CartonCatalogTabProps {
@@ -22,14 +23,6 @@ export function CartonCatalogTab({ customers, customerId, onCustomerChange }: Ca
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState(emptyForm)
   const [deleteTarget, setDeleteTarget] = useState<CartonType | null>(null)
-
-  // Người dùng nhập kích thước thùng theo cm (trực quan hơn với carton thực tế), nhưng lưu trữ
-  // và tính toán nội bộ vẫn theo mét (khớp đơn vị container) — quy đổi ngay tại biên nhập/hiển thị.
-  const CM_PER_M = 100
-  // Làm tròn khi quy đổi cm -> m để tránh sai số dấu phẩy động (vd 24.1cm -> 0.241m nếu tính thẳng
-  // sẽ lưu thành 24.099999999999998 khi hiển thị lại ở nơi khác không dùng toFixed) — 0.1mm dư thừa
-  // so với nhu cầu đo thùng carton nên làm tròn không ảnh hưởng thực tế.
-  const cmToM = (cm: number) => Math.round(cm * 1e4) / 1e4
 
   function handleAdd() {
     if (!customerId) {
@@ -57,9 +50,9 @@ export function CartonCatalogTab({ customers, customerId, onCustomerChange }: Ca
     setEditingId(ct.id)
     setEditForm({
       label: ct.label,
-      length: (Number(ct.length) * CM_PER_M).toFixed(1),
-      width: (Number(ct.width) * CM_PER_M).toFixed(1),
-      height: (Number(ct.height) * CM_PER_M).toFixed(1),
+      length: mToCm(Number(ct.length)).toFixed(1),
+      width: mToCm(Number(ct.width)).toFixed(1),
+      height: mToCm(Number(ct.height)).toFixed(1),
     })
   }
 
@@ -148,9 +141,9 @@ export function CartonCatalogTab({ customers, customerId, onCustomerChange }: Ca
                       ) : (
                         <>
                           <td>{ct.label}</td>
-                          <td>{(Number(ct.length) * CM_PER_M).toFixed(1)}</td>
-                          <td>{(Number(ct.width) * CM_PER_M).toFixed(1)}</td>
-                          <td>{(Number(ct.height) * CM_PER_M).toFixed(1)}</td>
+                          <td>{mToCm(Number(ct.length)).toFixed(1)}</td>
+                          <td>{mToCm(Number(ct.width)).toFixed(1)}</td>
+                          <td>{mToCm(Number(ct.height)).toFixed(1)}</td>
                           <td className="text-end">
                             <button type="button" className="btn btn-sm btn-outline-primary me-2" onClick={() => startEdit(ct)}>
                               <i className="fe fe-edit-2"></i>

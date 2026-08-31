@@ -1,5 +1,19 @@
 import type { CartonInput, ContainerResult, PackingSummary, PlacedBox, UnfitCarton } from './container-loading.types'
 
+// ============================================================
+// Quy đổi đơn vị tại biên nhập/hiển thị
+// ============================================================
+// Người dùng nhập kích thước thùng carton theo CM (trực quan hơn với thùng thật), nhưng mọi thứ bên
+// trong — CartonInput, kích thước container, toàn bộ thuật toán xếp — đều tính theo MÉT. Hai hàm dưới
+// là ranh giới quy đổi duy nhất; ĐỪNG viết lại bản sao cục bộ trong component (đã từng có 2 bản sao
+// lệch nhau, sửa 1 chỗ vẫn còn lỗi ở chỗ kia).
+//
+// Làm tròn về 0.1mm để tránh sai số dấu phẩy động khi quy đổi 2 chiều (24.1cm -> 0.241m -> 24.1cm,
+// nếu không làm tròn sẽ ra 24.099999999999998cm) — 0.1mm dư thừa so với nhu cầu đo thùng carton.
+export const CM_PER_M = 100
+export const cmToM = (cm: number) => Math.round((cm / CM_PER_M) * 1e4) / 1e4
+export const mToCm = (m: number) => Math.round(m * CM_PER_M * 10) / 10
+
 interface ContainerDims {
   length: number
   width: number
@@ -159,10 +173,11 @@ class SpatialIndex {
 // - 'zxy' (mặc định, dùng cho phần "quét dọn thùng lẻ" sau khi đã xây lớp đầy ở chế độ 'optimized'):
 //   ưu tiên THẤP lên trước (z nhỏ nhất) — bắt buộc thùng lấy ra sau phải "rớt" vào khoảng trống còn thấp
 //   hơn (nóc chưa bằng phẳng do phần dư lẻ) TRƯỚC KHI mở hàng/cột mới cao hơn.
-// - 'xzy' (dùng cho chế độ 'byType' — engine chính, không phải quét dọn): ưu tiên chiều SÂU (x) nhỏ nhất
-//   trước — bắt buộc thùng lấy ra sau (kể cả khác loại thùng khác với thùng vừa xếp) phải lấp vào đúng
-//   vị trí sâu hiện tại (kể cả dở dang giữa chiều cao) TRƯỚC KHI được phép nhảy sang vị trí sâu mới —
-//   đây là yêu cầu nghiệp vụ "xếp từ trong ra cửa, không bỏ trống ô nào khi vẫn còn đủ chỗ".
+// - 'xzy' (dùng cho bước lấp hốc & quét dư lẻ của chế độ 'byType'): ưu tiên chiều SÂU (x) nhỏ nhất
+//   trước — "xếp từ trong ra cửa, không bỏ trống ô nào khi vẫn còn đủ chỗ". LƯU Ý: thứ tự này CHỈ an
+//   toàn khi đi kèm ranh giới X_horizon (minX / maxStartX của runExtremePointFill). Không có ranh giới
+//   đó, các điểm cực trị lẻ sót lại ở chiều sâu nhỏ sẽ "hút" thùng của loại sau chui vào giữa khối của
+//   loại trước, làm vỡ tính liền mạch của khối — xem packInstancesByType.
 function pointPriority(p: Point, order: 'zxy' | 'xzy' = 'zxy'): number {
   if (order === 'xzy') return p.x * 1_000_000 + p.z * 1_000 + p.y
   return p.z * 1_000_000 + p.x * 1_000 + p.y
@@ -183,9 +198,18 @@ function orientationsByWaste(
 ): Array<{ l: number; w: number; rotated: boolean }> {
   const normal = { l: inst.length, w: inst.width, rotated: false }
   const rotated = { l: inst.width, w: inst.length, rotated: true }
-  const wasteOf = (o: { w: number }) =>
-    o.w <= remainingWidth + EPS ? remainingWidth - Math.floor((remainingWidth + EPS) / o.w) * o.w : Infinity
-  return wasteOf(normal) <= wasteOf(rotated) ? [normal, rotated] : [rotated, normal]
+  const score = (o: { w: number }) => {
+    if (o.w > remainingWidth + EPS) return { waste: Infinity, fit: 0 }
+    const fit = Math.floor((remainingWidth + EPS) / o.w)
+    return { waste: remainingWidth - fit * o.w, fit }
+  }
+  const sn = score(normal)
+  const sr = score(rotated)
+  if (Math.abs(sn.waste - sr.waste) > EPS) return sn.waste < sr.waste ? [normal, rotated] : [rotated, normal]
+  // HÒA về phần dư (WasteX bằng nhau, thường gặp khi cả 2 hướng đều chia hết bề rộng còn lại): chọn
+  // hướng lát được NHIỀU thùng hơn — cạnh ngắn quay ngang nên khối bám sát vách bên phải container,
+  // thay vì mặc định luôn lấy hướng "thường" như trước (để lại dải hở dọc trục Y).
+  return sn.fit >= sr.fit ? [normal, rotated] : [rotated, normal]
 }
 
 // ============================================================
@@ -296,93 +320,270 @@ function groupByDimension(instances: Instance[]): { ln: number; wd: number; ht: 
   return order.map((key) => map.get(key)!)
 }
 
-function placeLayerColumns(plan: ColumnPlan, items: Instance[], z: number, out: PlacedInternal[]) {
+// ĐƯỜNG BAO MẶT TIỀN theo bề rộng — profile[i] = chiều sâu đã bị chiếm tại dải bề rộng thứ i (1cm).
+// Thay cho việc chỉ giữ 1 con số X_frontier duy nhất: do trộn 2 hướng xoay, các cột của 1 khối ăn sâu
+// KHÔNG bằng nhau, nên nếu khối sau phải lùi hết ra sau cột DÀI NHẤT thì mọi cột ngắn hơn để lại 1 hốc
+// hình răng cưa chạy suốt chiều cao. Có đường bao, mỗi cột của khối sau tự đẩy sát vào đúng chỗ lõm
+// của riêng dải bề rộng nó chiếm.
+const PROFILE_STEP = 0.01
+
+function profileIndexRange(p: Float64Array, y0: number, y1: number): [number, number] {
+  const i0 = Math.max(0, Math.floor(y0 / PROFILE_STEP + EPS))
+  const i1 = Math.min(p.length, Math.max(i0 + 1, Math.ceil((y1 - EPS) / PROFILE_STEP)))
+  return [i0, i1]
+}
+
+function profileMax(p: Float64Array, y0: number, y1: number): number {
+  const [i0, i1] = profileIndexRange(p, y0, y1)
+  let m = 0
+  for (let i = i0; i < i1; i++) if (p[i] > m) m = p[i]
+  return m
+}
+
+function profileRaise(p: Float64Array, y0: number, y1: number, x: number) {
+  const [i0, i1] = profileIndexRange(p, y0, y1)
+  for (let i = i0; i < i1; i++) if (x > p[i]) p[i] = x
+}
+
+// Xếp khối theo TỪNG BỨC TƯỜNG ĐỨNG tiến dần từ trong ra cửa. Mỗi bức tường được lấp KÍN hết chiều
+// cao container trước khi sang bức kế tiếp; trong 1 bức thì đi theo hàng từ TRÁI QUA PHẢI, cột từ
+// DƯỚI LÊN TRÊN.
+//
+// Vì sao không xếp theo lớp ngang (đầy sàn rồi mới chồng lên): khi số thùng của 1 loại không đủ lấp
+// trọn khối, cách xếp theo lớp để phần thiếu nằm ở CHIỀU CAO — trải mỏng hết mặt sàn rồi hở nguyên
+// khoảng trên nóc. Xếp theo tường đứng thì phần thiếu dồn về bức tường NGOÀI CÙNG (phía cửa), chiều
+// cao luôn được lấp kín. Với khối ĐẦY thì 2 cách cho kết quả hình học y hệt nhau, chỉ khác ở chỗ
+// khoảng trống rơi vào đâu khi thiếu thùng.
+//
+// Trả về mặt sâu XA NHẤT đã chạm tới, để packInstancesByType dời X_frontier.
+function placeBlockWalls(
+  plan: ColumnPlan,
+  levels: number,
+  items: Instance[],
+  out: PlacedInternal[],
+  profile: Float64Array,
+  container: ContainerDims,
+): { maxReach: number; minStart: number } {
+  if (plan.columns.length === 0 || items.length === 0) return { maxReach: 0, minStart: 0 }
+  const ht = items[0].height
+
+  // ĐẨY SÁT THEO TỪNG CỘT: mỗi cột khởi đầu ngay sau phần đã bị chiếm của ĐÚNG dải bề rộng nó chiếm,
+  // chứ không phải sau cột dài nhất của khối trước. Nhờ vậy cột nào gặp chỗ lõm thì tự lùi vào lấp,
+  // xoá khe răng cưa ở ranh giới 2 loại.
+  const colStart: number[] = []
+  let yc = 0
+  let minStart = Infinity
+  for (const col of plan.columns) {
+    const s = profileMax(profile, yc, yc + col.widthUsed)
+    colStart.push(s)
+    if (s < minStart) minStart = s
+    yc += col.widthUsed
+  }
+  if (!isFinite(minStart)) minStart = 0
+
+  let maxDepthCount = 0
+  for (const col of plan.columns) if (col.depthCount > maxDepthCount) maxDepthCount = col.depthCount
+
+  let maxReach = minStart
+  let cursor = 0
+  for (let i = 0; i < maxDepthCount && cursor < items.length; i++) {
+    for (let level = 0; level < levels && cursor < items.length; level++) {
+      const z = level * ht
+      if (z + ht > container.height + EPS) break
+      let y = 0
+      for (let ci = 0; ci < plan.columns.length; ci++) {
+        const col = plan.columns[ci]
+        if (cursor >= items.length) break
+        const x = colStart[ci] + i * col.depthUsed
+        if (i < col.depthCount && x + col.depthUsed <= container.length + EPS) {
+          const inst = items[cursor++]
+          out.push({
+            cartonId: inst.cartonId, label: inst.label, color: inst.color,
+            x, y, z,
+            length: col.depthUsed, width: col.widthUsed, height: inst.height,
+            rotated: col.rotated,
+          })
+          profileRaise(profile, y, y + col.widthUsed, x + col.depthUsed)
+          if (x + col.depthUsed > maxReach) maxReach = x + col.depthUsed
+        }
+        y += col.widthUsed
+      }
+    }
+  }
+  items.splice(0, cursor)
+  return { maxReach, minStart }
+}
+
+// Đặt 1 lớp ngang (đủ bề rộng container) tại cao độ z, bắt đầu từ chiều sâu `xOffset`. CHỈ dùng cho
+// chế độ 'optimized' (packOneContainer) — chế độ 'byType' xếp theo tường đứng, xem placeBlockWalls.
+function placeLayerColumns(plan: ColumnPlan, items: Instance[], z: number, out: PlacedInternal[], xOffset = 0): number {
   let y = 0
   let cursor = 0
+  let maxReach = xOffset
   for (const col of plan.columns) {
     for (let i = 0; i < col.depthCount && cursor < items.length; i++, cursor++) {
       const inst = items[cursor]
+      const x = xOffset + i * col.depthUsed
       out.push({
         cartonId: inst.cartonId, label: inst.label, color: inst.color,
-        x: i * col.depthUsed, y, z,
+        x, y, z,
         length: col.depthUsed, width: col.widthUsed, height: inst.height,
         rotated: col.rotated,
       })
+      if (x + col.depthUsed > maxReach) maxReach = x + col.depthUsed
     }
     y += col.widthUsed
   }
   items.splice(0, cursor)
+  return maxReach
 }
 
 // ============================================================
 // GIAI ĐOẠN 2: Extreme-Point — lấp phần còn lại (thùng lẻ, nhiều loại xen kẽ) vào khoảng trống còn dư
 // ============================================================
+// Điểm nằm LỌT THỎM bên trong 1 thùng đã xếp thì không đời nào đặt được — loại sớm để mỗi lần sắp xếp
+// danh sách điểm không phải kéo theo hàng trăm điểm chết. Điểm nằm ĐÚNG trên mặt (đáy/hông/nóc) của
+// thùng vẫn hợp lệ nên dùng so sánh nửa mở [start, end).
+function isPointInsideAnyBox(p: Point, index: SpatialIndex): boolean {
+  for (const b of index.near(p.x, 0)) {
+    if (
+      p.x >= b.x - EPS && p.x < b.x + b.length - EPS &&
+      p.y >= b.y - EPS && p.y < b.y + b.width - EPS &&
+      p.z >= b.z - EPS && p.z < b.z + b.height - EPS
+    ) return true
+  }
+  return false
+}
+
+interface EpFillOptions {
+  /** Cao độ được coi là "sàn" khi kiểm tra điểm tựa (xem isSupported). Mặc định 0. */
+  startZ?: number
+  /** Các thùng đã xếp trước đó trong container — dùng để dò va chạm. */
+  seedPlaced?: PlacedInternal[]
+  /** Điểm mồi thêm (vd khoảng trống theo cột của layer sàn thật — xem computeColumnGaps). */
+  extraSeeds?: Point[]
+  priorityOrder?: 'zxy' | 'xzy'
+  /** Ranh giới X_horizon — chỉ nhận điểm đặt có x >= minX (cấm thụt lùi vào khối đã đóng). */
+  minX?: number
+  /** Ranh giới X_horizon — chỉ nhận điểm đặt có x < maxStartX (chỉ lấp hốc phía SAU frontier). */
+  maxStartX?: number
+  /** Dừng ngay khi 1 thùng không đặt được; mọi thùng còn lại trả nguyên về unplaced. */
+  stopOnFirstFailure?: boolean
+  /** Sinh điểm cực trị mồi từ seedPlaced — bắt buộc khi gọi nhiều lần trên cùng 1 container. */
+  seedPointsFromPlaced?: boolean
+}
+
 function runExtremePointFill(
   container: ContainerDims,
   instances: Instance[],
-  startZ: number,
-  seedPlaced: PlacedInternal[],
-  extraSeeds: Point[] = [],
-  priorityOrder: 'zxy' | 'xzy' = 'zxy',
+  opts: EpFillOptions = {},
 ): { placed: PlacedInternal[]; unplaced: Instance[] } {
+  const startZ = opts.startZ ?? 0
+  const seedPlaced = opts.seedPlaced ?? []
+  const priorityOrder = opts.priorityOrder ?? 'zxy'
+  const minX = opts.minX ?? 0
+  const maxStartX = opts.maxStartX ?? Infinity
+
   const placed: PlacedInternal[] = []
   const unplaced: Instance[] = []
   const index = new SpatialIndex()
   for (const p of seedPlaced) index.add(p)
+
   const pointKeys = new Set<string>()
-  let points: Point[] = [{ x: 0, y: 0, z: startZ }]
-  pointKeys.add(`0.0000_0.0000_${startZ.toFixed(4)}`)
-  // Điểm bổ sung từ khoảng trống theo cột của layer sàn thật (xem computeColumnGaps) — cho phép loại
-  // thùng khác lấp vào ngay tại ranh giới thay vì chỉ dò từ đỉnh chồng layer trở lên.
-  for (const p of extraSeeds) {
+  let points: Point[] = []
+  const addPoint = (p: Point) => {
+    // RANH GIỚI X_horizon — chốt chặn quan trọng nhất của mode 'byType': điểm nằm ngoài dải
+    // [minX, maxStartX) bị loại NGAY LÚC SINH RA. Nhờ vậy giai đoạn "lấp hốc" không tràn ra trước
+    // frontier, và giai đoạn "quét dư lẻ" không thụt lùi vào các hốc sâu của khối đã đóng — chính là
+    // nguyên nhân khiến thùng loại 3, 4 chui vào giữa khối loại 1, 2 và tạo ra các lát mỏng đan xen.
+    if (p.x < minX - EPS || p.x >= maxStartX - EPS) return
+    if (p.x > container.length + EPS || p.y > container.width + EPS || p.z > container.height + EPS) return
     const key = `${p.x.toFixed(4)}_${p.y.toFixed(4)}_${p.z.toFixed(4)}`
-    if (!pointKeys.has(key)) {
-      pointKeys.add(key)
-      points.push(p)
-    }
+    if (pointKeys.has(key)) return
+    pointKeys.add(key)
+    points.push(p)
   }
 
-  for (const inst of instances) {
-    points.sort((a, b) => pointPriority(a, priorityOrder) - pointPriority(b, priorityOrder))
-
-    let done = false
-    for (let i = 0; i < points.length; i++) {
-      const pt = points[i]
-      // Chỉ 2 chiều xoay hợp lệ: giữ nguyên hoặc hoán đổi dài/rộng — không xoay theo chiều cao. Thử
-      // hướng nào lấp khít bề rộng còn lại tại ĐÚNG điểm này trước (xem orientationsByWaste/GetBestOrientation).
-      const orientations = orientationsByWaste(inst, container.width - pt.y)
-      for (const o of orientations) {
-        const nearby = index.near(pt.x, o.l)
-        if (tryPlace(pt.x, pt.y, pt.z, o.l, o.w, inst.height, container, startZ, nearby)) {
-          const box: PlacedInternal = {
-            cartonId: inst.cartonId, label: inst.label, color: inst.color,
-            x: pt.x, y: pt.y, z: pt.z, length: o.l, width: o.w, height: inst.height, rotated: o.rotated,
-          }
-          placed.push(box)
-          index.add(box)
-          // Điểm vừa dùng không bao giờ còn hợp lệ nữa (đã có thùng chiếm chỗ) — loại khỏi danh sách
-          // ngay, tránh tích tụ hàng nghìn điểm "chết" khiến các lần sắp xếp sau ngày càng chậm.
-          points.splice(i, 1)
-
-          const newPoints: Point[] = [
-            { x: pt.x + o.l, y: pt.y, z: pt.z },
-            { x: pt.x, y: pt.y + o.w, z: pt.z },
-            { x: pt.x, y: pt.y, z: pt.z + inst.height },
-          ]
-          for (const np of newPoints) {
-            const key = `${np.x.toFixed(4)}_${np.y.toFixed(4)}_${np.z.toFixed(4)}`
-            if (!pointKeys.has(key)) {
-              pointKeys.add(key)
-              points.push(np)
-            }
-          }
-          done = true
-          break
-        }
-      }
-      if (done) break
+  addPoint({ x: minX > EPS ? minX : 0, y: 0, z: startZ })
+  if (opts.seedPointsFromPlaced) {
+    // Dựng lại tập điểm cực trị từ các thùng đã xếp (3 điểm kế tiếp mỗi thùng), vì mỗi loại thùng ở
+    // mode 'byType' được gọi bằng 1 lượt runExtremePointFill riêng — lượt sau phải "nhìn thấy" các
+    // khoảng trống mà khối của lượt trước để lại.
+    for (const b of seedPlaced) {
+      addPoint({ x: b.x + b.length, y: b.y, z: b.z })
+      addPoint({ x: b.x, y: b.y + b.width, z: b.z })
+      addPoint({ x: b.x, y: b.y, z: b.z + b.height })
     }
-    if (!done) unplaced.push(inst)
+    points = points.filter((p) => !isPointInsideAnyBox(p, index))
+  }
+  for (const p of opts.extraSeeds ?? []) addPoint(p)
+
+  let needSort = true
+  // Trong 1 lượt gọi, các thùng thường CÙNG kích thước. Nếu 1 thùng đã dò hết mọi điểm mà hỏng và tập
+  // điểm chưa hề thay đổi từ đó, thì mọi thùng cùng kích thước phía sau chắc chắn cũng hỏng — bỏ qua
+  // luôn thay vì dò lại toàn bộ danh sách điểm cho từng thùng.
+  let failedDimsKey: string | null = null
+
+  for (let k = 0; k < instances.length; k++) {
+    const inst = instances[k]
+    const dimsKey = `${inst.length.toFixed(4)}_${inst.width.toFixed(4)}_${inst.height.toFixed(4)}`
+    let done = false
+
+    if (dimsKey !== failedDimsKey) {
+      if (needSort) {
+        points.sort((a, b) => pointPriority(a, priorityOrder) - pointPriority(b, priorityOrder))
+        needSort = false
+      }
+      // Cạnh ngắn nhất của đáy thùng — cạnh nhỏ nhất có thể chiếm theo bất kỳ hướng xoay nào.
+      const minFootprint = Math.min(inst.length, inst.width)
+
+      for (let i = 0; i < points.length; i++) {
+        const pt = points[i]
+        // LỌC SƠ BỘ (prune điểm cực trị rác): phần bề rộng / chiều cao / chiều sâu CÒN LẠI tính từ
+        // điểm này tới vách container đã nhỏ hơn kích thước thùng thì chắc chắn không đặt được — bỏ
+        // qua ngay, khỏi phải dò va chạm với hàng trăm thùng lân cận.
+        if (container.width - pt.y < minFootprint - EPS) continue
+        if (container.height - pt.z < inst.height - EPS) continue
+        if (container.length - pt.x < minFootprint - EPS) continue
+
+        // Chỉ 2 chiều xoay hợp lệ: giữ nguyên hoặc hoán đổi dài/rộng — không xoay theo chiều cao. Thử
+        // hướng nào lấp khít bề rộng còn lại tại ĐÚNG điểm này trước (xem orientationsByWaste).
+        const orientations = orientationsByWaste(inst, container.width - pt.y)
+        for (const o of orientations) {
+          const nearby = index.near(pt.x, o.l)
+          if (tryPlace(pt.x, pt.y, pt.z, o.l, o.w, inst.height, container, startZ, nearby)) {
+            const box: PlacedInternal = {
+              cartonId: inst.cartonId, label: inst.label, color: inst.color,
+              x: pt.x, y: pt.y, z: pt.z, length: o.l, width: o.w, height: inst.height, rotated: o.rotated,
+            }
+            placed.push(box)
+            index.add(box)
+            // Điểm vừa dùng không bao giờ còn hợp lệ nữa (đã có thùng chiếm chỗ) — loại khỏi danh sách
+            // ngay, tránh tích tụ hàng nghìn điểm "chết" khiến các lần sắp xếp sau ngày càng chậm.
+            points.splice(i, 1)
+            addPoint({ x: pt.x + o.l, y: pt.y, z: pt.z })
+            addPoint({ x: pt.x, y: pt.y + o.w, z: pt.z })
+            addPoint({ x: pt.x, y: pt.y, z: pt.z + inst.height })
+            needSort = true
+            failedDimsKey = null
+            done = true
+            break
+          }
+        }
+        if (done) break
+      }
+    }
+
+    if (!done) {
+      failedDimsKey = dimsKey
+      if (opts.stopOnFirstFailure) {
+        // Hết chỗ lấp trong vùng này → theo quy tắc X_horizon, TOÀN BỘ phần còn lại phải quay ra xây
+        // khối tường mới tại X >= currentXFrontier thay vì tiếp tục rải rác vào các hốc lẻ.
+        for (let j = k; j < instances.length; j++) unplaced.push(instances[j])
+        break
+      }
+      unplaced.push(inst)
+    }
   }
 
   return { placed, unplaced }
@@ -442,7 +643,9 @@ function packOneContainer(container: ContainerDims, instances: Instance[]): { re
   }
 
   const leftover = groups.flatMap((g) => g.items)
-  const { placed: mopPlaced, unplaced } = runExtremePointFill(container, leftover, z, layerPlaced, floorGapSeeds)
+  const { placed: mopPlaced, unplaced } = runExtremePointFill(container, leftover, {
+    startZ: z, seedPlaced: layerPlaced, extraSeeds: floorGapSeeds,
+  })
 
   const placed = layerPlaced.concat(mopPlaced)
   const placedVolume = placed.reduce((s, p) => s + p.length * p.width * p.height, 0)
@@ -457,6 +660,95 @@ function packOneContainer(container: ContainerDims, instances: Instance[]): { re
     })),
   }
   return { result, unplaced }
+}
+
+// Các độ sâu "khả dĩ" của 1 khối: chỉ có thể là bội số của cạnh dài hoặc cạnh rộng (thùng xếp sát nhau
+// theo chiều sâu), tăng dần. Dùng để CO khối lại vừa đủ số lượng thay vì ăn hết chiều sâu còn lại.
+function candidateBlockDepths(ln: number, wd: number, maxDepth: number): number[] {
+  if (ln <= EPS || wd <= EPS || maxDepth <= EPS) return [maxDepth]
+  const seen = new Set<string>()
+  const out: number[] = []
+  const push = (v: number) => {
+    const key = v.toFixed(4)
+    if (!seen.has(key)) { seen.add(key); out.push(v) }
+  }
+  for (let i = 1; i * ln <= maxDepth + EPS; i++) push(i * ln)
+  for (let j = 1; j * wd <= maxDepth + EPS; j++) push(j * wd)
+  push(maxDepth)
+  return out.sort((a, b) => a - b)
+}
+
+interface TypeBlock {
+  plan: ColumnPlan
+  levels: number
+}
+
+// Mặt tiền THỰC TẾ của khối = cột ăn sâu nhất trong tổ hợp. Do trộn 2 hướng xoay, các cột có thể dài
+// ngắn khác nhau nên mặt tiền lởm chởm; loại kế tiếp buộc phải bắt đầu sau cột dài nhất.
+function planFrontReach(plan: ColumnPlan): number {
+  let reach = 0
+  for (const col of plan.columns) {
+    const r = col.depthCount * col.depthUsed
+    if (r > reach) reach = r
+  }
+  return reach
+}
+
+// Diện tích mặt cắt của phần "răng cưa" ở mặt tiền: các cột ăn sâu ít hơn cột dài nhất để lại 1 hốc
+// chạy suốt chiều cao mà loại kế tiếp KHÔNG lấp được (nó buộc phải bắt đầu sau cột dài nhất). Càng nhỏ
+// càng khít — dùng làm tiêu chí phụ khi chọn tổ hợp cột.
+function planFrontWedge(plan: ColumnPlan, reach: number): number {
+  let wedge = 0
+  for (const col of plan.columns) wedge += (reach - col.depthCount * col.depthUsed) * col.widthUsed
+  return wedge
+}
+
+// TÍCH HỢP KNAPSACK DP VÀO MODE 'byType'
+// --------------------------------------
+// Quy hoạch khối cho 1 loại thùng bắt đầu tại X_frontier. Với mỗi độ sâu ứng viên, computeColumnPlan
+// (unbounded knapsack theo mm trên bề rộng container) cho biết tổ hợp xoay 0°/90° phủ kín bề rộng và
+// số thùng chứa được trong 1 lớp; nhân với số tầng theo chiều cao ra sức chứa cả khối.
+//
+// CỰC TIỂU HOÁ KHE HỞ GIỮA 2 LOẠI (yêu cầu nghiệp vụ): trong số các độ sâu đủ chứa hết `count` thùng,
+// chọn cái có MẶT TIỀN gần nhất. Vì loại kế tiếp phải bắt đầu đúng tại mặt tiền đó, tổng chỗ trống
+// chết mà loại này để lại = (mặt tiền − x0)·W·H − (thể tích thùng đã xếp); `count` và thể tích thùng
+// là cố định, nên cực tiểu mặt tiền CHÍNH LÀ cực tiểu chỗ trống ở ranh giới. Quét toàn bộ ứng viên
+// thay vì nhị phân theo độ sâu, vì mặt tiền thực tế không tăng đơn điệu theo độ sâu ứng viên (tổ hợp
+// cột tối ưu đổi khi độ sâu đổi, cột lởm chởm nhiều hay ít cũng đổi theo).
+//
+// Nếu không độ sâu nào đủ (thùng nhiều hơn sức chứa container) thì lấy trọn phần còn lại — phần thừa
+// sang container sau.
+function planTypeBlock(
+  availableDepth: number,
+  container: ContainerDims,
+  sample: Instance,
+  count: number,
+): TypeBlock | null {
+  const levels = Math.floor((container.height + EPS) / sample.height)
+  if (levels <= 0 || availableDepth <= EPS) return null
+
+  let bestPlan: ColumnPlan | null = null
+  let bestReach = Infinity
+  let bestWedge = Infinity
+  for (const d of candidateBlockDepths(sample.length, sample.width, availableDepth)) {
+    const plan = computeColumnPlan(d, container.width, sample.length, sample.width)
+    if (plan.capacityPerLayer <= 0) continue
+    if (plan.capacityPerLayer * levels < count) continue
+    const reach = planFrontReach(plan)
+    // Hai tiêu chí, xét theo thứ tự: (1) mặt tiền gần nhất, (2) mặt tiền PHẲNG nhất. Tiêu chí 2 loại
+    // bỏ các tổ hợp mà cột dài cột ngắn so le nhau — chỗ so le đó thành khe hở hình răng cưa mà loại
+    // kế tiếp không lấp được (nó phải bắt đầu sau cột DÀI NHẤT), chính là khe hở người dùng chỉ ra.
+    const wedge = planFrontWedge(plan, reach)
+    if (reach < bestReach - EPS || (Math.abs(reach - bestReach) < EPS && wedge < bestWedge - EPS)) {
+      bestReach = reach
+      bestWedge = wedge
+      bestPlan = plan
+    }
+  }
+
+  const plan = bestPlan ?? computeColumnPlan(availableDepth, container.width, sample.length, sample.width)
+  if (plan.capacityPerLayer <= 0) return null
+  return { plan, levels }
 }
 
 // Gom các instance theo LOẠI THÙNG (cartonId — đúng 1 dòng nhập của người dùng), giữ nguyên thứ tự xuất
@@ -519,24 +811,23 @@ function fillContainers(
 export type PackingMode = 'optimized' | 'byType'
 
 // ============================================================
-// Chế độ 'byType': DÙNG CHUNG 1 engine Free-Space/Extreme-Point duy nhất (runExtremePointFill — GIAI
-// ĐOẠN 2, vốn đã dùng để quét dọn thùng lẻ cho chế độ 'optimized') cho TOÀN BỘ thùng, không chia vùng
-// riêng theo loại. "Gom nhóm theo loại" chỉ là THỨ TỰ đưa thùng vào engine (toàn bộ Loại 1 trước, hết
-// mới tới Loại 2...) — chứ KHÔNG phải chia không gian container thành từng khối riêng theo loại.
+// Chế độ 'byType' — XÂY KHỐI ĐẶC THEO TỪNG LOẠI, tiến dần theo chiều sâu (X_horizon)
+// ============================================================
 //
-// Danh sách điểm trống (Free Spaces / Extreme Points) dùng CHUNG, LIÊN TỤC cho mọi thùng bất kể loại —
-// không hề bị reset hay cắt khi chuyển loại. Mỗi khi lấy 1 thùng ra xếp (kể cả khác loại với thùng vừa
-// xếp trước đó), danh sách được sắp lại theo đúng thứ tự ưu tiên 'xzy': Sâu (x, gần vách trong cùng
-// nhất) → Cao (z, thấp nhất) → Rộng (y, sát trái nhất) — xem pointPriority. Nhờ vậy nếu Loại 1 hết hàng
-// giữa chừng (chưa lấp hết 1 vị trí sâu, kể cả dở dang giữa chiều cao), Loại 2 sẽ tự động rơi đúng vào
-// những điểm trống còn sót lại đó TRƯỚC KHI được phép nhảy sang vị trí sâu mới — không cần bất kỳ logic
-// "khoảng trống"/"zone" thủ công nào, vì bản thân extreme-point vốn đã tổng quát cho MỌI hình dạng lỗ
-// hổng (kể cả những kiểu lỗ hổng chưa lường trước, khác với cách tiếp cận zone+gaps cũ hay bị sót từng
-// trường hợp cụ thể — cột lệch chiều sâu, cột dở dang giữa chiều cao... mỗi kiểu phải tự vá riêng).
+// Mỗi loại thùng chiếm 1 KHỐI liền mạch trải hết bề rộng (Y) và hết chiều cao (Z) của container, các
+// khối nối tiếp nhau theo chiều sâu (X). Đây là điểm khác biệt cốt lõi so với bản trước — bản trước
+// đẩy 100% thùng vào runExtremePointFill nên từ 3 loại thùng trở lên, loại nhỏ (thứ 3, thứ 4) bị các
+// điểm cực trị lẻ có x nhỏ "hút" vào hốc sâu giữa khối loại 1 và 2, sinh ra các lát mỏng đan xen và
+// bỏ trống nguyên dải dọc vách bên hông.
 //
-// ĐÁNH ĐỔI: vì không còn "xây lớp đầy" bằng quy hoạch động (nhanh, O(1)/lớp), tốc độ chậm hơn chế độ
-// 'optimized' với số lượng rất lớn (extreme-point là O(n) mỗi thùng do phải dò qua danh sách điểm) —
-// chấp nhận được vì mode 'byType' phục vụ xuất phiếu hướng dẫn xếp hàng, không phải tính hàng loạt.
+// Với MỖI loại thùng, thuật toán chạy đúng 2 bước, và CẢ HAI đều bị khoá trong vùng x >= X_frontier:
+//   A. XÂY KHỐI ĐẶC: Knapsack DP (computeColumnPlan) chọn tổ hợp xoay 0°/90° phủ kín bề rộng, xếp
+//      từng lớp trọn vẹn chồng lên hết chiều cao. Độ sâu khối chọn sao cho MẶT TIỀN chạm ra ngoài
+//      gần nhất có thể (planTypeBlock) — tức chừa ít chỗ trống nhất ở ranh giới với loại kế tiếp.
+//   B. QUÉT DƯ LẺ: phần không đủ 1 lớp trọn vẹn giao cho Extreme-Point, vẫn chặn minX = x0.
+//
+// TUYỆT ĐỐI KHÔNG lấp ngược về phía sau X_frontier. Khoảng trống loại trước để lại là chấp nhận
+// được; loại sau lấn vào đó thì hai loại đan xen nhau, vi phạm yêu cầu "mỗi loại đúng 1 khối".
 function packInstancesByType(container: ContainerDims, instances: Instance[], unfitCartons: UnfitCarton[]): ContainerResult[] {
   const groupQueue = groupInstancesByCartonId(instances).map((g) => ({ cartonId: g.cartonId, items: [...g.items] }))
   const containers: ContainerResult[] = []
@@ -544,10 +835,64 @@ function packInstancesByType(container: ContainerDims, instances: Instance[], un
 
   while (groupQueue.some((g) => g.items.length > 0) && containerIndex < MAX_CONTAINERS) {
     containerIndex++
-    // Toàn bộ Loại 1 (còn dư từ container trước, nếu có) trước, hết mới tới Loại 2... — engine tự lấp
-    // vào đúng điểm trống ưu tiên nhất cho TỪNG thùng, không quan tâm thùng đó thuộc loại nào.
-    const ordered = groupQueue.flatMap((g) => g.items)
-    const { placed, unplaced } = runExtremePointFill(container, ordered, 0, [], [], 'xzy')
+    const placed: PlacedInternal[] = []
+    // X_horizon: mặt vách chiều sâu XA NHẤT đã bị chiếm trong container này. Bất biến then chốt —
+    // mọi thùng đặt sau đều phải có x >= giá trị này, nên khối của loại sau không bao giờ đè lên
+    // hay xen vào khối của loại trước.
+    let currentXFrontier = 0
+    // Đường bao mặt tiền theo bề rộng (xem PROFILE_STEP) — cho phép khối sau đẩy sát vào chỗ lõm của
+    // khối trước theo TỪNG dải bề rộng, thay vì cả khối phải lùi ra sau cột dài nhất.
+    const frontier = new Float64Array(Math.max(1, Math.ceil(container.width / PROFILE_STEP)))
+    const advanceFrontier = (boxes: PlacedInternal[]) => {
+      for (const b of boxes) {
+        if (b.x + b.length > currentXFrontier) currentXFrontier = b.x + b.length
+        profileRaise(frontier, b.y, b.y + b.width, b.x + b.length)
+      }
+    }
+
+    // Toàn bộ Loại 1 (còn dư từ container trước, nếu có) trước, hết mới tới Loại 2...
+    for (const group of groupQueue) {
+      if (group.items.length === 0) continue
+      const sample = group.items[0]
+
+      // --- BƯỚC A: XÂY KHỐI TƯỜNG ĐẶC bằng Knapsack DP tại X_horizon -------------------------
+      // KHÔNG có bước "lấp hốc ngược về phía sau frontier". Các khoảng trống mà loại trước để lại
+      // (dải hao hụt sát vách bên, phần hụt dưới trần, cột kết thúc lệch chiều sâu) được CỐ Ý bỏ
+      // trống: yêu cầu nghiệp vụ là mỗi loại thùng đúng 1 khối liền mạch, không loại nào lấn vào
+      // lãnh thổ loại khác. Đổi lại hiệu suất thể tích thấp hơn — đây là đánh đổi có chủ đích.
+      const x0 = currentXFrontier
+      const block = planTypeBlock(container.length - x0, container, sample, group.items.length)
+      if (!block) continue
+
+      // YÊU CẦU LÀ "1 KHỐI", KHÔNG PHẢI "1 CONTAINER": nếu chỗ còn lại không chứa hết loại này thì
+      // vẫn xếp — lấp KÍN phần đuôi container bằng 1 khối liền mạch, phần thừa sang container sau
+      // cũng thành 1 khối liền mạch. Tuyệt đối không bỏ trống cả đoạn đuôi container rồi mở container
+      // mới (lỗi cũ: hoãn nguyên loại sang container sau làm đuôi container trước hở rất nhiều).
+      //
+      // "Không rời rạc" được bảo đảm bởi cách xếp theo tường đứng (placeBlockWalls) + ranh giới
+      // X_horizon: trong mỗi container, thùng cùng loại luôn nằm trong đúng 1 dải chiều sâu liền nhau.
+      const { maxReach } = placeBlockWalls(block.plan, block.levels, group.items, placed, frontier, container)
+      if (maxReach > currentXFrontier) currentXFrontier = maxReach
+      if (group.items.length === 0) continue
+
+      // --- BƯỚC B: quét phần DƯ LẺ, khoá trong vùng khối vừa xây -----------------------------
+      // minX = x0 chốt chặn quy tắc X_horizon: thùng lẻ chỉ được rơi vào chính khối của loại mình
+      // hoặc tiến ra phía cửa, tuyệt đối không thụt lùi vào lãnh thổ của các loại trước. Thứ tự
+      // 'xzy' (sâu nhất → thấp nhất) khiến phần dư bám vào mặt trong-dưới của khối rồi mới tiến ra.
+      const mop = runExtremePointFill(container, group.items, {
+        seedPlaced: placed,
+        seedPointsFromPlaced: true,
+        priorityOrder: 'xzy',
+        // Dùng MỐC PHẲNG x0, không dùng minStart (điểm cột lùi sâu nhất của khối vừa xây). Đã thử nới
+        // xuống minStart để thùng lẻ tụt được vào chỗ lõm: kết quả là engine Extreme-Point rải thùng lẻ
+        // vào lãnh thổ loại trước (đan xen) và chẻ loại hiện tại thành nhiều mảnh rời — đo được ở bộ
+        // "5 loại" và "3 loại". Việc đẩy sát vào chỗ lõm đã do placeBlockWalls lo theo từng cột rồi.
+        minX: x0,
+      })
+      placed.push(...mop.placed)
+      advanceFrontier(mop.placed)
+      group.items = mop.unplaced
+    }
 
     if (placed.length === 0) {
       // Không xếp thêm được thùng nào — dừng để tránh vòng lặp vô hạn (không nên xảy ra vì đã lọc unfit ở trên)
@@ -557,14 +902,6 @@ function packInstancesByType(container: ContainerDims, instances: Instance[], un
       }
       break
     }
-
-    const unplacedByCartonId = new Map<string, Instance[]>()
-    for (const u of unplaced) {
-      const arr = unplacedByCartonId.get(u.cartonId)
-      if (arr) arr.push(u)
-      else unplacedByCartonId.set(u.cartonId, [u])
-    }
-    for (const g of groupQueue) g.items = unplacedByCartonId.get(g.cartonId) ?? []
 
     const placedVolume = placed.reduce((s, p) => s + p.length * p.width * p.height, 0)
     const containerVolume = container.length * container.width * container.height
@@ -598,7 +935,8 @@ function packInstancesByType(container: ContainerDims, instances: Instance[], un
 // - 'optimized': trộn tất cả loại thùng tự do (xây lớp đầy bằng quy hoạch động) để tối ưu thể tích
 //   từng container — nhanh hơn nhưng không đảm bảo "hết loại này mới đến loại khác".
 // - 'byType': hoàn thành toàn bộ 1 loại (theo thứ tự thể tích giảm dần, đã sort sẵn ở instances) rồi
-//   mới đến loại kế tiếp, dùng chung 1 engine Free-Space (xem packInstancesByType).
+//   mới đến loại kế tiếp. Mỗi loại chiếm 1 KHỐI ĐẶC trải hết bề rộng và chiều cao, các khối nối tiếp
+//   nhau theo chiều sâu và bị chặn bởi ranh giới X_horizon (xem packInstancesByType).
 //
 // Vì thùng carton không chịu được người đứng lên trên, THỨ TỰ xếp thật ngoài kho không được suy ra từ
 // thứ tự tính toán ở đây (chỉ là gán tọa độ cho 1 tập hợp thùng đầy kín, không có ý nghĩa thời gian) —
