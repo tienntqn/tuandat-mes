@@ -325,11 +325,21 @@ function groupByDimension(instances: Instance[]): { ln: number; wd: number; ht: 
 // KHÔNG bằng nhau, nên nếu khối sau phải lùi hết ra sau cột DÀI NHẤT thì mọi cột ngắn hơn để lại 1 hốc
 // hình răng cưa chạy suốt chiều cao. Có đường bao, mỗi cột của khối sau tự đẩy sát vào đúng chỗ lõm
 // của riêng dải bề rộng nó chiếm.
-const PROFILE_STEP = 0.01
+// Bước lưới 1mm, KHÔNG phải 1cm. Người dùng nhập kích thước theo cm với 1 chữ số thập phân (ô nhập
+// step 0.1), nên mọi cạnh thùng đều là bội số nguyên của 1mm — nhờ đó ranh giới 2 cột liền nhau rơi
+// đúng vào ranh giới ô lưới và hai cột KHÔNG BAO GIỜ dùng chung ô nào.
+//
+// Lưới 1cm gây lỗi thật: cột rộng 0.406m chiếm y[0.000, 0.406) → ô 0..40 (vì ceil(40.6) = 41), còn cột
+// kế tiếp ở y[0.406, 0.812) lại bắt đầu từ ô 40 (floor(40.6) = 40). Ô 40 bị dùng chung, nên cột sau đọc
+// trúng chiều sâu của cột trước và bị đẩy lùi ra — sinh khe hở sát vách dù lẽ ra phải khít.
+const PROFILE_STEP = 0.001
 
+// Dải ô lưới NỬA MỞ [i0, i1) ứng với đoạn bề rộng [y0, y1). Dùng Math.round chứ không floor/ceil: giá
+// trị chia ra luôn là số nguyên về mặt toán học, chỉ lệch do sai số dấu phẩy động (0.406/0.001 có thể
+// ra 405.99999999999994), nên làm tròn về số nguyên gần nhất mới đúng và mới khớp mép giữa 2 cột.
 function profileIndexRange(p: Float64Array, y0: number, y1: number): [number, number] {
-  const i0 = Math.max(0, Math.floor(y0 / PROFILE_STEP + EPS))
-  const i1 = Math.min(p.length, Math.max(i0 + 1, Math.ceil((y1 - EPS) / PROFILE_STEP)))
+  const i0 = Math.max(0, Math.round(y0 / PROFILE_STEP))
+  const i1 = Math.min(p.length, Math.max(i0 + 1, Math.round(y1 / PROFILE_STEP)))
   return [i0, i1]
 }
 
@@ -467,6 +477,12 @@ interface EpFillOptions {
   minX?: number
   /** Ranh giới X_horizon — chỉ nhận điểm đặt có x < maxStartX (chỉ lấp hốc phía SAU frontier). */
   maxStartX?: number
+  /**
+   * Thùng phải nằm TRỌN trong x <= maxEndX (không được thò ra ngoài). Dùng cho bước lấp nốt mặt tiền:
+   * chỉ nhận thùng lọt gọn vào ô trống sẵn có, không cho đẩy mặt tiền ra xa — nếu để thò ra thì lấp
+   * được 1 thùng nhưng đẩy cả khối kế tiếp lùi thêm, lợi bất cập hại.
+   */
+  maxEndX?: number
   /** Dừng ngay khi 1 thùng không đặt được; mọi thùng còn lại trả nguyên về unplaced. */
   stopOnFirstFailure?: boolean
   /** Sinh điểm cực trị mồi từ seedPlaced — bắt buộc khi gọi nhiều lần trên cùng 1 container. */
@@ -483,6 +499,7 @@ function runExtremePointFill(
   const priorityOrder = opts.priorityOrder ?? 'zxy'
   const minX = opts.minX ?? 0
   const maxStartX = opts.maxStartX ?? Infinity
+  const maxEndX = opts.maxEndX ?? Infinity
 
   const placed: PlacedInternal[] = []
   const unplaced: Instance[] = []
@@ -550,6 +567,7 @@ function runExtremePointFill(
         // hướng nào lấp khít bề rộng còn lại tại ĐÚNG điểm này trước (xem orientationsByWaste).
         const orientations = orientationsByWaste(inst, container.width - pt.y)
         for (const o of orientations) {
+          if (pt.x + o.l > maxEndX + EPS) continue
           const nearby = index.near(pt.x, o.l)
           if (tryPlace(pt.x, pt.y, pt.z, o.l, o.w, inst.height, container, startZ, nearby)) {
             const box: PlacedInternal = {
@@ -704,17 +722,15 @@ function planFrontWedge(plan: ColumnPlan, reach: number): number {
 }
 
 // TÍCH HỢP KNAPSACK DP VÀO MODE 'byType'
-// --------------------------------------
+// ========================================
 // Quy hoạch khối cho 1 loại thùng bắt đầu tại X_frontier. Với mỗi độ sâu ứng viên, computeColumnPlan
 // (unbounded knapsack theo mm trên bề rộng container) cho biết tổ hợp xoay 0°/90° phủ kín bề rộng và
 // số thùng chứa được trong 1 lớp; nhân với số tầng theo chiều cao ra sức chứa cả khối.
 //
-// CỰC TIỂU HOÁ KHE HỞ GIỮA 2 LOẠI (yêu cầu nghiệp vụ): trong số các độ sâu đủ chứa hết `count` thùng,
-// chọn cái có MẶT TIỀN gần nhất. Vì loại kế tiếp phải bắt đầu đúng tại mặt tiền đó, tổng chỗ trống
-// chết mà loại này để lại = (mặt tiền − x0)·W·H − (thể tích thùng đã xếp); `count` và thể tích thùng
-// là cố định, nên cực tiểu mặt tiền CHÍNH LÀ cực tiểu chỗ trống ở ranh giới. Quét toàn bộ ứng viên
-// thay vì nhị phân theo độ sâu, vì mặt tiền thực tế không tăng đơn điệu theo độ sâu ứng viên (tổ hợp
-// cột tối ưu đổi khi độ sâu đổi, cột lởm chởm nhiều hay ít cũng đổi theo).
+// CỰC TIỂU HOÁ KHE HỞ GIỮA 2 LOẠI (yêu cầu nghiệp vụ): ƯTHIÊN mặt tiền PHẲNG nhất (wedge nhỏ nhất) để
+// khối liền mạch không bị chia cắt. Các khoảng trống phía dưới trần hoặc sát vách do cột lởm chởm không
+// lấp được là CHẤP NHẬN ĐƯỢC (tránh loại kế tiếp "chui" vào giữa khối này). Trong số các tổ hợp có wedge
+// gần bằng, chọn mặt tiền gần nhất (reach nhỏ) để tiết kiệm không gian.
 //
 // Nếu không độ sâu nào đủ (thùng nhiều hơn sức chứa container) thì lấy trọn phần còn lại — phần thừa
 // sang container sau.
@@ -735,11 +751,11 @@ function planTypeBlock(
     if (plan.capacityPerLayer <= 0) continue
     if (plan.capacityPerLayer * levels < count) continue
     const reach = planFrontReach(plan)
-    // Hai tiêu chí, xét theo thứ tự: (1) mặt tiền gần nhất, (2) mặt tiền PHẲNG nhất. Tiêu chí 2 loại
-    // bỏ các tổ hợp mà cột dài cột ngắn so le nhau — chỗ so le đó thành khe hở hình răng cưa mà loại
-    // kế tiếp không lấp được (nó phải bắt đầu sau cột DÀI NHẤT), chính là khe hở người dùng chỉ ra.
+    // ĐỔI THỨ TỰ TIÊU CHÍ: (1) mặt tiền PHẲNG nhất (wedge nhỏ nhất) — bảo đảm không tách khối,
+    // (2) mặt tiền gần nhất (reach nhỏ) — tiết kiệm không gian. Cách xếp trước theo thứ tự ngược này
+    // để loại kế tiếp chui vào khe hở và chia cắt khối hiện tại.
     const wedge = planFrontWedge(plan, reach)
-    if (reach < bestReach - EPS || (Math.abs(reach - bestReach) < EPS && wedge < bestWedge - EPS)) {
+    if (wedge < bestWedge - EPS || (Math.abs(wedge - bestWedge) < EPS && reach < bestReach - EPS)) {
       bestReach = reach
       bestWedge = wedge
       bestPlan = plan
@@ -855,11 +871,11 @@ function packInstancesByType(container: ContainerDims, instances: Instance[], un
       if (group.items.length === 0) continue
       const sample = group.items[0]
 
-      // --- BƯỚC A: XÂY KHỐI TƯỜNG ĐẶC bằng Knapsack DP tại X_horizon -------------------------
-      // KHÔNG có bước "lấp hốc ngược về phía sau frontier". Các khoảng trống mà loại trước để lại
-      // (dải hao hụt sát vách bên, phần hụt dưới trần, cột kết thúc lệch chiều sâu) được CỐ Ý bỏ
-      // trống: yêu cầu nghiệp vụ là mỗi loại thùng đúng 1 khối liền mạch, không loại nào lấn vào
-      // lãnh thổ loại khác. Đổi lại hiệu suất thể tích thấp hơn — đây là đánh đổi có chủ đích.
+      // --- BƯỚC A: XÂY KHỐI TƯỜNG ĐẶC bằng Knapsack DP tại X_horizon -----------------------
+      // KHÔNG cho loại HIỆN TẠI nhét thùng vào mặt tiền của loại TRƯỚC. Lý do: gây phân tách khối.
+      // Thay vào đó, để mỗi loại chiếm 1 khối liền mạch hoàn toàn. Khoảng trống sát mặt tiền của
+      // loại trước (do phần dư lẻ) được chấp nhận để trống — đó là điểm đánh đổi để không vi phạm
+      // quy tắc "1 loại = 1 khối không bị phân tách".
       const x0 = currentXFrontier
       const block = planTypeBlock(container.length - x0, container, sample, group.items.length)
       if (!block) continue
@@ -875,19 +891,19 @@ function packInstancesByType(container: ContainerDims, instances: Instance[], un
       if (maxReach > currentXFrontier) currentXFrontier = maxReach
       if (group.items.length === 0) continue
 
-      // --- BƯỚC B: quét phần DƯ LẺ, khoá trong vùng khối vừa xây -----------------------------
-      // minX = x0 chốt chặn quy tắc X_horizon: thùng lẻ chỉ được rơi vào chính khối của loại mình
-      // hoặc tiến ra phía cửa, tuyệt đối không thụt lùi vào lãnh thổ của các loại trước. Thứ tự
-      // 'xzy' (sâu nhất → thấp nhất) khiến phần dư bám vào mặt trong-dưới của khối rồi mới tiến ra.
+      // --- BƯỚC B: quét phần DƯ LẺ trong khối vừa xây -------------------------------------------
+      // Phần dư lẻ của loại HIỆN TẠI lấp vào khoảng trống TRONG khối của nó, không lấp ra khỏi khối
+      // (tránh đan xen với loại khác). Thứ tự 'xzy' (sâu nhất → thấp nhất) khiến thùng lẻ bám vào
+      // vị trí sâu nhất có sẵn rồi mới nổi lên.
+      //
+      // Lưu ý: không dùng maxStartX để giới hạn, để cho phần dư lẻ tận dụng hết khoảng trống trong
+      // khối hiện tại. minStart là điểm lùi nhất của cột nên cấm để cho thùng chui sâu hơn.
       const mop = runExtremePointFill(container, group.items, {
         seedPlaced: placed,
         seedPointsFromPlaced: true,
         priorityOrder: 'xzy',
-        // Dùng MỐC PHẲNG x0, không dùng minStart (điểm cột lùi sâu nhất của khối vừa xây). Đã thử nới
-        // xuống minStart để thùng lẻ tụt được vào chỗ lõm: kết quả là engine Extreme-Point rải thùng lẻ
-        // vào lãnh thổ loại trước (đan xen) và chẻ loại hiện tại thành nhiều mảnh rời — đo được ở bộ
-        // "5 loại" và "3 loại". Việc đẩy sát vào chỗ lõm đã do placeBlockWalls lo theo từng cột rồi.
         minX: x0,
+        maxStartX: maxReach, // Giới hạn không đẩy frontier xa hơn
       })
       placed.push(...mop.placed)
       advanceFrontier(mop.placed)
