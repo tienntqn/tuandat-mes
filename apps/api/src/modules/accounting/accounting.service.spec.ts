@@ -61,10 +61,12 @@ describe('AccountingService — uploadPeriod', () => {
       SheetNames: ['Sheet1'],
       Sheets: {
         Sheet1: {
-          '!ref': 'A1:D2',
+          '!ref': 'A3:D2',
           C1: { t: 's', v: 'MSNV' },
           C2: { t: 's', v: 'NV001' },
           D2: { t: 's', v: 'Nguyễn Văn A' },
+          O3: { t: 'n', v: 7648631.72656138 }, // Lương bình quân công ty
+          U3: { t: 'n', v: 26 }, // Ngày công bình quân
         },
       },
     } as XLSX.WorkBook
@@ -76,7 +78,7 @@ describe('AccountingService — uploadPeriod', () => {
     expect(mockPrisma.salaryPeriod.update).toHaveBeenCalledTimes(1)
     expect(mockPrisma.salaryPeriod.update).toHaveBeenCalledWith(expect.objectContaining({
       where: { id: 11 },
-      data: expect.objectContaining({ deletedAt: null }),
+      data: expect.objectContaining({ deletedAt: null, avgSalary: 7648631.72656138, avgWorkDays: 26 }),
     }))
   })
 })

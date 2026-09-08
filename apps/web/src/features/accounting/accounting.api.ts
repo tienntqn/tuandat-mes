@@ -52,6 +52,8 @@ export interface SalaryPeriod {
   sourceFileName: string
   uploadedBy: number
   uploadedAt: string
+  avgSalary: string | null
+  avgWorkDays: string | null
   slipCount?: number
   sentCount?: number
   totalNetSalary?: string

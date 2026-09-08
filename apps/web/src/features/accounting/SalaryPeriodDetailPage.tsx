@@ -8,6 +8,7 @@ import type { SalarySlip } from './accounting.api'
 
 const vnd = new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 })
 const money = (v: string) => vnd.format(Math.round(Number(v || 0)))
+const dayCount = new Intl.NumberFormat('vi-VN')
 
 export default function SalaryPeriodDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -92,9 +93,11 @@ export default function SalaryPeriodDetailPage() {
         )
       }
     >
-      <div className="mb-3 d-flex gap-4 small text-muted">
+      <div className="mb-3 d-flex flex-wrap gap-4 small text-muted">
         <span><Link to="/accounting">&larr; Danh sách kỳ lương</Link></span>
         <span>File nguồn: <strong>{period.sourceFileName}</strong></span>
+        <span>Lương bình quân công ty: <strong>{money(period.avgSalary ?? '0')}</strong></span>
+        <span>Ngày công bình quân: <strong>{dayCount.format(Number(period.avgWorkDays ?? 0))}</strong></span>
         {noEmailCount > 0 && (
           <span className="text-warning">⚠ {noEmailCount} dòng không có email</span>
         )}

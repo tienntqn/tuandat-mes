@@ -683,6 +683,8 @@ model SalaryPeriod {
   sourceFileName String
   uploadedBy     Int
   uploadedAt     DateTime  @default(now())
+  avgSalary      Decimal?  @db.Decimal(14, 2) // O3 - Lương bình quân công ty (toàn công ty, không phải/nhân viên)
+  avgWorkDays    Decimal?  @db.Decimal(14, 2) // U3 - Ngày công bình quân công ty
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?

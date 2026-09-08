@@ -53,8 +53,20 @@ function row(label: string, value: string, strong = false, danger = false): stri
   return `<tr><td style="${cell}">${label}</td><td style="${cell};text-align:right;white-space:nowrap">${value}</td></tr>`
 }
 
-export function renderSalaryEmailHtml(slip: SalarySlipLike, month: number, year: number): string {
+interface CompanyStatsLike {
+  avgSalary: unknown
+  avgWorkDays: unknown
+}
+
+export function renderSalaryEmailHtml(
+  slip: SalarySlipLike,
+  month: number,
+  year: number,
+  companyStats: CompanyStatsLike,
+): string {
   const rows = [
+    row('Lương bình quân công ty', money(companyStats.avgSalary), true),
+    row('Ngày công bình quân', n(companyStats.avgWorkDays), true),
     row('Ngày công', n(slip.workDays)),
     row('Tăng ca chủ nhật, đêm (giờ)', n(slip.otSundayNight)),
     row('Tăng ca bình thường (giờ)', n(slip.otNormalHours)),

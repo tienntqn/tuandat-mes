@@ -2,7 +2,19 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import * as XLSX from 'xlsx'
 import { PrismaService } from '../prisma/prisma.service'
 import { MailService } from '../mail/mail.service'
-import { NUMBER_COLUMNS, TEXT_COLUMNS, EMAIL_COLUMN, cellStr, cellNum, findHeaderRowIndex, findFirstDataRowIndex, isDataRow } from './salary-columns'
+import {
+  NUMBER_COLUMNS,
+  TEXT_COLUMNS,
+  EMAIL_COLUMN,
+  SUMMARY_ROW_INDEX,
+  AVG_SALARY_COLUMN,
+  AVG_WORK_DAYS_COLUMN,
+  cellStr,
+  cellNum,
+  findHeaderRowIndex,
+  findFirstDataRowIndex,
+  isDataRow,
+} from './salary-columns'
 import { renderSalaryEmailHtml } from './salary-email.template'
 import { SendSalaryDto } from './dto/send-salary.dto'
 
@@ -80,6 +92,10 @@ export class AccountingService {
 
     const headerRow = findHeaderRowIndex(sheet)
     const firstDataRow = findFirstDataRowIndex(sheet, headerRow)
+
+    // Lương bình quân & ngày công bình quân toàn công ty — đọc ở ô cố định, không thuộc dòng dữ liệu nhân viên
+    const avgSalary = cellNum(sheet, SUMMARY_ROW_INDEX, AVG_SALARY_COLUMN)
+    const avgWorkDays = cellNum(sheet, SUMMARY_ROW_INDEX, AVG_WORK_DAYS_COLUMN)
     const rows: Array<Record<string, unknown>> = []
     for (let r = firstDataRow; r < firstDataRow + MAX_DATA_ROWS; r++) {
       if (!isDataRow(sheet, r)) break
@@ -171,10 +187,17 @@ export class AccountingService {
       const periodRecord = targetPeriod
         ? await tx.salaryPeriod.update({
             where: { id: targetPeriod.id },
-            data: { sourceFileName: originalFileName, uploadedBy: userId, uploadedAt: new Date(), deletedAt: null },
+            data: {
+              sourceFileName: originalFileName,
+              uploadedBy: userId,
+              uploadedAt: new Date(),
+              deletedAt: null,
+              avgSalary,
+              avgWorkDays,
+            },
           })
         : await tx.salaryPeriod.create({
-            data: { month, year, sourceFileName: originalFileName, uploadedBy: userId },
+            data: { month, year, sourceFileName: originalFileName, uploadedBy: userId, avgSalary, avgWorkDays },
           })
 
       await tx.salarySlip.deleteMany({ where: { periodId: periodRecord.id } })
@@ -219,7 +242,10 @@ export class AccountingService {
         await this.mail.sendMail({
           to: slip.email,
           subject: `Bảng lương tháng ${period.month}/${period.year} — ${slip.fullName}`,
-          html: renderSalaryEmailHtml(slip, period.month, period.year),
+          html: renderSalaryEmailHtml(slip, period.month, period.year, {
+            avgSalary: period.avgSalary,
+            avgWorkDays: period.avgWorkDays,
+          }),
         })
         await this.prisma.salarySlip.update({
           where: { id: slip.id },

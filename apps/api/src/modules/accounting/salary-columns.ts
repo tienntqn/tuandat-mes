@@ -42,6 +42,12 @@ export const TEXT_COLUMNS: Record<string, string> = {
 
 export const EMAIL_COLUMN = 'AP'
 
+// Ô tổng hợp toàn công ty ở đầu file (dòng 3, KHÔNG thuộc vùng dữ liệu nhân viên):
+// O3 = Lương bình quân công ty, U3 = Ngày công bình quân công ty (nhãn "N.CÔNG BQ" nằm ở R3).
+export const SUMMARY_ROW_INDEX = 2 // dòng 3 (0-based)
+export const AVG_SALARY_COLUMN = 'O'
+export const AVG_WORK_DAYS_COLUMN = 'U'
+
 function cellAt(sheet: XLSX.WorkSheet, row0: number, colLetter: string): XLSX.CellObject | undefined {
   const col0 = XLSX.utils.decode_col(colLetter)
   const addr = XLSX.utils.encode_cell({ r: row0, c: col0 })
