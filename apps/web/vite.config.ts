@@ -77,7 +77,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:3000',
+        // CHỈ dùng API_PROXY_TARGET (không tiền tố VITE_) cho đích proxy phía server-side.
+        // Biến VITE_API_BASE_URL bị Vite tự nhúng thẳng vào bundle client (import.meta.env)
+        // — nếu dùng nó để trỏ tới hostname nội bộ Docker (vd tên container API) thì trình duyệt
+        // sẽ cố gọi thẳng hostname đó và lỗi ERR_NAME_NOT_RESOLVED vì máy host không phân giải được.
+        target: process.env.API_PROXY_TARGET || 'http://localhost:3000',
         changeOrigin: true,
       },
     },
